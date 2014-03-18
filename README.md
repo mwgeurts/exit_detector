@@ -11,7 +11,7 @@ In addition, this project includes a module `CalcDose()`, which uses the Standal
 
 ### Version Compatibility
 
-### Installation
+### Installation and Use
 
 ### Sinogram Difference Computation Methods
 
