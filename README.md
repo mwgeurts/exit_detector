@@ -1,5 +1,4 @@
-TomoTherapy Exit Detector Analysis
-=============
+## TomoTherapy Exit Detector Analysis
 
 by Mark Geurts <mark.w.geurts@gmail.com>
 <br>(c) 2014 University of Wisconsin Board of Regents
@@ -8,14 +7,14 @@ The TomoTherapy Exit Detector Analysis project is a GUI based standalone applica
 
 In addition, this project includes a module `CalcDose()`, which uses the Standalone GPU TomoTherapy Dose Calculator to calculate the effect of fluence errors (measured above) on the optimized dose distribution for the patient. The `DoseViewer(varargin)` module is a child user interface developed to allow visualization of the reference, adjusted (or DQA), and dose differences on the patient CT.  The module `CalcGamma()` is also included, and performs a 3D [gamma analysis](http://www.ncbi.nlm.nih.gov/pubmed/9608475) between the reference and DQA dose distributions.
 
-## Runtime Dependencies
+### Runtime Dependencies
 
-## Version Compatibility
+### Version Compatibility
 
-## Installation
+### Installation
 
-## Sinogram Difference Computation Methods
+### Sinogram Difference Computation Methods
 
-## Dose Calculation Methods
+### Dose Calculation Methods
 
-## Gamma Computation Methods
+### Gamma Computation Methods
