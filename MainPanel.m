@@ -55,6 +55,7 @@ handles.version = 'Version 1.0.0';
 handles.hide_machspecific = 1;
 handles.hide_fluence = 1;
 handles.local_gamma = 0;
+handles.parallelize = 1;
 handles.background = -1;
 handles.leaf_map = [];
 handles.leaf_spread = [];
@@ -130,11 +131,13 @@ handles.lot_options{2} = '5%';
 handles.lot_options{3} = '10%';
 set(handles.lottolerance_menu,'String',handles.lot_options);
 set(handles.lottolerance_menu,'value',2);
-handles.gamma_options{1} = '3%/3mm';
-handles.gamma_options{2} = '4%/3mm';
-handles.gamma_options{3} = '5%/3mm';
+handles.gamma_options{1} = '1%/1mm';
+handles.gamma_options{2} = '2%/2mm';
+handles.gamma_options{3} = '3%/3mm';
+handles.gamma_options{4} = '4%/3mm';
+handles.gamma_options{5} = '5%/3mm';
 set(handles.gammatolerance_menu,'String',handles.gamma_options);
-set(handles.gammatolerance_menu,'value',1);
+set(handles.gammatolerance_menu,'value',3);
 
 try
     handles.calc_dose = 1;
@@ -844,7 +847,7 @@ handles = ClearGammaResults(handles);
 
 arr = textscan(handles.gamma_options{get(handles.gammatolerance_menu,'Value')},'%f%*[%/]%f%*s');
 handles.gamma_percent = arr{1};
-handles.gamma_dta = arr{2};
+handles.gamma_dta = arr{2}/10;
 clear arr;
 
 handles = CalcGamma(handles);
@@ -1036,4 +1039,8 @@ h = ClearGammaResults(h);
 function h = ClearGammaResults(h)
 % handles    structure with handles and user data (see GUIDATA)
 
+h.gamma = [];
 set(h.gammapass_text,'String','');
+
+% Update Multi-plot
+plotselection_menu_Callback(h.plotselection_menu, struct(), h);

@@ -337,7 +337,7 @@ try
             subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
             if subnodeList.getLength > 0
                 subnode = subnodeList.item(0);
-                if isfield(fluence,'events')
+                if isfield(h.fluence,'events')
                     k = size(h.fluence.events,1)+1;
                 else
                     k = 1;
@@ -353,7 +353,7 @@ try
             subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
             if subnodeList.getLength > 0
                 subnode = subnodeList.item(0);
-                if isfield(fluence,'events')
+                if isfield(h.fluence,'events')
                     k = size(h.fluence.events,1)+1;
                 else
                     k = 1;
@@ -369,7 +369,7 @@ try
             subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
             if subnodeList.getLength > 0
                 subnode = subnodeList.item(0);
-                if isfield(fluence,'events')
+                if isfield(h.fluence,'events')
                     k = size(h.fluence.events,1)+1;
                 else
                     k = 1;
@@ -385,7 +385,7 @@ try
             subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
             if subnodeList.getLength > 0
                 subnode = subnodeList.item(0);
-                if isfield(fluence,'events')
+                if isfield(h.fluence,'events')
                     k = size(h.fluence.events,1)+1;
                 else
                     k = 1;
@@ -401,7 +401,7 @@ try
             subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
             if subnodeList.getLength > 0
                 subnode = subnodeList.item(0);
-                if isfield(fluence,'events')
+                if isfield(h.fluence,'events')
                     k = size(h.fluence.events,1)+1;
                 else
                     k = 1;
@@ -417,7 +417,7 @@ try
             subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
             if subnodeList.getLength > 0
                 subnode = subnodeList.item(0);
-                if isfield(fluence,'events')
+                if isfield(h.fluence,'events')
                     k = size(h.fluence.events,1)+1;
                 else
                     k = 1;
@@ -437,7 +437,7 @@ try
                 for j = 1:subnodeList.getLength
                     subnode = subnodeList.item(j-1);
                     
-                    if isfield(fluence,'events')
+                    if isfield(h.fluence,'events')
                         k = size(h.fluence.events,1)+1;
                     else
                         k = 1;
@@ -467,7 +467,7 @@ try
                 for j = 1:subnodeList.getLength
                     subnode = subnodeList.item(j-1);
                     
-                    if isfield(fluence,'events')
+                    if isfield(h.fluence,'events')
                         k = size(h.fluence.events,1)+1;
                     else
                         k = 1;
@@ -506,7 +506,7 @@ try
                 for j = 1:subnodeList.getLength
                     subnode = subnodeList.item(j-1);
                     
-                    if isfield(fluence,'events')
+                    if isfield(h.fluence,'events')
                         k = size(h.fluence.events,1)+1;
                     else
                         k = 1;
