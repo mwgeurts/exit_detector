@@ -177,9 +177,9 @@ try
     %% Load Daily QA data
     if h.transit_qa == 1 % If transit_qa == 1, use DICOM RT to load daily QA result        
         % Read DICOM header
-        exitqa_info = dicominfo(strcat(qa_path,qa_name));
+        exitqa_info = dicominfo(strcat(h.qa_path,h.qa_name));
         % Open read handle to DICOM file (dicomread can't handle RT RECORDS)
-        fid = fopen(strcat(qa_path,qa_name),'r','l');
+        fid = fopen(strcat(h.qa_path,h.qa_name),'r','l');
         % The daily QA is 9000 projections long
         numprojections = 9000;
         % Set rows to the number of detector channels included in the DICOM file
@@ -204,7 +204,7 @@ try
     else % Else transit_qa == 0, so use patient archive to load daily QA result
         show_all = 0;
         
-        progress = waitbar(0.1,'Loading XML tree...');
+        h.progress = waitbar(0.1,'Loading XML tree...');
         
         % The patient XML is parsed using xpath class
         import javax.xml.xpath.*
@@ -223,7 +223,7 @@ try
         h.returnQAData = cell(1,nodeList.getLength);
         h.returnQADataList = cell(1,nodeList.getLength);
         for i = 1:nodeList.getLength
-            waitbar(0.1+0.8*i/nodeList.getLength,progress);
+            waitbar(0.1+0.8*i/nodeList.getLength,h.progress);
         
             node = nodeList.item(i-1);
         
@@ -288,7 +288,7 @@ try
             h.returnQADataList = h.returnQADataList(~cellfun('isempty',h.returnQADataList));
         end
     
-        waitbar(1.0,progress,'Done.');
+        waitbar(1.0,h.progress,'Done.');
     
         % Prompt user to select return data
         if size(h.returnQAData,2) == 0
@@ -347,8 +347,7 @@ try
         clear plan;
         
         % Close progress bar graphic
-        close(progress);
-        clear progress;
+        close(h.progress);
 
         % Clear xpath temporary variables
         clear doc factory xpath;
@@ -438,7 +437,7 @@ try
     % Clear temporary variables
     clear i peaks;
 catch exception
-    if ishandle(progress), delete(progress); end
+    %if ishandle(h.progress), delete(h.progress); end
     errordlg(exception.message);
     rethrow(exception)
 end

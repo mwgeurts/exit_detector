@@ -31,7 +31,7 @@ function MainPanel_OpeningFcn(hObject, eventdata, handles, varargin)
 % Executes just before MainPanel is made visible.
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to MainPanel (see VARARGIN)
 
@@ -49,7 +49,7 @@ warning('off','all');
 % Choose default command line output for MainPanel
 handles.output = hObject;
 
-% Version to display on GUI (top left).  This should reflect current the
+% version_text to display on GUI (top left).  This should reflect current the
 % GIT tagging.  See `git tag` for list of current and previous versions.
 handles.version = 'Version 1.0.0';
 handles.hide_machspecific = 1;
@@ -79,8 +79,8 @@ handles.dose_threshold = 0.2;
 % set to KEEP_OPEN_FIELD_CHANNELS for the Daily QA XML)
 handles.left_trim = 27;
 
-% Set version
-set(handles.version,'String',handles.version);
+% Set version_text
+set(handles.version_text,'String',handles.version);
 
 % Disable buttons that don't yet have functionality
 set(handles.printreport_button,'Enable','Off');
@@ -157,7 +157,7 @@ function varargout = MainPanel_OutputFcn(hObject, eventdata, handles)
 % Outputs from this function are returned to the command line.
 % varargout  cell array for returning output args (see VARARGOUT);
 % hObject    handle to figure
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 % Get default command line output from handles structure
@@ -166,24 +166,24 @@ varargout{1} = handles.output;
 function dynamicjawcomp_menu_Callback(hObject, eventdata, handles)
 % Executes on selection change in dynamicjawcomp_menu.
 % hObject    handle to dynamicjawcomp_menu (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 function dynamicjawcomp_menu_CreateFcn(hObject, eventdata, handles)
 % Executes during object creation, after setting all properties.
 % hObject    handle to dynamicjawcomp_menu (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 function meanlot_text_Callback(hObject, eventdata, handles)
 % hObject    handle to meanlot_text (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 % --- Executes during object creation, after setting all properties.
 function meanlot_text_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to meanlot_text (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: edit controls usually have a white background on Windows.
@@ -194,13 +194,13 @@ end
 
 function meanloterror_text_Callback(hObject, eventdata, handles)
 % hObject    handle to meanloterror_text (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 function meanloterror_text_CreateFcn(hObject, eventdata, handles)
 % Executes during object creation, after setting all properties.
 % hObject    handle to meanloterror_text (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: edit controls usually have a white background on Windows.
@@ -211,13 +211,13 @@ end
 
 function stdevlot_text_Callback(hObject, eventdata, handles)
 % hObject    handle to stdevlot_text (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 function stdevlot_text_CreateFcn(hObject, eventdata, handles)
 % Executes during object creation, after setting all properties.
 % hObject    handle to stdevlot_text (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: edit controls usually have a white background on Windows.
@@ -229,7 +229,7 @@ end
 function lottolerance_menu_Callback(hObject, eventdata, handles)
 % Executes on selection change in lottolerance_menu.
 % hObject    handle to lottolerance_menu (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 if size(handles.errors,1) > 0
@@ -243,7 +243,7 @@ end
 function lottolerance_menu_CreateFcn(hObject, eventdata, handles)
 % Executes during object creation, after setting all properties.
 % hObject    handle to lottolerance_menu (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: popupmenu controls usually have a white background on Windows.
@@ -254,13 +254,13 @@ end
 
 function lotpassrate_text_Callback(hObject, eventdata, handles)
 % hObject    handle to lotpassrate_text (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 function lotpassrate_text_CreateFcn(hObject, eventdata, handles)
 % Executes during object creation, after setting all properties.
 % hObject    handle to lotpassrate_text (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: edit controls usually have a white background on Windows.
@@ -271,13 +271,13 @@ end
 
 function meandosediff_text_Callback(hObject, eventdata, handles)
 % hObject    handle to meandosediff_text (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 function meandosediff_text_CreateFcn(hObject, eventdata, handles)
 % Executes during object creation, after setting all properties.
 % hObject    handle to meandosediff_text (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: edit controls usually have a white background on Windows.
@@ -289,7 +289,7 @@ end
 function calcdose_button_Callback(hObject, eventdata, handles)
 % Executes on button press in calcdose_button.
 % hObject    handle to calcdose_button (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 handles = ClearDoseResults(handles);
@@ -310,7 +310,7 @@ guidata(hObject,handles)
 function gammatolerance_menu_Callback(hObject, eventdata, handles)
 % Executes on selection change in gammatolerance_menu.
 % hObject    handle to gammatolerance_menu (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hints: contents = cellstr(get(hObject,'String')) returns gammatolerance_menu contents as cell array
@@ -321,7 +321,7 @@ ClearGammaResults(handles);
 function gammatolerance_menu_CreateFcn(hObject, eventdata, handles)
 % Executes during object creation, after setting all properties.
 % hObject    handle to gammatolerance_menu (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: popupmenu controls usually have a white background on Windows.
@@ -332,13 +332,13 @@ end
 
 function gammapass_text_Callback(hObject, eventdata, handles)
 % hObject    handle to gammapass_text (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 function gammapass_text_CreateFcn(hObject, eventdata, handles)
 % Executes during object creation, after setting all properties.
 % hObject    handle to gammapass_text (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: edit controls usually have a white background on Windows.
@@ -350,7 +350,7 @@ end
 function dailyqa_browse_Callback(hObject, eventdata, handles)
 % Executes on button press in dailyqa_browse.
 % hObject    handle to dailyqa_browse (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 if handles.transit_qa == 1 % If transit_qa == 1, use DICOM RT to load daily QA result
@@ -373,7 +373,7 @@ handles = ParseFileQA(handles);
 
 % If transit_dqa is 1 (DICOM mode), enable DQA DICOM file browse (step
 % 2).  Otherwise, use Archive mode and enable the XML browse (step 3)
-if handlestransit_dqa == 1
+if handles.transit_dqa == 1
     set(handles.dqa_browse,'Enable','On');
 else
     set(handles.xml_browse,'Enable','On');
@@ -387,7 +387,7 @@ guidata(hObject,handles)
 function dqa_browse_Callback(hObject, eventdata, handles)
 % Executes on button press in dqa_browse.
 % hObject    handle to dqa_browse (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 if handles.transit_dqa == 1 % If transit_dqa == 1, use DICOM RT to load DQA result
@@ -413,7 +413,7 @@ end
 function xml_browse_Callback(hObject, eventdata, handles)
 % Executes on button press in xml_browse.
 % hObject    handle to xml_browse (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 % Ask user to specify location of patient archive XML.  The patient archive
@@ -451,13 +451,13 @@ guidata(hObject,handles)
 
 function xml_text_Callback(hObject, eventdata, handles)
 % hObject    handle to xml_text (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 function xml_text_CreateFcn(hObject, eventdata, handles)
 % Executes during object creation, after setting all properties.
 % hObject    handle to xml_text (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: edit controls usually have a white background on Windows.
@@ -469,7 +469,7 @@ end
 function deliveryplan_menu_Callback(hObject, eventdata, handles)
 % Executes on selection change in deliveryplan_menu.
 % hObject    handle to deliveryplan_menu (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 plan = get(hObject,'value') - 1;
@@ -563,7 +563,7 @@ guidata(hObject,handles)
 % --- Executes during object creation, after setting all properties.
 function deliveryplan_menu_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to deliveryplan_menu (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: popupmenu controls usually have a white background on Windows.
@@ -575,7 +575,7 @@ end
 % --- Executes on selection change in plotselection_menu.
 function plotselection_menu_Callback(hObject, eventdata, handles)
 % hObject    handle to plotselection_menu (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 val = get(hObject,'Value');
@@ -697,7 +697,7 @@ end
 function plotselection_menu_CreateFcn(hObject, eventdata, handles)
 % Executes during object creation, after setting all properties.
 % hObject    handle to plotselection_menu (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: popupmenu controls usually have a white background on Windows.
@@ -709,7 +709,7 @@ end
 % --- Executes on button press in archive_radio.
 function archive_radio_Callback(hObject, eventdata, handles)
 % hObject    handle to archive_radio (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 if (get(hObject,'Value') == 1)
@@ -729,7 +729,7 @@ guidata(hObject,handles)
 function dicom_radio_Callback(hObject, eventdata, handles)
 % Executes on button press in dicom_radio.
 % hObject    handle to dicom_radio (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 if (get(hObject,'Value') == 1)
@@ -749,14 +749,14 @@ guidata(hObject,handles)
 function printreport_button_Callback(hObject, eventdata, handles)
 % Executes on button press in printreport_button.
 % hObject    handle to printreport_button (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 
 function opendosepanel_button_Callback(hObject, eventdata, handles)
 % Executes on button press in opendosepanel_button.
 % hObject    handle to opendosepanel_button (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 if isstruct(handles.ct) && isfield(handles.ct, 'filename')
@@ -808,7 +808,7 @@ end
 function autoalign_menu_Callback(hObject, eventdata, handles)
 % Executes on selection change in autoalign_menu.
 % hObject    handle to autoalign_menu (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
  
  if get(hObject,'value') == 1
@@ -825,7 +825,7 @@ guidata(hObject,handles)
 function autoalign_menu_CreateFcn(hObject, eventdata, handles)
 % Executes during object creation, after setting all properties.
 % hObject    handle to autoalign_menu (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: popupmenu controls usually have a white background on Windows.
@@ -837,7 +837,7 @@ end
 function calcgamma_button_Callback(hObject, eventdata, handles)
 % Executes on button press in calcgamma_button.
 % hObject    handle to calcgamma_button (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
+% eventdata  reserved - to be defined in a future version_text of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 handles = ClearGammaResults(handles);
@@ -948,7 +948,7 @@ if size(h.errors,1) > 0
     set(h.lotpassrate_text,'String',sprintf('%0.1f%%',size(h.errors(abs(h.errors)<=error_diff),1)/size(h.errors,1)*100));
 end
 
-waitbar(0.8,progress,'Updating plots...');
+waitbar(0.8,h.progress,'Updating plots...');
 
 % Update Sinogram Plot
 if size(h.sinogram,1) > 0
