@@ -1,28 +1,12 @@
 function varargout = MainPanel(varargin)
-% MAINPANEL MATLAB code for MainPanel.fig
-%      MAINPANEL, by itself, creates a new MAINPANEL or raises the existing
-%      singleton*.
+% MainPanel MATLAB code for MainPanel.fig
+%      MainPanel, by itself, creates a new MainPanel or raises the existing
+%      singleton.  MainPanel is the GUI for running the TomoTherapy Exit
+%      Detector Analysis application.  See README for a full description
+%      of application dependencies, compatibility, and use.
 %
-%      H = MAINPANEL returns the handle to a new MAINPANEL or the handle to
-%      the existing singleton*.
-%
-%      MAINPANEL('CALLBACK',hObject,eventData,handles,...) calls the local
-%      function named CALLBACK in MAINPANEL.M with the given input arguments.
-%
-%      MAINPANEL('Property','Value',...) creates a new MAINPANEL or raises the
-%      existing singleton*.  Starting from the left, property value pairs are
-%      applied to the GUI before MainPanel_OpeningFcn gets called.  An
-%      unrecognized property name or invalid value makes property application
-%      stop.  All inputs are passed to MainPanel_OpeningFcn via varargin.
-%
-%      *See GUI Options on GUIDE's Tools menu.  Choose "GUI allows only one
-%      instance to run (singleton)".
-%
-% See also: GUIDE, GUIDATA, GUIHANDLES
-
-% Edit the above text to modify the response to help MainPanel
-
-% Last Modified by GUIDE v2.5 14-Mar-2014 12:13:56
+%      H = MainPanel returns the handle to a new MainPanel or the handle to
+%      the existing singleton.
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -43,24 +27,13 @@ else
 end
 % End initialization code - DO NOT EDIT
 
-% --- Executes just before MainPanel is made visible.
 function MainPanel_OpeningFcn(hObject, eventdata, handles, varargin)
+% Executes just before MainPanel is made visible.
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to MainPanel (see VARARGIN)
-
-% Choose default command line output for MainPanel
-handles.output = hObject;
-
-% Update handles structure
-guidata(hObject, handles);
-
-% UIWAIT makes MainPanel wait for user response (see UIRESUME)
-% uiwait(handles.figure1);
-
-warning('off','all');
 
 % Initialize global variables and set initial values
 global plot_options lot_options gamma_options transit_qa transit_dqa ...
@@ -68,34 +41,46 @@ global plot_options lot_options gamma_options transit_qa transit_dqa ...
     even_leaves odd_leaves raw_data exit_data sinogram diff errors ...
     numprojections meanlot jaw_comp hide_machspecific hide_fluence ...
     left_trim ssh2_conn dose_threshold pdut_path dose_reference dose_dqa ...
-    dose_diff gamma;
+    dose_diff gamma version;
 
-hide_machspecific = 1;
-hide_fluence = 1;
-background = -1;
-leaf_map = [];
-leaf_spread = [];
-channel_cal = [];
-even_leaves = [];
-odd_leaves = [];
-raw_data = [];
-exit_data = [];
-sinogram = [];
-diff = [];
-errors = [];
-numprojections = -1;
-meanlot = -1;
-dose_reference = [];
-dose_dqa = [];
-dose_diff = [];
-gamma = [];
-dose_threshold = 0.2;
-% left_trim should be set to the  channel in the exit detector data 
-% that corresponds to the first channel in the channel_calibration 
-% array.  For gen4 (TomoDetectors), this should be 27, as 
-% detectorChanSelection is set to KEEP_OPEN_FIELD_CHANNELS for the 
-% Daily QA XML)
-left_trim = 27;
+% Turn off MATLAB warnings
+warning('off','all');
+
+% Choose default command line output for MainPanel
+handles.output = hObject;
+
+% Version to display on GUI (top left).  This should reflect current the
+% GIT tagging.  See `git tag` for list of current and previous versions.
+handles.version = 'Version 1.0.0';
+handles.hide_machspecific = 1;
+handles.hide_fluence = 1;
+handles.local_gamma = 0;
+handles.background = -1;
+handles.leaf_map = [];
+handles.leaf_spread = [];
+handles.channel_cal = [];
+handles.even_leaves = [];
+handles.odd_leaves = [];
+handles.raw_data = [];
+handles.exit_data = [];
+handles.sinogram = [];
+handles.diff = [];
+handles.errors = [];
+handles.numprojections = -1;
+handles.meanlot = -1;
+handles.dose_reference = [];
+handles.dose_dqa = [];
+handles.dose_diff = [];
+handles.gamma = [];
+handles.dose_threshold = 0.2;
+% handles.left_trim should be set to the  channel in the exit detector data 
+% that corresponds to the first channel in the channel_calibration array.  
+% For gen4 (TomoDetectors), this should be 27, as detectorChanSelection is 
+% set to KEEP_OPEN_FIELD_CHANNELS for the Daily QA XML)
+handles.left_trim = 27;
+
+% Set version
+set(handles.version,'String',handles.version);
 
 % Disable buttons that don't yet have functionality
 set(handles.printreport_button,'Enable','Off');
@@ -116,59 +101,60 @@ set(allchild(handles.sinogram_plot3),'visible','off');
 set(handles.sinogram_plot3,'visible','off'); 
 set(handles.opendosepanel_button,'Enable','Off');
 
-% Set items and defaults for popup menus
-
 % Add code to set default for archive/DICOM mode GUI
 set(handles.archive_radio, 'Value', 0);
 set(handles.dicom_radio, 'Value', 1);
-transit_qa = 1;
-transit_dqa = 1;
+handles.transit_qa = 1;
+handles.transit_dqa = 1;
 set(handles.autoalign_menu,'String',{'Enabled', 'Disabled'});
 set(handles.autoalign_menu,'value',1);
-auto_shift = 1;
+handles.auto_shift = 1;
 set(handles.dynamicjawcomp_menu,'String',{'Enabled', 'Disabled'});
 set(handles.dynamicjawcomp_menu,'value',2);
-jaw_comp = 0;
+handles.jaw_comp = 0;
 set(handles.deliveryplan_menu, 'String', 'Auto-select');
 set(handles.deliveryplan_menu, 'value', 1);
-plot_options{1} = 'Select a plot to view';
-plot_options{2} = 'Leaf Offsets';
-plot_options{3} = 'Leaf Map';
-plot_options{4} = 'Channel Calibration';
-plot_options{5} = 'Leaf Spread Function';
-plot_options{6} = 'Leaf Open Time Histogram';
-plot_options{7} = 'LOT Error Histogram';
-plot_options{8} = 'Error versus LOT';
-plot_options{9} = 'Gamma Index Histogram';
-set(handles.plotselection_menu,'String',plot_options);
+handles.plot_options{1} = 'Select a plot to view';
+handles.plot_options{2} = 'Leaf Offsets';
+handles.plot_options{3} = 'Leaf Map';
+handles.plot_options{4} = 'Channel Calibration';
+handles.plot_options{5} = 'Leaf Spread Function';
+handles.plot_options{6} = 'Leaf Open Time Histogram';
+handles.plot_options{7} = 'LOT Error Histogram';
+handles.plot_options{8} = 'Error versus LOT';
+handles.plot_options{9} = 'Gamma Index Histogram';
+set(handles.plotselection_menu,'String',handles.plot_options);
 set(handles.plotselection_menu,'value',1);
-lot_options{1} = '3%';
-lot_options{2} = '5%';
-lot_options{3} = '10%';
-set(handles.lottolerance_menu,'String',lot_options);
+handles.lot_options{1} = '3%';
+handles.lot_options{2} = '5%';
+handles.lot_options{3} = '10%';
+set(handles.lottolerance_menu,'String',handles.lot_options);
 set(handles.lottolerance_menu,'value',2);
-gamma_options{1} = '3%/3mm';
-gamma_options{2} = '4%/3mm';
-gamma_options{3} = '5%/3mm';
-set(handles.gammatolerance_menu,'String',gamma_options);
+handles.gamma_options{1} = '3%/3mm';
+handles.gamma_options{2} = '4%/3mm';
+handles.gamma_options{3} = '5%/3mm';
+set(handles.gammatolerance_menu,'String',handles.gamma_options);
 set(handles.gammatolerance_menu,'value',1);
 
 try
-    calc_dose = 1;
+    handles.calc_dose = 1;
     
      % Load SSH/SCP Scripts
     addpath('./ssh2_v2_m1_r5/'); 
     
-    % Establish connection to tomo-research server
-    ssh2_conn = ssh2_config('tomo-research','tomo','hi-art');
-    [ssh2_conn,~] = ssh2_command(ssh2_conn, 'ls');
-    pdut_path = 'GPU/';
+    % Establish connection to computation server
+    handles.ssh2_conn = ssh2_config('tomo-research','tomo','hi-art');
+    [handles.ssh2_conn,~] = ssh2_command(handles.ssh2_conn, 'ls');
+    handles.pdut_path = 'GPU/';
 catch
-     calc_dose = 0;
+     handles.calc_dose = 0;
 end
 
-% --- Outputs from this function are returned to the command line.
+% Update handles structure
+guidata(hObject, handles);
+
 function varargout = MainPanel_OutputFcn(hObject, eventdata, handles) 
+% Outputs from this function are returned to the command line.
 % varargout  cell array for returning output args (see VARARGOUT);
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -177,39 +163,22 @@ function varargout = MainPanel_OutputFcn(hObject, eventdata, handles)
 % Get default command line output from handles structure
 varargout{1} = handles.output;
 
-
-% --- Executes on selection change in dynamicjawcomp_menu.
 function dynamicjawcomp_menu_Callback(hObject, eventdata, handles)
+% Executes on selection change in dynamicjawcomp_menu.
 % hObject    handle to dynamicjawcomp_menu (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: contents = cellstr(get(hObject,'String')) returns dynamicjawcomp_menu contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from dynamicjawcomp_menu
-
-
-% --- Executes during object creation, after setting all properties.
 function dynamicjawcomp_menu_CreateFcn(hObject, eventdata, handles)
+% Executes during object creation, after setting all properties.
 % hObject    handle to dynamicjawcomp_menu (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
-
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
 
 function meanlot_text_Callback(hObject, eventdata, handles)
 % hObject    handle to meanlot_text (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of meanlot_text as text
-%        str2double(get(hObject,'String')) returns contents of meanlot_text as a double
-
 
 % --- Executes during object creation, after setting all properties.
 function meanlot_text_CreateFcn(hObject, eventdata, handles)
@@ -223,19 +192,13 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-
-
 function meanloterror_text_Callback(hObject, eventdata, handles)
 % hObject    handle to meanloterror_text (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of meanloterror_text as text
-%        str2double(get(hObject,'String')) returns contents of meanloterror_text as a double
-
-
-% --- Executes during object creation, after setting all properties.
 function meanloterror_text_CreateFcn(hObject, eventdata, handles)
+% Executes during object creation, after setting all properties.
 % hObject    handle to meanloterror_text (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -245,20 +208,14 @@ function meanloterror_text_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-
-
 
 function stdevlot_text_Callback(hObject, eventdata, handles)
 % hObject    handle to stdevlot_text (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of stdevlot_text as text
-%        str2double(get(hObject,'String')) returns contents of stdevlot_text as a double
-
-
-% --- Executes during object creation, after setting all properties.
 function stdevlot_text_CreateFcn(hObject, eventdata, handles)
+% Executes during object creation, after setting all properties.
 % hObject    handle to stdevlot_text (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -269,24 +226,22 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-
-% --- Executes on selection change in lottolerance_menu.
 function lottolerance_menu_Callback(hObject, eventdata, handles)
+% Executes on selection change in lottolerance_menu.
 % hObject    handle to lottolerance_menu (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: contents = cellstr(get(hObject,'String')) returns lottolerance_menu contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from lottolerance_menu
-global lot_options errors;
-if size(errors,1) > 0
+if size(handles.errors,1) > 0
     val = get(hObject,'value');
-    error_diff = sscanf(lot_options{val},'%i%%')/100;
-    set(handles.lotpassrate_text,'String',sprintf('%0.1f%%',size(errors(abs(errors)<=error_diff),1)/size(errors,1)*100));
+    error_diff = sscanf(handles.lot_options{val}, '%i%%') / 100;
+    set(handles.lotpassrate_text,'String',sprintf('%0.1f%%', ...
+        size(handles.errors(abs(handles.errors) <= error_diff), 1) / ...
+        size(handles.errors, 1) * 100));
 end
 
-% --- Executes during object creation, after setting all properties.
 function lottolerance_menu_CreateFcn(hObject, eventdata, handles)
+% Executes during object creation, after setting all properties.
 % hObject    handle to lottolerance_menu (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -297,19 +252,13 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-
-
 function lotpassrate_text_Callback(hObject, eventdata, handles)
 % hObject    handle to lotpassrate_text (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of lotpassrate_text as text
-%        str2double(get(hObject,'String')) returns contents of lotpassrate_text as a double
-
-
-% --- Executes during object creation, after setting all properties.
 function lotpassrate_text_CreateFcn(hObject, eventdata, handles)
+% Executes during object creation, after setting all properties.
 % hObject    handle to lotpassrate_text (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -319,20 +268,14 @@ function lotpassrate_text_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-
-
 
 function meandosediff_text_Callback(hObject, eventdata, handles)
 % hObject    handle to meandosediff_text (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of meandosediff_text as text
-%        str2double(get(hObject,'String')) returns contents of meandosediff_text as a double
-
-
-% --- Executes during object creation, after setting all properties.
 function meandosediff_text_CreateFcn(hObject, eventdata, handles)
+% Executes during object creation, after setting all properties.
 % hObject    handle to meandosediff_text (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -343,19 +286,18 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-
-% --- Executes on button press in calcdose_button.
 function calcdose_button_Callback(hObject, eventdata, handles)
+% Executes on button press in calcdose_button.
 % hObject    handle to calcdose_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-global dose_diff ssh2_conn;
 
-ClearDoseResults(handles);
-CalcDose();
+handles = ClearDoseResults(handles);
 
-if size(dose_diff,1) > 0
-    dose_errors = reshape(dose_diff,1,[])';
+handles = CalcDose(handles);
+
+if size(handles.dose_diff,1) > 0
+    dose_errors = reshape(handles.dose_diff,1,[])';
     dose_errors = dose_errors(dose_errors~=0);
     set(handles.meandosediff_text, 'String', sprintf('%0.2f%%',mean(dose_errors)*100));
     set(handles.calcgamma_button,'Enable','On');
@@ -363,9 +305,10 @@ if size(dose_diff,1) > 0
     set(handles.opendosepanel_button,'Enable','On');
 end 
 
+guidata(hObject,handles)
 
-% --- Executes on selection change in gammatolerance_menu.
 function gammatolerance_menu_Callback(hObject, eventdata, handles)
+% Executes on selection change in gammatolerance_menu.
 % hObject    handle to gammatolerance_menu (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -375,8 +318,8 @@ function gammatolerance_menu_Callback(hObject, eventdata, handles)
 
 ClearGammaResults(handles);
 
-% --- Executes during object creation, after setting all properties.
 function gammatolerance_menu_CreateFcn(hObject, eventdata, handles)
+% Executes during object creation, after setting all properties.
 % hObject    handle to gammatolerance_menu (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -387,19 +330,13 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-
-
 function gammapass_text_Callback(hObject, eventdata, handles)
 % hObject    handle to gammapass_text (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of gammapass_text as text
-%        str2double(get(hObject,'String')) returns contents of gammapass_text as a double
-
-
-% --- Executes during object creation, after setting all properties.
 function gammapass_text_CreateFcn(hObject, eventdata, handles)
+% Executes during object creation, after setting all properties.
 % hObject    handle to gammapass_text (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -410,81 +347,115 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-
-% --- Executes on button press in dailyqa_browse.
 function dailyqa_browse_Callback(hObject, eventdata, handles)
+% Executes on button press in dailyqa_browse.
 % hObject    handle to dailyqa_browse (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-global transit_dqa;
-
-filename = ParseFileQA(get(handles.dailyqa_text,'String'));
-if strcmp(filename, get(handles.dailyqa_text,'String')) == 0
-    set(handles.dailyqa_text,'String',filename);
-    % If transit_dqa is 1 (DICOM mode), enable DQA DICOM file browse (step
-    % 2).  Otherwise, use Archive mode and enable the XML browse (step 3)
-    if transit_dqa == 1
-        set(handles.dqa_browse,'Enable','On');
-    else
-        set(handles.xml_browse,'Enable','On');
+if handles.transit_qa == 1 % If transit_qa == 1, use DICOM RT to load daily QA result
+    % Prompt user to specify location of daily QA DICOM file
+    [handles.qa_name,handles.qa_path] = uigetfile('*','Select the Daily QA Transit Dose DICOM file:');
+    if handles.qa_name == 0;
+        return;
     end
-    UpdateSinogramResults(handles);
+else
+    % Prompt user to specify location of daily QA DICOM file
+    [handles.qa_name,handles.qa_path] = uigetfile('*.xml','Select the Daily QA Patient Archive XML:');
+    if handles.qa_name == 0;
+        return;
+    end
 end
 
-% --- Executes on button press in dqa_browse.
+set(handles.dailyqa_text,'String',strcat(handles.qa_path, handles.qa_name));
+
+handles = ParseFileQA(handles);
+
+% If transit_dqa is 1 (DICOM mode), enable DQA DICOM file browse (step
+% 2).  Otherwise, use Archive mode and enable the XML browse (step 3)
+if handlestransit_dqa == 1
+    set(handles.dqa_browse,'Enable','On');
+else
+    set(handles.xml_browse,'Enable','On');
+end
+
+handles = UpdateSinogramResults(handles);
+
+% save the changes to the structure
+guidata(hObject,handles)
+
 function dqa_browse_Callback(hObject, eventdata, handles)
+% Executes on button press in dqa_browse.
 % hObject    handle to dqa_browse (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-filename = ParseFileDQA(get(handles.exitdata_text,'String'));
-if strcmp(filename, get(handles.exitdata_text,'String')) == 0
-    set(handles.exitdata_text,'String',filename);
+if handles.transit_dqa == 1 % If transit_dqa == 1, use DICOM RT to load DQA result
+    
+    [handles.exit_name,handles.exit_path] = uigetfile('*','Select the Static Couch DQA DICOM record:');
+    if handles.exit_name == 0;
+        return;
+    end
+
+    set(handles.exitdata_text,'String',strcat(handles.exit_path, handles.exit_name));
+
+    handles = ParseFileDQA(handles);
+
     % Enable XML browse button (Step 3)
     set(handles.xml_browse,'Enable','On');
-    UpdateSinogramResults(handles);
+
+    handles = UpdateSinogramResults(handles);
+
+    % save the changes to the structure
+    guidata(hObject,handles)
 end
 
-% --- Executes on button press in xml_browse.
 function xml_browse_Callback(hObject, eventdata, handles)
+% Executes on button press in xml_browse.
 % hObject    handle to xml_browse (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-global deliveryPlanList;
+% Ask user to specify location of patient archive XML.  The patient archive
+% is required to determine the expected MLC fluence, determined from the
+% machine agostic delivery plan.
+[handles.xml_name,handles.xml_path] = uigetfile('*.xml','Select the Patient Archive XML:');
 
-filename = ParseFileXML(get(handles.exitdata_text,'String'));
-if strcmp(filename, get(handles.exitdata_text,'String')) == 0
-    set(handles.xml_text,'String',filename);
-    
-    % Update Delivery Plan List popup menu
-    newList = cell(1,1 + size(deliveryPlanList,2));
-    newList{1} = 'Auto-select';
-    for i = 1:size(deliveryPlanList,2)
-        newList{i+1} = deliveryPlanList{i};
-    end
-    set(handles.deliveryplan_menu, 'String', newList);
-    clear newList;
-    
-    % Auto-select best Machine_Agnostic delivery plan (also update
-    % calculations)
-    AutoSelectDeliveryPlan(handles);
-    % Update calculations
-    UpdateSinogramResults(handles);
+% If the user cancels, stop execution of this function and return the
+% existing filename.  The existing globals will be unaffected.
+if handles.xml_name == 0
+    return
 end
+
+handles = ParseFileXML(handles);
+
+set(handles.xml_text,'String',strcat(handles.xml_path,handles.xml_name));
+
+% Update Delivery Plan List popup menu
+newList = cell(1,1 + size(handles.deliveryPlanList,2));
+newList{1} = 'Auto-select';
+for i = 1:size(handles.deliveryPlanList,2)
+    newList{i+1} = handles.deliveryPlanList{i};
+end
+set(handles.deliveryplan_menu, 'String', newList);
+clear newList;
+
+% Auto-select best Machine_Agnostic delivery plan
+handles = AutoSelectDeliveryPlan(handles);
+
+% Update calculations
+handles = UpdateSinogramResults(handles);
+
+% save the changes to the structure
+guidata(hObject,handles)
 
 function xml_text_Callback(hObject, eventdata, handles)
 % hObject    handle to xml_text (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of xml_text as text
-%        str2double(get(hObject,'String')) returns contents of xml_text as a double
-
-
-% --- Executes during object creation, after setting all properties.
 function xml_text_CreateFcn(hObject, eventdata, handles)
+% Executes during object creation, after setting all properties.
 % hObject    handle to xml_text (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -495,44 +466,39 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-
-% --- Executes on selection change in deliveryplan_menu.
 function deliveryplan_menu_Callback(hObject, eventdata, handles)
+% Executes on selection change in deliveryplan_menu.
 % hObject    handle to deliveryplan_menu (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: contents = cellstr(get(hObject,'String')) returns deliveryplan_menu contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from deliveryplan_menu
-
-global deliveryPlans numprojections sinogram meanlot planuid raw_data;
 plan = get(hObject,'value') - 1;
 
 % If the user chose Auto-select
 if plan == 0
     % Auto-select best Machine_Agnostic delivery plan (also update
     % calculations)
-    AutoSelectDeliveryPlan(handles);
+    handles = AutoSelectDeliveryPlan(handles);
 else
     try
         % If sinogram and numprojections are not already set, load this
         % delivery plan into memory.  Otherwise, use already loaded data
-        if isfield(deliveryPlans{plan},'sinogram') == 0 || isfield(deliveryPlans{plan},'numprojections') == 0
+        if isfield(handles.deliveryPlans{plan},'sinogram') == 0 || isfield(handles.deliveryPlans{plan},'numprojections') == 0
             %% Read Delivery Plan
             % Open read file handle to delivery plan, using binary mode
-            fid = fopen(deliveryPlans{plan}.dplan,'r','b');
+            fid = fopen(handles.deliveryPlans{plan}.dplan,'r','b');
             % Initialize a temporary array to store sinogram (64 leaves x
             % numprojections)
-            arr = zeros(64,deliveryPlans{plan}.numprojections);
+            arr = zeros(64,handles.deliveryPlans{plan}.numprojections);
             % Loop through each projection
-            for i = 1:deliveryPlans{plan}.numprojections
+            for i = 1:handles.deliveryPlans{plan}.numprojections
                 % Loop through each active leaf, set in numleaves
-                for j = 1:deliveryPlans{plan}.numleaves
+                for j = 1:handles.deliveryPlans{plan}.numleaves
                     % Read (2) leaf events for this projection
-                    events = fread(fid,deliveryPlans{plan}.leafeventsperproj,'double');
+                    events = fread(fid,handles.deliveryPlans{plan}.leafeventsperproj,'double');
                     % Store the difference in tau (events(2)-events(1)) to leaf j +
                     % lowerindex and projection i
-                    arr(j+deliveryPlans{plan}.lowerindex,i) = events(2)-events(1);
+                    arr(j+handles.deliveryPlans{plan}.lowerindex,i) = events(2)-events(1);
                 end
             end
             % Close file handle to delivery plan
@@ -564,33 +530,35 @@ else
                 end
             end
 
-            deliveryPlans{plan}.numprojections = stop_trim - start_trim + 1;
-            deliveryPlans{plan}.sinogram = arr(:,start_trim:stop_trim);
+            handles.deliveryPlans{plan}.numprojections = stop_trim - start_trim + 1;
+            handles.deliveryPlans{plan}.sinogram = arr(:,start_trim:stop_trim);
 
             % Clear temporary variables
             clear i j arr start_trim stop_trim; 
         end
         % Set global numprojections, sinogram variables
         % Update numprojections to only the number of "active" projections
-        numprojections = min(size(raw_data,2),deliveryPlans{plan}.numprojections);
+        handles.numprojections = min(size(handles.raw_data,2),handles.deliveryPlans{plan}.numprojections);
 
-        sinogram = deliveryPlans{plan}.sinogram(:,1:numprojections); 
+        handles.sinogram = handles.deliveryPlans{plan}.sinogram(:,1:handles.numprojections); 
 
-        open_times = reshape(sinogram,1,[])';
-        % open_times = open_times(open_times>0.05);
-        meanlot = mean(open_times);
+        open_times = reshape(handles.sinogram,1,[])';
+        handles.meanlot = mean(open_times);
         
-        planuid = deliveryPlans{plan}.parentuid; 
+        handles.planuid = handles.deliveryPlans{plan}.parentuid; 
     catch
-        numprojections = 0;
-        sinogram = []; 
-        meanlot = 0;
+        handles.numprojections = 0;
+        handles.sinogram = []; 
+        handles.meanlot = 0;
         errordlg(lasterr);
         return
     end
 end
+
 % Update calculations
-UpdateSinogramResults(handles);
+handles = UpdateSinogramResults(handles);
+
+guidata(hObject,handles)
 
 % --- Executes during object creation, after setting all properties.
 function deliveryplan_menu_CreateFcn(hObject, eventdata, handles)
@@ -604,31 +572,25 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-
 % --- Executes on selection change in plotselection_menu.
 function plotselection_menu_Callback(hObject, eventdata, handles)
 % hObject    handle to plotselection_menu (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: contents = cellstr(get(hObject,'String')) returns plotselection_menu contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from plotselection_menu
-
-global plot_options even_leaves odd_leaves leaf_map channel_cal leaf_spread sinogram diff errors gamma;
-
 val = get(hObject,'Value');
 
 % Set current data to the selected data set.
-switch plot_options{val};
+switch handles.plot_options{val};
     case 'Select a plot to view' 
         set(allchild(handles.selected_plot),'visible','off'); 
         set(handles.selected_plot,'visible','off'); 
     case 'Leaf Offsets'
-        if size(even_leaves,1) > 0 && size(odd_leaves,1) > 0
+        if size(handles.even_leaves,1) > 0 && size(handles.odd_leaves,1) > 0
             set(allchild(handles.selected_plot),'visible','on'); 
             set(handles.selected_plot,'visible','on');
             axes(handles.selected_plot);
-            plot([even_leaves odd_leaves])
+            plot([handles.even_leaves handles.odd_leaves])
             axis tight
             axis 'auto y'
             xlabel('Channel')
@@ -638,11 +600,11 @@ switch plot_options{val};
             set(handles.selected_plot,'visible','off'); 
         end
     case 'Leaf Map'
-        if size(leaf_map,1) > 0
+        if size(handles.leaf_map,1) > 0
             set(allchild(handles.selected_plot),'visible','on'); 
             set(handles.selected_plot,'visible','on');
             axes(handles.selected_plot);
-            plot(leaf_map)
+            plot(handles.leaf_map)
             axis tight
             axis 'auto y'
             xlabel('MLC Leaf')
@@ -652,11 +614,11 @@ switch plot_options{val};
             set(handles.selected_plot,'visible','off'); 
         end
     case 'Channel Calibration'
-        if size(channel_cal,1) > 0
+        if size(handles.channel_cal,1) > 0
             set(allchild(handles.selected_plot),'visible','on'); 
             set(handles.selected_plot,'visible','on');
             axes(handles.selected_plot);
-            plot(channel_cal)
+            plot(handles.channel_cal)
             axis tight
             axis 'auto y'
             xlabel('Channel')
@@ -666,11 +628,11 @@ switch plot_options{val};
             set(handles.selected_plot,'visible','off'); 
         end
     case 'Leaf Spread Function'
-        if size(leaf_spread,1) > 0
+        if size(handles.leaf_spread,1) > 0
             set(allchild(handles.selected_plot),'visible','on'); 
             set(handles.selected_plot,'visible','on');
             axes(handles.selected_plot);
-            plot(leaf_spread)
+            plot(handles.leaf_spread)
             axis tight
             xlabel('Channel')
             ylabel('Normalized Signal')
@@ -679,11 +641,11 @@ switch plot_options{val};
             set(handles.selected_plot,'visible','off'); 
         end
     case 'Leaf Open Time Histogram'
-        if size(sinogram,1) > 0
+        if size(handles.sinogram,1) > 0
             set(allchild(handles.selected_plot),'visible','on'); 
             set(handles.selected_plot,'visible','on');
             axes(handles.selected_plot);
-            open_times = reshape(sinogram,1,[])';
+            open_times = reshape(handles.sinogram,1,[])';
             open_times = open_times(open_times>0.1)*100;
             hist(open_times,100)
             xlabel('Open Time (%)')
@@ -692,22 +654,22 @@ switch plot_options{val};
             set(handles.selected_plot,'visible','off');
         end
     case 'LOT Error Histogram'
-        if size(errors,1) > 0
+        if size(handles.errors,1) > 0
             set(allchild(handles.selected_plot),'visible','on'); 
             set(handles.selected_plot,'visible','on');
             axes(handles.selected_plot);
-            hist(errors*100,100)
+            hist(handles.errors*100,100)
             xlabel('LOT Error (%)')
         else
             set(allchild(handles.selected_plot),'visible','off'); 
             set(handles.selected_plot,'visible','off');
         end
     case 'Error versus LOT'
-        if size(diff,1) > 0 && size(sinogram,1) > 0
+        if size(handles.diff,1) > 0 && size(handles.sinogram,1) > 0
             set(allchild(handles.selected_plot),'visible','on'); 
             set(handles.selected_plot,'visible','on');
             axes(handles.selected_plot);
-            scatter(reshape(sinogram,1,[])*100,reshape(diff,1,[])*100)
+            scatter(reshape(handles.sinogram,1,[])*100,reshape(handles.diff,1,[])*100)
             axis tight
             axis 'auto y'
             box on
@@ -718,11 +680,11 @@ switch plot_options{val};
             set(handles.selected_plot,'visible','off');
         end
     case 'Gamma Index Histogram'
-        if size(gamma,1) > 0
+        if size(handles.gamma,1) > 0
             set(allchild(handles.selected_plot),'visible','on'); 
             set(handles.selected_plot,'visible','on');
             axes(handles.selected_plot);
-            gammahist = gamma;
+            gammahist = handles.gamma;
             gammahist(gammahist <= 0) = [];
             hist(gammahist,100)
             xlabel('Gamma Index')
@@ -732,8 +694,8 @@ switch plot_options{val};
         end
 end
 
-% --- Executes during object creation, after setting all properties.
 function plotselection_menu_CreateFcn(hObject, eventdata, handles)
+% Executes during object creation, after setting all properties.
 % hObject    handle to plotselection_menu (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -744,141 +706,124 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-global plot_options;
-set(hObject,'String',plot_options);
-
-
 % --- Executes on button press in archive_radio.
 function archive_radio_Callback(hObject, eventdata, handles)
 % hObject    handle to archive_radio (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-global transit_qa transit_dqa;
-
 if (get(hObject,'Value') == 1)
 	% Update globals
     set(handles.dicom_radio, 'Value', 0);
-    transit_qa = 0;
-    transit_dqa = 0;
+    handles.transit_qa = 0;
+    handles.transit_dqa = 0;
     
     % Clear everything
-    ClearEverything(handles);
+    handles = ClearEverything(handles);
     set(handles.exitdata_text, 'Enable', 'off');
     set(handles.text4, 'Enable', 'off');
 end
 
-% --- Executes on button press in dicom_radio.
+guidata(hObject,handles)
+
 function dicom_radio_Callback(hObject, eventdata, handles)
+% Executes on button press in dicom_radio.
 % hObject    handle to dicom_radio (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-global transit_qa transit_dqa;
-
 if (get(hObject,'Value') == 1)
 	% Update globals
     set(handles.archive_radio, 'Value', 0);
-    transit_qa = 1;
-    transit_dqa = 1;
+    handles.transit_qa = 1;
+    handles.transit_dqa = 1;
 
     % Clear everything
-    ClearEverything(handles);
+    handles = ClearEverything(handles);
     set(handles.exitdata_text, 'Enable', 'on');
     set(handles.text4, 'Enable', 'on');
 end
 
-% --- Executes on button press in printreport_button.
+guidata(hObject,handles)
+
 function printreport_button_Callback(hObject, eventdata, handles)
+% Executes on button press in printreport_button.
 % hObject    handle to printreport_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 
-% --- Executes on button press in opendosepanel_button.
 function opendosepanel_button_Callback(hObject, eventdata, handles)
+% Executes on button press in opendosepanel_button.
 % hObject    handle to opendosepanel_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-global ct dose_reference dose_dqa dose_diff gamma;
-
-if isstruct(ct) && isfield(ct, 'filename')
+if isstruct(handles.ct) && isfield(handles.ct, 'filename')
     inputs{1}.name = 'CT Image';
-    fid = fopen(ct.filename,'r','b');
-    inputs{1}.value = reshape(fread(fid, ct.dimensions(1) * ...
-        ct.dimensions(2) * ct.dimensions(3), 'uint16'), ct.dimensions(1), ...
-        ct.dimensions(2), ct.dimensions(3));
-    inputs{1}.width =ct.width;
-    inputs{1}.start = ct.start;
+    fid = fopen(handles.ct.filename,'r','b');
+    inputs{1}.value = reshape(fread(fid, handles.ct.dimensions(1) * ...
+        handles.ct.dimensions(2) * handles.ct.dimensions(3), 'uint16'), ...
+        handles.ct.dimensions(1), handles.ct.dimensions(2), ...
+        handles.ct.dimensions(3));
+    inputs{1}.width = handles.ct.width;
+    inputs{1}.start = handles.ct.start;
     fclose(fid);
     
-    if size(dose_reference) > 0
+    if size(handles.dose_reference) > 0
         k = size(inputs,2)+1;
         inputs{k}.name = 'Reference Dose (Gy)';
-        inputs{k}.value = dose_reference;
-        inputs{k}.width =ct.width;
-        inputs{k}.start = ct.start;
+        inputs{k}.value = handles.dose_reference;
+        inputs{k}.width = handles.ct.width;
+        inputs{k}.start = handles.ct.start;
     end
     
-    if size(dose_dqa) > 0
+    if size(handles.dose_dqa) > 0
         k = size(inputs,2)+1;
         inputs{k}.name = 'DQA Dose (Gy)';
-        inputs{k}.value = dose_dqa;
-        inputs{k}.width =ct.width;
-        inputs{k}.start = ct.start;
+        inputs{k}.value = handles.dose_dqa;
+        inputs{k}.width = handles.ct.width;
+        inputs{k}.start = handles.ct.start;
     end
     
-    if size(dose_diff) > 0
+    if size(handles.dose_diff) > 0
         k = size(inputs,2)+1;
         inputs{k}.name = 'Dose Difference (%)';
-        inputs{k}.value = dose_diff*100;
-        inputs{k}.width =ct.width;
-        inputs{k}.start = ct.start;
+        inputs{k}.value = handles.dose_diff*100;
+        inputs{k}.width = handles.ct.width;
+        inputs{k}.start = handles.ct.start;
     end
     
-    if size(gamma) > 0
+    if size(handles.gamma) > 0
         k = size(inputs,2)+1;
         inputs{k}.name = 'Gamma Index';
-        inputs{k}.value = gamma;
-        inputs{k}.width = ct.width;
-        inputs{k}.start = ct.start;
+        inputs{k}.value = handles.gamma;
+        inputs{k}.width = handles.ct.width;
+        inputs{k}.start = handles.ct.start;
     end
-    
-%     % Used for development purposes
-%     k = size(inputs,2)+1;
-%     inputs{k}.name = 'Random 70 Gy Dose';
-%     for i = 1:ct.dimensions(3)
-%         arr = peaks(max(ct.dimensions(1), ct.dimensions(2)));
-%         inputs{k}.value(1:ct.dimensions(1),1:ct.dimensions(2),i) = arr(1:ct.dimensions(1),1:ct.dimensions(2));
-%     end
-%     inputs{k}.width =ct.width;
-%     inputs{k}.start = ct.start;
     
     DoseViewer('inputdata', inputs);
 end
 
-% --- Executes on selection change in autoalign_menu.
 function autoalign_menu_Callback(hObject, eventdata, handles)
+% Executes on selection change in autoalign_menu.
 % hObject    handle to autoalign_menu (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns autoalign_menu contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from autoalign_menu
- global auto_shift;
  
  if get(hObject,'value') == 1
-     auto_shift = 1;
+     handles.auto_shift = 1;
  else
-     auto_shift = 0;
+     handles.auto_shift = 0;
  end
  
  % Update calculations
-UpdateSinogramResults(handles);
+handles = UpdateSinogramResults(handles);
 
-% --- Executes during object creation, after setting all properties.
+guidata(hObject,handles)
+
 function autoalign_menu_CreateFcn(hObject, eventdata, handles)
+% Executes during object creation, after setting all properties.
 % hObject    handle to autoalign_menu (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -889,23 +834,23 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-
-% --- Executes on button press in calcgamma_button.
 function calcgamma_button_Callback(hObject, eventdata, handles)
+% Executes on button press in calcgamma_button.
 % hObject    handle to calcgamma_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-global gamma gamma_options;
+handles = ClearGammaResults(handles);
 
-ClearGammaResults(handles);
-
-arr = textscan(gamma_options{get(handles.gammatolerance_menu,'Value')},'%f%*[%/]%f%*s');
-CalcGamma(arr{1}, arr{2});
+arr = textscan(handles.gamma_options{get(handles.gammatolerance_menu,'Value')},'%f%*[%/]%f%*s');
+handles.gamma_percent = arr{1};
+handles.gamma_dta = arr{2};
 clear arr;
 
-if size(gamma,1) > 0
-    gammahist = gamma;
+handles = CalcGamma(handles);
+
+if size(handles.gamma,1) > 0
+    gammahist = handles.gamma;
     gammahist(gammahist <= 0) = [];
     
     pass = gammahist;
@@ -914,163 +859,181 @@ if size(gamma,1) > 0
     set(handles.gammapass_text,'String',sprintf('%0.1f%%',size(pass,2)/size(gammahist,2)*100));
 end 
 
-function ClearEverything(handles)
-% handles    structure with handles and user data (see GUIDATA)
-global leaf_map leaf_spread channel_cal even_leaves odd_leaves raw_data ...
-    sinogram numprojections meanlot;
+guidata(hObject,handles)
 
-leaf_map = [];
-leaf_spread = [];
-channel_cal = [];
-even_leaves = [];
-odd_leaves = [];
-raw_data = [];
-sinogram = [];
-numprojections = -1;
-meanlot = -1;
+function h = ClearEverything(h)
+% clears all handle variables
+%   ClearEverything is a local function of MainPanel that is used to clear
+%   all working variables previously stored by ParseFileXML, ParseFileQA,
+%   ParseFileDQA, CalcSinogramDiff, CalcDose, and CalcGamma.  This function
+%   is related to ClearSinogramResults, ClearDoseResults, and
+%   ClearGammaResults, all of which are subsequently called by
+%   ClearEverything.
+
+h.leaf_map = [];
+h.leaf_spread = [];
+h.channel_cal = [];
+h.even_leaves = [];
+h.odd_leaves = [];
+h.raw_data = [];
+h.sinogram = [];
+h.numprojections = -1;
+h.meanlot = -1;
 
 % Clear all inputs
-set(handles.dailyqa_text,'String','');
-set(handles.exitdata_text,'String','');
-set(handles.xml_text,'String','');
-set(handles.deliveryplan_menu, 'value', 1);
-set(handles.deliveryplan_menu, 'String', 'Auto-select');
-set(handles.dqa_browse,'Enable','Off');
-set(handles.xml_browse,'Enable','Off');
-set(handles.calcdose_button,'Enable','Off');
-set(handles.calcgamma_button,'Enable','Off');
+set(h.dailyqa_text,'String','');
+set(h.exitdata_text,'String','');
+set(h.xml_text,'String','');
+set(h.deliveryplan_menu, 'value', 1);
+set(h.deliveryplan_menu, 'String', 'Auto-select');
+set(h.dqa_browse,'Enable','Off');
+set(h.xml_browse,'Enable','Off');
+set(h.calcdose_button,'Enable','Off');
+set(h.calcgamma_button,'Enable','Off');
 
 % Clear all plots
-set(allchild(handles.selected_plot),'visible','off'); 
-set(handles.selected_plot,'visible','off'); 
-set(allchild(handles.sinogram_plot1),'visible','off'); 
-set(handles.sinogram_plot1,'visible','off'); 
-set(allchild(handles.sinogram_plot2),'visible','off'); 
-set(handles.sinogram_plot2,'visible','off'); 
-set(allchild(handles.sinogram_plot3),'visible','off'); 
-set(handles.sinogram_plot3,'visible','off'); 
+set(allchild(h.selected_plot),'visible','off'); 
+set(h.selected_plot,'visible','off'); 
+set(allchild(h.sinogram_plot1),'visible','off'); 
+set(h.sinogram_plot1,'visible','off'); 
+set(allchild(h.sinogram_plot2),'visible','off'); 
+set(h.sinogram_plot2,'visible','off'); 
+set(allchild(h.sinogram_plot3),'visible','off'); 
+set(h.sinogram_plot3,'visible','off'); 
 
 % Clear sinogram results
-ClearSinogramResults(handles)
+h = ClearSinogramResults(h);
 
-function UpdateSinogramResults(handles)
-% handles    structure with handles and user data (see GUIDATA)
+function h = UpdateSinogramResults(h)
+% UpdateSinogramResults calls CalcSinogramDiff and updates GUI with results
+%   UpdateSinogramResults is a local function of MainPanel which acts to
+%   clear existing data, call CalcSinogramDiff, and update the GUI results 
+%   text fields while displaying a progress bar.  No data is generated by
+%   this function.  The provided handle should contain references to all 
+%   affected GUI fields as well as the following variables:
+%   h.calc_dose: boolean as to whether MainPanel is configured to calculate
+%   dose (requires ssh access to a CUDA capable computation server)
+%   h.sinogram: contains an array of the planned fluence sinogram
+%   h.exit_data: contains an array of the corrected MVCT measured sinogram
+%   h.diff: contains an array of the difference between h.sinogram and
+%       h.exit_data
+%   h.errors: contains a vector of h.diff, with non-meaningful differences 
+%       removed 
+%   h.meanlot: a double containing the mean planned leaf open time, stored
+%       as a fraction of a fully open leaf
+%   h.lot_options: a string cell array of the Leaf Open Time error
+%       percentage pass rate dropdown menu.
 
-global calc_dose sinogram exit_data diff errors meanlot lot_options;
-
-progress = waitbar(0.1,'Clearing existing results...');
+h.progress = waitbar(0.1,'Clearing existing results...');
 
 % Clear existing results
-ClearSinogramResults(handles);
+h = ClearSinogramResults(h);
 
-waitbar(0.3,progress,'Calculating new sinogram difference...');
+waitbar(0.3,h.progress,'Calculating new sinogram difference...');
 
 % Calculate new sinogram difference
-CalcSinogramDiff(progress);
+h = CalcSinogramDiff(h);
 
-waitbar(0.7,progress,'Updating results...');
+waitbar(0.7,h.progress,'Updating results...');
 
 % Update UI Results
-if meanlot > 0
-    set(handles.meanlot_text,'String',sprintf('%0.2f%%', meanlot*100));
+if h.meanlot > 0
+    set(h.meanlot_text,'String',sprintf('%0.2f%%', h.meanlot*100));
 end
-if size(errors,1) > 0
-    set(handles.meanloterror_text,'String',sprintf('%0.2f%%', mean(errors)*100));
-    set(handles.stdevlot_text,'String',sprintf('%0.2f%%', std(errors)*100));
-    val = get(handles.lottolerance_menu,'value');
-    error_diff = sscanf(lot_options{val},'%i%%')/100;
-    set(handles.lotpassrate_text,'String',sprintf('%0.1f%%',size(errors(abs(errors)<=error_diff),1)/size(errors,1)*100));
+if size(h.errors,1) > 0
+    set(h.meanloterror_text,'String',sprintf('%0.2f%%', mean(h.errors)*100));
+    set(h.stdevlot_text,'String',sprintf('%0.2f%%', std(h.errors)*100));
+    val = get(h.lottolerance_menu,'value');
+    error_diff = sscanf(h.lot_options{val},'%i%%')/100;
+    set(h.lotpassrate_text,'String',sprintf('%0.1f%%',size(h.errors(abs(h.errors)<=error_diff),1)/size(h.errors,1)*100));
 end
 
 waitbar(0.8,progress,'Updating plots...');
 
 % Update Sinogram Plot
-if size(sinogram,1) > 0
-    set(allchild(handles.sinogram_plot1),'visible','on'); 
-    set(handles.sinogram_plot1,'visible','on');
-    axes(handles.sinogram_plot1);
-    imagesc(sinogram*100)
+if size(h.sinogram,1) > 0
+    set(allchild(h.sinogram_plot1),'visible','on'); 
+    set(h.sinogram_plot1,'visible','on');
+    axes(h.sinogram_plot1);
+    imagesc(h.sinogram*100)
     set(gca,'YTickLabel',[])
     set(gca,'XTickLabel',[])
     title('Planned Fluence (%)')
     colorbar
 end
-if size(exit_data,1) > 0
-    set(allchild(handles.sinogram_plot2),'visible','on'); 
-    set(handles.sinogram_plot2,'visible','on');
-    axes(handles.sinogram_plot2);
-    imagesc(exit_data*100)
+if size(h.exit_data,1) > 0
+    set(allchild(h.sinogram_plot2),'visible','on'); 
+    set(h.sinogram_plot2,'visible','on');
+    axes(h.sinogram_plot2);
+    imagesc(h.exit_data*100)
     set(gca,'YTickLabel',[])
     set(gca,'XTickLabel',[])
     title('Deconvolved Measured Fluence (%)')
     colorbar
 end
-if size(diff,1) > 0
-    set(allchild(handles.sinogram_plot3),'visible','on'); 
-    set(handles.sinogram_plot3,'visible','on');
-    axes(handles.sinogram_plot3);  
-    imagesc(diff*100)
+if size(h.diff,1) > 0
+    set(allchild(h.sinogram_plot3),'visible','on'); 
+    set(h.sinogram_plot3,'visible','on');
+    axes(h.sinogram_plot3);  
+    imagesc(h.diff*100)
     set(gca,'YTickLabel',[])
     title('Difference (%)')
     xlabel('Projection')
     colorbar
 end
 
-waitbar(0.9,progress);
+waitbar(0.9,h.progress);
 
 % Update Multi-plot
-% plotselection_menu_Callback(handles.plotselection_menu, struct(), handles);
+plotselection_menu_Callback(h.plotselection_menu, struct(), h);
 
-waitbar(1.0,progress,'Done.');
+waitbar(1.0,h.progress,'Done.');
 
 % Enable dose calculation
-if calc_dose == 1 && size(diff,1) > 0
-    set(handles.calcdose_button,'Enable','On');
+if h.calc_dose == 1 && size(h.diff,1) > 0
+    set(h.calcdose_button,'Enable','On');
 end
 
-close(progress);
-clear progress;
+close(h.progress);
 
-function ClearSinogramResults(handles)
-% handles    structure with handles and user data (see GUIDATA)
-global diff exit_data errors;
+function h = ClearSinogramResults(h)
 
 % Clear all sinogram calculation results
-diff = [];
-exit_data = [];
-errors = [];
-set(handles.meanlot_text,'String','');
-set(handles.meanloterror_text,'String','');
-set(handles.stdevlot_text,'String','');
-set(handles.lotpassrate_text,'String','');
+h.diff = [];
+h.exit_data = [];
+h.errors = [];
+set(h.meanlot_text,'String','');
+set(h.meanloterror_text,'String','');
+set(h.stdevlot_text,'String','');
+set(h.lotpassrate_text,'String','');
 
 % Clear plots
-set(allchild(handles.selected_plot),'visible','off'); 
-set(handles.selected_plot,'visible','off'); 
-set(allchild(handles.sinogram_plot1),'visible','off'); 
-set(handles.sinogram_plot1,'visible','off'); 
-set(allchild(handles.sinogram_plot2),'visible','off'); 
-set(handles.sinogram_plot2,'visible','off'); 
-set(allchild(handles.sinogram_plot3),'visible','off'); 
-set(handles.sinogram_plot3,'visible','off'); 
+set(allchild(h.selected_plot),'visible','off'); 
+set(h.selected_plot,'visible','off'); 
+set(allchild(h.sinogram_plot1),'visible','off'); 
+set(h.sinogram_plot1,'visible','off'); 
+set(allchild(h.sinogram_plot2),'visible','off'); 
+set(h.sinogram_plot2,'visible','off'); 
+set(allchild(h.sinogram_plot3),'visible','off'); 
+set(h.sinogram_plot3,'visible','off'); 
 
 % Clear all dose and gamma results as well
-set(handles.calcdose_button,'Enable','Off');
-set(handles.calcgamma_button,'Enable','Off');
-ClearDoseResults(handles);
-ClearGammaResults(handles);
+set(h.calcdose_button,'Enable','Off');
+set(h.calcgamma_button,'Enable','Off');
+h = ClearDoseResults(h);
+h = ClearGammaResults(h);
 
-function ClearDoseResults(handles)
+function h = ClearDoseResults(h)
 % handles    structure with handles and user data (see GUIDATA)
 
-set(handles.meandosediff_text,'String','');
-set(handles.opendosepanel_button,'Enable','Off');
+set(h.meandosediff_text,'String','');
+set(h.opendosepanel_button,'Enable','Off');
 
 % Clear all gamma results as well
-set(handles.calcgamma_button,'Enable','Off');
-ClearGammaResults(handles);
+set(h.calcgamma_button,'Enable','Off');
+h = ClearGammaResults(h);
 
-function ClearGammaResults(handles)
+function h = ClearGammaResults(h)
 % handles    structure with handles and user data (see GUIDATA)
 
-set(handles.gammapass_text,'String','');
+set(h.gammapass_text,'String','');
