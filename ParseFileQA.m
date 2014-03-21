@@ -175,7 +175,8 @@ h.channel_gold = [45.8720005199238,47.8498858353154,49.3011672921640,...
 
 try    
     %% Load Daily QA data
-    if h.transit_qa == 1 % If transit_qa == 1, use DICOM RT to load daily QA result        
+    % If transit_qa == 1, use DICOM RT to load daily QA result     
+    if h.transit_qa == 1    
         % Read DICOM header
         exitqa_info = dicominfo(strcat(h.qa_path,h.qa_name));
         % Open read handle to DICOM file (dicomread can't handle RT RECORDS)
@@ -201,30 +202,48 @@ try
         fclose(fid);
         % Clear temporary variables
         clear fid arr;
-    else % Else transit_qa == 0, so use patient archive to load daily QA result
+    
+    % Else transit_qa == 0, so use patient archive to load daily QA result
+    else 
+        % show_all is a local flag.  When set to 1, all procedure return
+        % data found in the XML will be displayed to the user.  This should
+        % be enabled only for testing purposes.
         show_all = 0;
         
+        % Initialize a progress bar to indicate the status to the user
         h.progress = waitbar(0.1,'Loading XML tree...');
         
         % The patient XML is parsed using xpath class
         import javax.xml.xpath.*
+        
         % Read in the patient XML and store the Document Object Model node to doc
         doc = xmlread(strcat(qa_path,qa_name));
+        
         % Initialize a new xpath instance to the variable factory
         factory = XPathFactory.newInstance;
+        
         % Initialize a new xpath to the variable xpath
         xpath = factory.newXPath;
 
+        % Compile a new xpath expression to find all procedureReturnData
+        % entries in the patient XML
         expression = ...
             xpath.compile('//fullProcedureReturnData/procedureReturnData');
+        
         % Retrieve the results
         nodeList = expression.evaluate(doc, XPathConstants.NODESET);
+        
         % Preallocate cell arrrays
         h.returnQAData = cell(1,nodeList.getLength);
         h.returnQADataList = cell(1,nodeList.getLength);
-        for i = 1:nodeList.getLength
-            waitbar(0.1+0.8*i/nodeList.getLength,h.progress);
         
+        % Loop through the results
+        for i = 1:nodeList.getLength
+            
+            % Update the progress bar based on the number of results
+            waitbar(0.1+0.8*i/nodeList.getLength,h.progress);
+            
+            % Retrieve a handle to the next result
             node = nodeList.item(i-1);
         
             % Search for delivery plan XML object purpose
@@ -233,9 +252,15 @@ try
             % Retrieve the results
             subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
             subnode = subnodeList.item(0);
+            
+            % If show_all == 0, only include this returndata if the
+            % pulseCount for the procedure equals 90000 (the size of a TQA
+            % Daily QA procedure).  Otherwise, continue to the next result
             if show_all == 0 && str2double(subnode.getFirstChild.getNodeValue) ~= 90000
                 continue
             end
+            
+            % Store the pulse count of the return data
             h.returnQAData{i}.pulseCount = str2double(subnode.getFirstChild.getNodeValue);
             
             % Search for delivery plan XML object uid
@@ -244,6 +269,8 @@ try
             % Retrieve the results
             subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
             subnode = subnodeList.item(0);
+            
+            % Store the database uid of the plan
             h.returnQAData{i}.uid = char(subnode.getFirstChild.getNodeValue);
             
             % Search for delivery plan XML object date
@@ -252,6 +279,8 @@ try
             % Retrieve the results
             subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
             subnode = subnodeList.item(0);
+            
+            % Store the date of the return data
             h.returnQAData{i}.date = char(subnode.getFirstChild.getNodeValue);
             
             % Search for delivery plan XML object time
@@ -260,7 +289,12 @@ try
             % Retrieve the results
             subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
             subnode = subnodeList.item(0);
+            
+            % Store the time of the return data
             h.returnQAData{i}.time = char(subnode.getFirstChild.getNodeValue);
+            
+            % Add to the formatted list of plans found, using the format
+            % "UID (date-time)"
             h.returnQADataList{i} = strcat(h.returnQAData{i}.uid,' (',...
             h.returnQAData{i}.date,'-',h.returnQAData{i}.time,')');
             
@@ -270,41 +304,50 @@ try
             % Retrieve the results
             subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
             subnode = subnodeList.item(0);
+            
+            % Store the path to the sinogram containing the return data
             h.returnQAData{i}.sinogram = strcat(qa_path,char(subnode.getFirstChild.getNodeValue));
             
             % Search for delivery plan XML object sinogram dimensions
             subexpression = xpath.compile('detectorSinogram/arrayHeader/dimensions/dimensions');
             % Retrieve the results
             subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
+            
+            % Store the dimensions of the sinogram as a 2 element vector
             subnode = subnodeList.item(0);
             h.returnQAData{i}.dimensions(1) = str2double(subnode.getFirstChild.getNodeValue);
             subnode = subnodeList.item(1);
             h.returnQAData{i}.dimensions(2) = str2double(subnode.getFirstChild.getNodeValue);
         end
         
-        % Remove empty cells due to hidden delivery plans
+        % Remove empty cells due to hidden delivery plans (only if show_all
+        % ~= 0
         if show_all == 0
             h.returnQAData = h.returnQAData(~cellfun('isempty',h.returnQAData));
             h.returnQADataList = h.returnQADataList(~cellfun('isempty',h.returnQADataList));
         end
     
+        % Update the progress bar, indicating the the process finished
         waitbar(1.0,h.progress,'Done.');
     
-        % Prompt user to select return data
+        % Prompt user to select which return data to process
         if size(h.returnQAData,2) == 0
+            % If none were found in the XML, throw an error
             error('No delivery plans found in XML file.');
         elseif size(h.returnQAData,2) == 1
-             plan = 1;   
+            % If only one was found, assume the user will select that one
+            plan = 1;   
         else
+            % Otherwise, prompt the user to select from h.returnQADataList 
             plan = menu('Multiple QA procedure return data was found.  Choose one (Date-Time):',h.returnQADataList);
-        
+            
+            % If the user does not select one, throw an error
             if plan == 0
                 error('No delivery plan was chosen.');
             end
         end
         
         %% Load return data
-        
         % Open read handle to sinogram file
         fid = fopen(h.returnQAData{plan}.sinogram,'r','b');
         
@@ -357,14 +400,18 @@ try
     % The odd leaves are measured in projections 5401-5699; note that 
     % averaging determines the mean MLC channel over gantry rotation
     h.odd_leaves = mean(qa_data(:,5401:5699),2);
+   
     % The even leaves are measured in projections 5701-5999
     h.even_leaves = mean(qa_data(:,5701:5999),2);
+    
     % Read background from center channels (200-300), over projections
     % 6001-6099; background is intended to be measured under closed leaves
     h.background = mean2(qa_data(200:300,6001:6099));
+    
     % Initialize leaf_map vector.  leaf_map correlates the center MVCT
     % channel for each leaf (1-64)
     h.leaf_map = zeros(64,1);
+    
     % Find peaks in the odd leaves detector data
     peaks = find(h.odd_leaves(2:end-1) >= h.odd_leaves(1:end-2) & h.odd_leaves(2:end-1) >= h.odd_leaves(3:end)) + 1;
     peaks(h.odd_leaves(peaks) <= max(h.odd_leaves)/3) = [];
@@ -384,8 +431,10 @@ try
     if size(peaks,1) == 31
         peaks(32) = rows;
     end
+    
     % Store the peak channels in descending order for leaves 1, 3, ... 63
     h.leaf_map(1:2:64) = sort(peaks, 'descend');
+    
     % Find peaks in the even leaves detector data
     peaks = find(h.even_leaves(2:end-1) >= h.even_leaves(1:end-2) ...
         & h.even_leaves(2:end-1) >= h.even_leaves(3:end)) + 1;
@@ -400,11 +449,13 @@ try
         peaks(deln) = [];
     end
     clear del deln pks;
+    
     % If findpeaks could not find 32 leaves, the final leaf is at the edge
     % channel
     if size(peaks,1) == 31
         peaks(32) = 1;
     end
+    
     % Store the peak channels in descending order for leaves 2, 4, ... 64
     h.leaf_map(2:2:64) = sort(peaks, 'descend');
 
@@ -415,6 +466,7 @@ try
     % The average response of each channel over projections 1000-2000 is
     % used
     h.channel_cal = mean(qa_data(:,1000:2000),2)'./h.channel_gold;
+    
     % Normalize the channel_cal to its mean value
     h.channel_cal = h.channel_cal/mean(h.channel_cal);
 
@@ -436,8 +488,11 @@ try
 
     % Clear temporary variables
     clear i peaks;
+
+% If an exception is thrown during the above function, catch it, display a
+% message with the error contents to the user, and rethrow the error to
+% interrupt execution.
 catch exception
-    %if ishandle(h.progress), delete(h.progress); end
     errordlg(exception.message);
     rethrow(exception)
 end

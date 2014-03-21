@@ -44,62 +44,146 @@ function h = CalcSinogramDiff(h)
 %       removed 
 
 try
+    % This if statement verifies that the inputs are all present.  If not,
+    % this function's contents are skipped and the function is returned
+    % gracefully
     if size(h.sinogram,1) > 0 && size(h.leaf_spread,1) > 0 && size(h.leaf_map,1) > 0 && size(h.raw_data,1) > 0 && h.background > 0
-        % Trim raw_data to size of DQA data using numprojections, assuming
-        % the last projections are aligned
+        % If the size of the raw_data input is less than numprojections,
+        % throw an error and stop.  The user will need to select a long
+        % enough delivery plan for this function to compute correctly
         if h.numprojections > size(h.raw_data,2)
             error('The selected delivery plan is shorter than the return data.  Select a different delivery plan.');
         end
+        
+        % Trim raw_data to size of DQA data using numprojections, assuming
+        % the last projections are aligned
         h.exit_data = h.raw_data(h.leaf_map(1:64), size(h.raw_data,2)-h.numprojections+1:size(h.raw_data,2)) - h.background;  
 
+        % Compute the Forier Transform of the leaf spread function.  The
+        % leaf spread function padded by zeros to be 64 elements long + the  
+        % size of the leaf spread function (the exit_data is padded to the 
+        % same size).  The leaf_spread function is also mirrored, as it is 
+        % stored as only a right-sided function.  
         filter = fft([fliplr(h.leaf_spread(2:size(h.leaf_spread,2))) h.leaf_spread],64+size(h.leaf_spread,2))';
         
+        % If a valid progress bar handle exists, update it to 40%
         if ishandle(h.progress), waitbar(0.4,h.progress); end
         
+        % Loop through the number of projections in the exit_data
         for i = 1:size(h.exit_data,2)
-            % Deconvolve exit_data
+            % Deconvolve leaf spread function from the exit_data by
+            % computing the Fourier Transform the current exit_data
+            % projection (padded to be the same size as filter), then
+            % divided by the Fourier Transform of the leaf spread function,
+            % and computing the inverse Fourier Transform.
             arr = ifft(fft(h.exit_data(:,i),64+size(h.leaf_spread,2))./filter);
+            
+            % The new, deconvolved exit data is saved back to the input
+            % variable (trimming the padded values).  The trim starts from
+            % the size of the original leaf spread function to account for
+            % the fact that the filter was not centered, causing a
+            % translational shift in the deconvolution.
             h.exit_data(:,i) = arr(size(h.leaf_spread,2):63+size(h.leaf_spread,2));
         end
-        h.exit_data = h.exit_data/max(max(h.exit_data))*max(max(h.sinogram));
-        h.exit_data = h.exit_data.*ceil(h.exit_data-0.01);
+        
+        % Clear temporary variables used during deconvolution
         clear i arr filter;
+        
+        % Normalize the exit detector data such that the maximum value is
+        % identical to the maximum planned sinogram value (typically 1).
+        % This is necessary in lieu of determining an absolute calibration
+        % factor for the MVCT exit detector
+        h.exit_data = h.exit_data/max(max(h.exit_data))*max(max(h.sinogram));
+        
+        % Clip values less than 1% of the maximum leaf open time to zero.
+        % As the MLC is not capable of opening this short, values less than
+        % 1% are the result of noise and deconvolution error, so can be
+        % safely disregarded
+        h.exit_data = h.exit_data.*ceil(h.exit_data-0.01);
 
+        % If a valid progress bar handle exists, update the progress to 50%
         if ishandle(h.progress), waitbar(0.5,h.progress); end
         
-        if isfield(h,'sinogram')
-            if h.auto_shift == 1
-                maxcorr = 0;
-                shift = 0;
-                for i = -1:1
-                    j = corr2(h.sinogram, circshift(h.exit_data,[0 i]));
-                    if j > maxcorr
-                        maxcorr = j;
-                        shift = i;
-                    end
+        % If auto_shift is enabled
+        if h.auto_shift == 1
+            % Initialize a temporary maximum correlation variable
+            maxcorr = 0;
+            
+            % Inialize a temporary shift variable to store the shift that
+            % results in the maximum correlation
+            shift = 0;
+            
+            % Shift the exit_data +/- 1 projection relative the sinogram
+            for i = -1:1
+                % Compute the 2D correlation of the sinogram and shifted
+                % exit_data (in the projection dimension)
+                j = corr2(h.sinogram, circshift(h.exit_data,[0 i]));
+                
+                % If the current shift yields the highest correlation
+                if j > maxcorr
+                    % Update the maximum correlation variable 
+                    maxcorr = j;
+                    
+                    % Update the shift variable to the current shift
+                    shift = i;
                 end
-                clear i j;
-            else
-                shift = 0;
             end
-
-            if ishandle(h.progress), waitbar(0.6,h.progress); end
-
-            h.exit_data = circshift(h.exit_data,[0 shift]);
-
-            h.diff = h.exit_data - h.sinogram;
-
-            % If dynamic jaw compensation is enabled
-            if h.jaw_comp == 1
-
-                % Reserved for future development
-
-            end
-
-            h.errors = reshape(h.diff,1,[])';
-            h.errors = h.errors(h.errors~=0); 
+        % Otherwise, auto-shift is disabled  
+        else
+            % Set the shift variable to 0 (no shift)
+            shift = 0;
         end
+
+        % Shift the exit_data by the optimal shift value.  Circshift is
+        % used to shift while preserving the array size.
+        h.exit_data = circshift(h.exit_data,[0 shift]);
+        
+        % If the shift is non-zero, there are projections where no
+        % exit_data was measured (or just not correctly stored by the DAS).
+        % In these cases, replace the missing data (formerly the
+        % circshifted data) by the sinogram data to yield a zero difference
+        % for these projections.
+        if shift > 0
+            % If the shift is > 0, replace the first projections
+            h.exit_data(:,1:shift) = h.sinogram(:,1:shift);
+        elseif shift < 0
+            % Otherwise if the shift is < 0, replace the last projections
+            h.exit_data(:,size(h.exit_data,2)+shift+1:size(h.exit_data,2)) ...
+                = h.sinogram(:,size(h.exit_data,2)+shift+1:size(h.exit_data,2));
+        end
+        
+        % Clear the temporary variables used for shifting
+        clear i j shift maxcorr;
+
+        % Compute the sinogram difference.  This difference is in
+        % "absolute" (relative leaf open time) units; during CalcDose this
+        % difference map is used to scale the planned fluence sinogram by
+        % the measured difference to approximate the "actual" sinogram.
+        h.diff = h.exit_data - h.sinogram;
+       
+        % If a valid progress bar handle exists, update the progress to 60%
+        if ishandle(h.progress), waitbar(0.6,h.progress); end
+        
+        % If dynamic jaw compensation is enabled
+        if h.jaw_comp == 1
+
+            % Reserved for future development
+
+        end
+
+        % Store the sinogram difference array as a 1D vector
+        h.errors = reshape(h.diff,1,[])';
+        
+        % Only store the non-zero values.  This restricts the vector to
+        % only the leaves/projections where an error was measured (leaves
+        % where both the sinogram and 1% clipped exit_data are the only
+        % voxels where the difference will be exactly zero)
+        h.errors = h.errors(h.errors~=0); 
     end
+    
+% If an exception is thrown during the above function, catch it, display a
+% message with the error contents to the user, and rethrow the error to
+% interrupt execution.
 catch exception
     if ishandle(h.progress), delete(h.progress); end
     errordlg(exception.message);

@@ -3,7 +3,8 @@ function h = AutoSelectDeliveryPlan(h)
 %   AutoSelectDeliveryPlan is used by MainPanel to automatically select the
 %   optimal delivery plan when loading a patient XML via ParseFileXML.
 %   This program automatically sets the handles required for
-%   CalcSinogramDiff.  
+%   CalcSinogramDiff.  Only delivery plans are considered where the purpose
+%   is "Machine_Agnostic".
 %
 % The following handle structures are read by AutoSelectDeliveryPlan and 
 % are required for proper execution:
@@ -37,30 +38,42 @@ function h = AutoSelectDeliveryPlan(h)
 % Set delivery plan menu to auto-select option
 set(h.deliveryplan_menu, 'value', 1);
 
-% Read all Machine_Agnostic plans and compare to exit data using corr2
 try    
+    % If the raw_data and leaf_map arrays are emtpy, clear the existing
+    % results and return to main program (gracefully)
     if size(h.raw_data,1) > 0 && size(h.leaf_map,1) > 0
+        % Loop through the deliveryPlan cell array
         for plan = 1:size(h.deliveryPlans,2)
-            if (isfield(h.deliveryPlans{plan},'sinogram') == 0 || isfield(h.deliveryPlans{plan},'numprojections') == 0) && strcmp(h.deliveryPlans{plan}.purpose,'Machine_Agnostic')
-                %% Read Delivery Plan
+            % If the selected delivery plan contains the sinogram field
+            %  or if the delivery plan purpose is not Machine_Agnostic,
+            %  skip to next delivery plan. Otherwise, load deliveryPlan
+            %  into the sinogram field
+            if isfield(h.deliveryPlans{plan},'sinogram') == 0 && ...
+                strcmp(h.deliveryPlans{plan}.purpose,'Machine_Agnostic')
+                
                 % Open read file handle to delivery plan, using binary mode
                 fid = fopen(h.deliveryPlans{plan}.dplan,'r','b');
+                
                 % Initialize a temporary array to store sinogram (64 leaves x
                 % numprojections)
                 arr = zeros(64,h.deliveryPlans{plan}.numprojections);
+                
                 % Loop through each projection
                 for i = 1:h.deliveryPlans{plan}.numprojections
                     % Loop through each active leaf, set in numleaves
                     for j = 1:h.deliveryPlans{plan}.numleaves
                         % Read (2) leaf events for this projection
                         events = fread(fid,2,'double');
+                        
                         % Store the difference in tau (events(2)-events(1)) to leaf j +
                         % lowerindex and projection i
                         arr(j+h.deliveryPlans{plan}.lowerindex,i) = events(2)-events(1);
                     end
                 end
+                
                 % Close file handle to delivery plan
                 fclose(fid);
+                
                 % Clear temporary variables
                 clear i j fid dplan events numleaves;
 
@@ -72,6 +85,7 @@ try
                     if max(arr(:,i)) > 0.01
                         % Set start_trim to the current projection
                         start_trim = i;
+                        
                         % Stop looking for the first active projection
                         break;
                     end
@@ -83,12 +97,18 @@ try
                     if max(arr(:,i)) > 0.01
                         % Set stop_trim to the current projection
                         stop_trim = i;
+                        
                         % Stop looking for the last active projection
                         break;
                     end
                 end
                 
+                % Update the delivery plan numprojections field based on
+                % the start_ and stop_trim values
                 h.deliveryPlans{plan}.numprojections = stop_trim - start_trim + 1;
+                
+                % Set the sinogram field to the start_ and stop_trimmed
+                % binary array
                 h.deliveryPlans{plan}.sinogram = arr(:,start_trim:stop_trim);
                 
                 if h.deliveryPlans{plan}.numprojections > size(h.raw_data,2)
@@ -102,46 +122,83 @@ try
                 
                 % Check if auto-shift is enabled
                 if h.auto_shift == 1
+                    % If so, initialize the maximum correlation value to 0
                     h.deliveryPlans{plan}.maxcorr = 0;
+                    
+                    % Try shifting the exit data by +/-1 projection 
+                    % relative to the sinogram 
                     for i = -1:1
+                        % Compute the 2D correlation of the shifted
+                        % datasets.  Technically circshifting is incorrect,
+                        % but is a quick and dirty way to shift without
+                        % padding/trimming the result.  The data is
+                        % re-shifted when CalcSinogramDiff is run anyway,
+                        % so this approximation is only used to determine
+                        % the best sinogram to compare to.
                         j = corr2(h.deliveryPlans{plan}.sinogram, circshift(exit_data,[0 i]));
+                        
+                        % If the maximum correlation is less than the
+                        % current correlation, update the maximum
+                        % correlation parameter
                         if j > h.deliveryPlans{plan}.maxcorr
                             h.deliveryPlans{plan}.maxcorr = j;
                         end
                     end
+                % Otherwise, auto-shift is disabled
                 else
-                    h.deliveryPlans{plan}.maxcorr = corr2(h.deliveryPlans{plan}.sinogram, exit_data);
+                    % Set the maximum correlation for this sinogram to the
+                    % unshifted 2D correlation
+                    h.deliveryPlans{plan}.maxcorr = ...
+                        corr2(h.deliveryPlans{plan}.sinogram, exit_data);
                 end
                 % Clear temporary variables
                 clear i j arr start_trim stop_trim;
             end
         end
 
-        mincorr = 0;
+        % Initialize the maximum correlation temp variable (across all
+        % delivery plans)
+        maxcorr = 0;
+        
+        % Loop through the delivery plans
         for plan = 1:size(h.deliveryPlans,2)
-            if isfield(h.deliveryPlans{plan},'maxcorr') && strcmp(h.deliveryPlans{plan}.purpose,'Machine_Agnostic') && (mincorr == 0 || h.deliveryPlans{plan}.maxcorr < mincorr) 
-                % Set global numprojections, sinogram variables
-                % Update numprojections to only the number of "active" projections
+            % If the maximum correlation for that delivery plan has been
+            % computed, and the purpose is Machine_Agnostic, and the
+            % delivery plan's max correlation is highest
+            if isfield(h.deliveryPlans{plan},'maxcorr') && ...
+                    strcmp(h.deliveryPlans{plan}.purpose,'Machine_Agnostic') ...
+                    && (maxcorr == 0 || h.deliveryPlans{plan}.maxcorr > maxcorr) 
+                % Set the numprojections return variable to this delivery
+                % plan's numprojections
                 h.numprojections = h.deliveryPlans{plan}.numprojections;
 
-                % Set sinogram variable to only active projections by trimming 
-                % temporary array by start_trim and stop_trim
+                % Set sinogram variable to this delivery plan's sinogram
                 h.sinogram = h.deliveryPlans{plan}.sinogram; 
                 
-                open_times = reshape(h.sinogram,1,[])';
-                open_times = open_times(open_times>0.1);
-                h.meanlot = mean(open_times);
+                % Reshape the sinogram into a 1D vector
+                open_times = reshape(h.sinogram,1,[]);
                 
+                % Store the mean leaf open time from the 1D sinogram
+                h.meanlot = mean(open_times,2);
+                
+                % Set the planuid veriable to this delivery plan
                 h.planuid = h.deliveryPlans{plan}.parentuid; 
             end
         end
-        clear plan open_times;
+        
+        % Clear temporary variables
+        clear mincorr plan open_times;
     else
+        % Clear the return variables
         h.numprojections = 0;
         h.sinogram = []; 
         h.meanlot = 0;
         h.planuid = '';
     end
+
+% If an exception is thrown during the above function, catch it, display a
+% message with the error contents to the user, and rethrow the error to
+% interrupt execution.
 catch exception
     errordlg(exception.message);
     rethrow(exception)

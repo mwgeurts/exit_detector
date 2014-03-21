@@ -21,8 +21,9 @@ function h = ParseFileDQA(h)
 %       procedure MVCT detector channel data for each projection
 
 try  
+    % h.channel_cal is required to have already been defined for this
+    % function to evaluate.  If not, throw an error message.
     if size(h.channel_cal,1) > 0
-        %% Read Exit Detector data
         % right_trim should be set to the channel in the exit detector data
         % that corresponds to the last channel in the Daily QA data, and is
         % easily calculated form left_trim using the size of channel_cal
@@ -107,9 +108,15 @@ try
         % Clear all temporary variables
         clear fid arr left_trim right_trim start_trim stop_trim rows;
     else
+        % If the size of h.channel_cal is zero, throw a message indicating
+        % that the array is empty, but still exit gracefully
         errordlg('Channel calibration is empty.'); 
         return
     end
+    
+% If an exception is thrown during the above function, catch it, display a
+% message with the error contents to the user, and rethrow the error to
+% interrupt execution.
 catch exception
     errordlg(exception.message);
     rethrow(exception)

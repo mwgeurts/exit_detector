@@ -13,7 +13,7 @@ function h = CalcGamma(h)
 %   gamma computation only searches for the minimum gamma along the x, y,
 %   and z axes (not in any diagonal directions from these axes).  For
 %   additional accuracy, a single parfor loop in one direction with nested 
-%   for loops in the other two dimensions would be more accurate.
+%   for loops in the other two dimensions can be used.
 %
 % The following handle structures are read by CalcGamma and are required
 % for proper execution:
@@ -119,11 +119,18 @@ try
         i = x/resolution * dta;
         j = 0;
         k = 0;
+        
+        % Interpolate the measured dose based on the steps set in i, j, k.
+        % The *linear method is used to speed up this computation.
         dqa_interp = interp3(meshX, meshY, meshZ, ...
             dqa, meshX+i, meshY+j, meshZ+k, '*linear',0);
+        
+        % Compute new gamma values for each voxel based on the i, j, and k,
+        % shifts, and compare to the previous gamma values using min.
         gamma = min(gamma,GammaEquation(ref, dqa_interp, i, j, k, perc, dta, local));
     end
 
+    % Update the progress bar
     waitbar(0.4);
 
     % Start a parallel for loop to interpolate the dose array along the
@@ -131,15 +138,25 @@ try
     % x varies from -2 to +2 multiplied by the number of interpolation
     % steps.  Effectively, this evaluates gamma from -2 * DTA to +2 * DTA.
     parfor x = -2*resolution:2*resolution
+        % i is the x axis step value.  j is the y axis step value.  k is
+        % the z axis step value.  This parfor loop steps the gamma
+        % computation along the y axis. 
         i = 0;
         j = x/resolution * dta;
         k = 0;
+        
+        % Interpolate the measured dose based on the steps set in i, j, k.
+        % The *linear method is used to speed up this computation.
         dqa_interp = interp3(meshX, meshY, meshZ, ...
             dqa, meshX+i, meshY+j, meshZ+k, '*linear',0);
+        
+        % Compute new gamma values for each voxel based on the i, j, and k,
+        % shifts, and compare to the previous gamma values using min.
         gamma = min(gamma,GammaEquation(ref, dqa_interp, i, j, k, perc, dta, local));
 
     end
 
+    % Update the progress bar
     waitbar(0.7);
 
     % Start a parallel for loop to interpolate the dose array along the
@@ -147,67 +164,166 @@ try
     % x varies from -2 to +2 multiplied by the number of interpolation
     % steps.  Effectively, this evaluates gamma from -2 * DTA to +2 * DTA.
     parfor x = -2*resolution:2*resolution
+        % i is the x axis step value.  j is the y axis step value.  k is
+        % the z axis step value.  This parfor loop steps the gamma
+        % computation along the z axis. 
         i = 0;
         j = 0;
         k = x/resolution * dta;
+        
+        % Interpolate the measured dose based on the steps set in i, j, k.
+        % The *linear method is used to speed up this computation.
         dqa_interp = interp3(meshX, meshY, meshZ, ...
             dqa, meshX+i, meshY+j, meshZ+k, '*linear',0);
+        
+        % Compute new gamma values for each voxel based on the i, j, and k,
+        % shifts, and compare to the previous gamma values using min.
         gamma = min(gamma,GammaEquation(ref, dqa_interp, i, j, k, perc, dta, local));
     end
+% If the Parallel Computing Toolbox is not configured correctly, or 
+% h.parallelize is set to 0, catch the error and continue the computation
+% using conventional for loops.  This method is longer but will work on all
+% systems.
 catch exception
+    % Print the error message to stdout
     fprintf(strcat(exception.message,'\n'));
     
-    resolution = 5;
+    % The resolution parameter determines the number of steps (relative to 
+    % the distance to agreement) that each h.dose_dqa voxel will be
+    % interpolated to and gamma calculated. This variable is identical to 
+    % the resolution value defined above but can be reduced for unparallel
+    % computation to speed up the calculation.
+    resolution = 3;
     
+    % Update the progress bar
     waitbar(0.1,h.progress,'Calculating gamma...');
     
+    % Start a parallel for loop to interpolate the dose array along the
+    % x-direction.  Note that parfor loops require indecies as integers, so
+    % x varies from -2 to +2 multiplied by the number of interpolation
+    % steps.  Effectively, this evaluates gamma from -2 * DTA to +2 * DTA.
     for x = -2*resolution:2*resolution
+        % i is the x axis step value.  j is the y axis step value.  k is
+        % the z axis step value.  This for loop steps the gamma
+        % computation along the x axis. 
         i = x/resolution * h.gamma_dta;
         j = 0;
         k = 0;
+        
+        % Interpolate the measured dose based on the steps set in i, j, k.
+        % The *linear method is used to speed up this computation.
         dqa_interp = interp3(meshX, meshY, meshZ, ...
             h.dose_dqa, meshX+i, meshY+j, meshZ+k, '*linear',0);
+        
+        % Compute new gamma values for each voxel based on the i, j, and k,
+        % shifts, and compare to the previous gamma values using min.
         gamma = min(gamma,GammaEquation(h.dose_reference, dqa_interp, i, ...
             j, k, h.gamma_percent, h.gamma_dta, h.local_gamma));
-        waitbar(0.1+0.3*(x+20)/40);
+        
+        % Update the waitbar at each iteration, from 10% to 40%
+        waitbar(0.1+0.3*(x+2*resolution)/(4*resolution));
     end
 
+    % Start a parallel for loop to interpolate the dose array along the
+    % y-direction.  Note that parfor loops require indecies as integers, so
+    % x varies from -2 to +2 multiplied by the number of interpolation
+    % steps.  Effectively, this evaluates gamma from -2 * DTA to +2 * DTA.
     for x = -2*resolution:2*resolution
+        % i is the x axis step value.  j is the y axis step value.  k is
+        % the z axis step value.  This for loop steps the gamma
+        % computation along the y axis. 
         i = 0;
         j = x/resolution * h.gamma_dta;
         k = 0;
+        
+        % Interpolate the measured dose based on the steps set in i, j, k.
+        % The *linear method is used to speed up this computation.
         dqa_interp = interp3(meshX, meshY, meshZ, ...
             h.dose_dqa, meshX+i, meshY+j, meshZ+k, '*linear',0);
+        
+        % Compute new gamma values for each voxel based on the i, j, and k,
+        % shifts, and compare to the previous gamma values using min.
         gamma = min(gamma,GammaEquation(h.dose_reference, dqa_interp, i, ...
             j, k, h.gamma_percent, h.gamma_dta, h.local_gamma));
-        waitbar(0.4+0.3*(x+20)/40);
+        
+        % Update the waitbar at each iteration, from 40% to 70%
+        waitbar(0.4+0.3*(x+2*resolution)/(4*resolution));
     end
 
+    % Start a parallel for loop to interpolate the dose array along the
+    % z-direction.  Note that parfor loops require indecies as integers, so
+    % x varies from -2 to +2 multiplied by the number of interpolation
+    % steps.  Effectively, this evaluates gamma from -2 * DTA to +2 * DTA.
     for x = -2*resolution:2*resolution
+        % i is the x axis step value.  j is the y axis step value.  k is
+        % the z axis step value.  This for loop steps the gamma
+        % computation along the z axis. 
         i = 0;
         j = 0;
         k = x/resolution * h.gamma_dta;
+        
+        % Interpolate the measured dose based on the steps set in i, j, k.
+        % The *linear method is used to speed up this computation.
         dqa_interp = interp3(meshX, meshY, meshZ, ...
             h.dose_dqa, meshX+i, meshY+j, meshZ+k, '*linear',0);
+        
+        % Compute new gamma values for each voxel based on the i, j, and k,
+        % shifts, and compare to the previous gamma values using min.
         gamma = min(gamma,GammaEquation(h.dose_reference, dqa_interp, i, ...
             j, k, h.gamma_percent, h.gamma_dta, h.local_gamma));
-        waitbar(0.7+0.3*(x+20)/40);
+        
+        % Update the waitbar at each iteration, from 70% to 100%
+        waitbar(0.7+0.3*(x+2*resolution)/(4*resolution));
     end
 end
 
+% Store the temporary gamma variable to h.gamma handle, and threshold all
+% values less than h.dose_threshold (relative to the maximum dose)
 h.gamma = gamma.*ceil(h.dose_reference/max_dose - h.dose_threshold);
 
-clear x i j k dqa_interp gamma meshX meshY meshZ;
+% Clear all temporary variables
+clear x i j k dqa_interp gamma meshX meshY meshZ dqa ref perc dta local;
 
+% Complete the progress bar, and update message to "Done"
 waitbar(1.0,h.progress,'Done.');
     
+% Close the progress bar
 close(h.progress);
 
 function gamma = GammaEquation(ref, interp, i, j, k, perc, dta, local)
+% GammaEquation computes the Gamma values
+%   GammaEquation is the programmatic form of the Gamma definition as given
+%   by Low et al in matrix form.  This function computes both local and
+%   global Gamma, and is a local function for CalcGamma.
+%
+% The following inputs are used for computation and are required:
+%   ref: the reference 3D array
+%   interp: the interpolated "measured" 3D array.  The dimensions of interp
+%       must be identical to ref
+%   i: magnitude of x position offset of interp to ref, unitless but
+%       relative to dta
+%   j: magnitude of y position offset of interp to ref, unitless but
+%       relative to dta
+%   k: magnitude of z position offset of interp to ref, unitless but
+%       relative to dta
+%   perc: the percent Gamma criterion, given in % (i.e. 3 for 3%)
+%   dta: the distance to agreement Gamma criterion, unitless but relative
+%       to i, j, and k
+%   local: boolean, indicates whether to perform a local (1) or global (0)
+%       Gamma computation
+%
+% The following variables are returned:
+%   gamma: a 3D array of the same dimensions as ref and interp of the
+%       computed gamma value for each voxel based on interp and i,j,k
 
+% If local is set to 1, perform a local Gamma computation
 if local == 1
+    % Gamma is defined as the sqrt((abs difference/relative tolerance)^2 +
+    % sum((voxel offset/dta)^2))
     gamma = sqrt(((interp-ref)./(ref*perc/100)).^2 + (i/dta)^2 + (j/dta)^2 + (k/dta)^2);
 else
+    % Gamma is defined as the sqrt((abs difference/absolute  tolerance)^2 +
+    % sum((voxel offset/dta)^2))
     gamma = sqrt(((interp-ref)/(max_dose*perc/100)).^2 + (i/dta)^2 + (j/dta)^2 + (k/dta)^2);
 end
 
