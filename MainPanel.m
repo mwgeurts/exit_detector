@@ -50,7 +50,7 @@ handles.output = hObject;
 
 % version_text to display on GUI (top left).  This should reflect current the
 % GIT tagging.  See `git tag` for list of current and previous versions.
-handles.version = 'Version 1.0.1';
+handles.version = 'Version 1.0.2';
 
 % Flags used by ParseFileXML.  Set to 1 to have the GUI hide machine
 % specific and fluence delivery plans from the dropdown list
@@ -242,7 +242,7 @@ try
     handles.calc_dose = 1;
     
     % Load Ganymed-SSH2 javalib
-    addpath('./ssh2_v2_m1_r5/'); 
+    addpath('../ssh2_v2_m1_r5/'); 
     
     % Establish connection to computation server.  The ssh2_config
     % parameters below should be set to the DNS/IP address of the
@@ -1378,6 +1378,6 @@ set(h.gammapass_text,'String','');
 plotselection_menu_Callback(h.plotselection_menu, struct(), h);
 
 % Close the dose viewer panel (if open)
-if ishandle(h.doseviewpanel)
+if isfield(h, 'doseviewpanel') && ishandle(h.doseviewpanel)
     delete(h.doseviewpanel);
 end
