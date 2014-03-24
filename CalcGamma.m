@@ -65,7 +65,7 @@ max_dose = max(max(max(h.dose_reference)));
 % h.dose.reference value for each voxel (ie, 3% of that voxel's dose).
 % For global gamma calculations h.gamma_percent is multiplied by the
 % max_dose value for the entire volume (ie, 3% of the maximum dose)
-gamma = GammaEquation(h.dose_reference, h.dose_dqa, 0, 0, 0, h.gamma_percent, h.gamma_dta, h.local_gamma);
+gamma = GammaEquation(h.dose_reference, h.dose_dqa, 0, 0, 0, h.gamma_percent, h.gamma_dta, max_dose, h.local_gamma);
 
 % Try to perform the gamma computation using the Parallel Computing Toolbox
 try 
@@ -127,7 +127,7 @@ try
         
         % Compute new gamma values for each voxel based on the i, j, and k,
         % shifts, and compare to the previous gamma values using min.
-        gamma = min(gamma,GammaEquation(ref, dqa_interp, i, j, k, perc, dta, local));
+        gamma = min(gamma,GammaEquation(ref, dqa_interp, i, j, k, perc, dta, max_dose, local));
     end
 
     % Update the progress bar
@@ -152,7 +152,7 @@ try
         
         % Compute new gamma values for each voxel based on the i, j, and k,
         % shifts, and compare to the previous gamma values using min.
-        gamma = min(gamma,GammaEquation(ref, dqa_interp, i, j, k, perc, dta, local));
+        gamma = min(gamma,GammaEquation(ref, dqa_interp, i, j, k, perc, dta, max_dose, local));
 
     end
 
@@ -178,7 +178,7 @@ try
         
         % Compute new gamma values for each voxel based on the i, j, and k,
         % shifts, and compare to the previous gamma values using min.
-        gamma = min(gamma,GammaEquation(ref, dqa_interp, i, j, k, perc, dta, local));
+        gamma = min(gamma,GammaEquation(ref, dqa_interp, i, j, k, perc, dta, max_dose, local));
     end
 % If the Parallel Computing Toolbox is not configured correctly, or 
 % h.parallelize is set to 0, catch the error and continue the computation
@@ -218,7 +218,7 @@ catch exception
         % Compute new gamma values for each voxel based on the i, j, and k,
         % shifts, and compare to the previous gamma values using min.
         gamma = min(gamma,GammaEquation(h.dose_reference, dqa_interp, i, ...
-            j, k, h.gamma_percent, h.gamma_dta, h.local_gamma));
+            j, k, h.gamma_percent, h.gamma_dta, max_dose, h.local_gamma));
         
         % Update the waitbar at each iteration, from 10% to 40%
         waitbar(0.1+0.3*(x+2*resolution)/(4*resolution));
@@ -244,7 +244,7 @@ catch exception
         % Compute new gamma values for each voxel based on the i, j, and k,
         % shifts, and compare to the previous gamma values using min.
         gamma = min(gamma,GammaEquation(h.dose_reference, dqa_interp, i, ...
-            j, k, h.gamma_percent, h.gamma_dta, h.local_gamma));
+            j, k, h.gamma_percent, h.gamma_dta, max_dose, h.local_gamma));
         
         % Update the waitbar at each iteration, from 40% to 70%
         waitbar(0.4+0.3*(x+2*resolution)/(4*resolution));
@@ -270,7 +270,7 @@ catch exception
         % Compute new gamma values for each voxel based on the i, j, and k,
         % shifts, and compare to the previous gamma values using min.
         gamma = min(gamma,GammaEquation(h.dose_reference, dqa_interp, i, ...
-            j, k, h.gamma_percent, h.gamma_dta, h.local_gamma));
+            j, k, h.gamma_percent, h.gamma_dta, max_dose, h.local_gamma));
         
         % Update the waitbar at each iteration, from 70% to 100%
         waitbar(0.7+0.3*(x+2*resolution)/(4*resolution));
@@ -290,7 +290,7 @@ waitbar(1.0,h.progress,'Done.');
 % Close the progress bar
 close(h.progress);
 
-function gamma = GammaEquation(ref, interp, i, j, k, perc, dta, local)
+function gamma = GammaEquation(ref, interp, i, j, k, perc, dta, max_dose, local)
 % GammaEquation computes the Gamma values
 %   GammaEquation is the programmatic form of the Gamma definition as given
 %   by Low et al in matrix form.  This function computes both local and
