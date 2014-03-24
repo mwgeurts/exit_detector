@@ -3,7 +3,7 @@
 by Mark Geurts <mark.w.geurts@gmail.com>
 <br>Copyright &copy; 2014, University of Wisconsin Board of Regents
 
-The TomoTherapy(R) Exit Detector Analysis project is a GUI based standalone application written in MATLAB that parses [TomoTherapy](http://www.accuray.com) patient archives and DICOM RT Exit Dose files and uses the MVCT response collected during a Static Couch DQA procedure to estimate the fluence delivered through each MLC leaf during treatment delivery.  By comparing the measured fluence to an expected fluence (calculated during optimization of the treatment plan), the treatment delivery performance of the TomoTherapy Treatment System can be observed.  The user interface provides graphic and quantitative analysis of the comparison of the measured and expected fluence delivered.
+The TomoTherapy&reg; Exit Detector Analysis project is a GUI based standalone application written in MATLAB that parses [TomoTherapy](http://www.accuray.com) patient archives and DICOM RT Exit Dose files and uses the MVCT response collected during a Static Couch DQA procedure to estimate the fluence delivered through each MLC leaf during treatment delivery.  By comparing the measured fluence to an expected fluence (calculated during optimization of the treatment plan), the treatment delivery performance of the TomoTherapy Treatment System can be observed.  The user interface provides graphic and quantitative analysis of the comparison of the measured and expected fluence delivered.
 
 In addition, this project includes a module `CalcDose(handles)`, which uses the Standalone GPU TomoTherapy Dose Calculator to calculate the effect of fluence errors (measured above) on the optimized dose distribution for the patient. The `DoseViewer(varargin)` module is a child user interface developed to allow visualization of the reference, adjusted (or DQA), and dose differences on the patient CT.  The module `CalcGamma(handles)` is also included, and performs a 3D [gamma analysis](http://www.ncbi.nlm.nih.gov/pubmed/9608475) between the reference and DQA dose distributions.
 
@@ -16,12 +16,12 @@ To install the TomoTherapy Exit Detector Analysis application, copy all MATLAB f
 To enable dose recalculation based on the measured leaf open times, The TomoTherapy Exit Detector Analysis application must be configured to communicate with a dose calculation server.  Open MainPanel.m and find the following lines in the function `MainPanel_OpeningFcn()` (note each line is separated by several lines of comments in the actual file):
 
 ```
-addpath('./ssh2_v2_m1_r5/');
+addpath('../ssh2_v2_m1_r5/');
 handles.ssh2_conn = ssh2_config('tomo-research','tomo','hi-art');
 handles.pdut_path = 'GPU/';
 ```
 
-This application uses the (SSH/SFTP/SCP for Matlab (v2)) [http://www.mathworks.com/matlabcentral/fileexchange/35409-sshsftpscp-for-matlab-v2] interface based on the Ganymed-SSH2 javalib for communication with the dose calculation server.  If performing dose calculation, this interface must be downloaded and the MainPanel.m statement `addpath('./ssh2_v2_m1_r5/')` modified to reflect its location.  If this interface is not available, use of the TomoTherapy Exit Detector Analysis application is still available for sinogram comparison, but all dose and Gamma computation and evaluation functionality will be automatically disabled.
+This application uses the (SSH/SFTP/SCP for Matlab (v2)) [http://www.mathworks.com/matlabcentral/fileexchange/35409-sshsftpscp-for-matlab-v2] interface based on the Ganymed-SSH2 javalib for communication with the dose calculation server.  If performing dose calculation, this interface must be downloaded and the MainPanel.m statement `addpath('../ssh2_v2_m1_r5/')` modified to reflect its location.  If this interface is not available, use of the TomoTherapy Exit Detector Analysis application is still available for sinogram comparison, but all dose and Gamma computation and evaluation functionality will be automatically disabled.
 
 Next, edit `ssh2_config()` with the the IP/DNS address of the dose computation server (tomo-research, for example), a user account on the server (tomo), and password (hi-art).  This user account must have read/write access to the SSH home directory.  In addition, this system must run GNU/Linux 3.2.0-58-generic x64 and be configured with CUDA 5.0 or later using a compatible graphics card with at least 448 cores and 1280 MB of memory.  To test whether all dependencies are available, copy gpusadose to the workstation and use the lld command.
 
