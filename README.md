@@ -33,7 +33,7 @@ Finally, for dose calculation `handles.pdut_path` must contain the location on t
 * kernel.img
 * fat.img
 
-For Gamma calculation, if the Parallel Computing Toolbox is enabled, `CalcGamma(handles)` will attempt to start three parallel threads on the local workstation to increase the computing efficiency.  Depending on memory and computing capacity available on the workstation, this number can be edited by changing `parpool(3)` in CalcGamma.m to a different number.  To turn off parallel computation completely, set `handles.parallelize = 0;` in `MainPanel_OpeningFcn()`.
+For Gamma calculation, if the Parallel Computing Toolbox is enabled, `CalcGamma(handles)` will attempt to start three parallel threads on the local workstation to increase the computing efficiency.  Depending on memory and computing capacity available on the workstation, this number can be edited by changing `parpool(3)` in CalcGamma.m to a different number.  To turn off parallel computation completely, set `handles.parallelize = 0;` in `MainPanel_OpeningFcn()`.  It is recommended to initialize the parallel pool prior to executing the application.
 
 ### Version Compatibility
 

@@ -306,7 +306,7 @@ try
             subnode = subnodeList.item(0);
             
             % Store the path to the sinogram containing the return data
-            h.returnQAData{i}.sinogram = strcat(qa_path,char(subnode.getFirstChild.getNodeValue));
+            h.returnQAData{i}.sinogram = strcat(h.qa_path,char(subnode.getFirstChild.getNodeValue));
             
             % Search for delivery plan XML object sinogram dimensions
             subexpression = xpath.compile('detectorSinogram/arrayHeader/dimensions/dimensions');
