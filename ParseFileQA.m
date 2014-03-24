@@ -217,7 +217,7 @@ try
         import javax.xml.xpath.*
         
         % Read in the patient XML and store the Document Object Model node to doc
-        doc = xmlread(strcat(qa_path,qa_name));
+        doc = xmlread(strcat(h.qa_path,h.qa_name));
         
         % Initialize a new xpath instance to the variable factory
         factory = XPathFactory.newInstance;
