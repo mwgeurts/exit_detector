@@ -991,7 +991,7 @@ try
            % as the fractional leaf open time (remember one tau = one
            % projection) in the sino_calc sinogram array under the correct
            % leaf (numbered 1:64)
-           h.sino_calc(h.fluence.lowerLeafIndex+(j-1)/2,index) = leaves(j+1)-leaves(j);
+           h.sino_calc(h.fluence.lowerLeafIndex+(j+1)/2,index) = leaves(j+1)-leaves(j);
         end
     end
     
