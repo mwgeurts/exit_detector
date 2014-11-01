@@ -30,7 +30,7 @@ function varargout = ExitDetector(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Last Modified by GUIDE v2.5 31-Oct-2014 21:52:11
+% Last Modified by GUIDE v2.5 01-Nov-2014 13:20:48
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -58,6 +58,9 @@ function ExitDetector_OpeningFcn(hObject, ~, handles, varargin)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to ExitDetector (see VARARGIN)
+
+% Turn off MATLAB warnings
+warning('off','all');
 
 % Choose default command line output for ExitDetector
 handles.output = hObject;
@@ -89,9 +92,81 @@ Event(string, 'INIT');
 % Set version UI text
 set(handles.version_text, 'String', sprintf('Version %s', handles.version));
 
+% Hide plots
+set(allchild(handles.dose_axes), 'visible', 'off'); 
+set(handles.dose_axes, 'visible', 'off');
+set(allchild(handles.dvh_axes), 'visible', 'off'); 
+set(handles.dvh_axes, 'visible', 'off');
+set(allchild(handles.results_axes), 'visible', 'off'); 
+set(handles.results_axes, 'visible', 'off');
+set(allchild(handles.sino1_axes), 'visible', 'off'); 
+set(handles.sino1_axes, 'visible', 'off');
+set(allchild(handles.sino2_axes), 'visible', 'off'); 
+set(handles.sino2_axes, 'visible', 'off');
+set(allchild(handles.sino3_axes), 'visible', 'off'); 
+set(handles.sino3_axes, 'visible', 'off');
+
+% Hide dose slider/TCS
+set(handles.dose_slider, 'visible', 'off');
+set(handles.tcs_button, 'visible', 'off');
+
+% Set plot options
+% options = UpdateDoseDisplay();
+% set(handles.dose_display, 'String', options);
+% options = UpdateResultsDisplay();
+% set(handles.results_display, 'String', options);
+% clear options;
+
+% Initialize tables
+set(handles.dvh_table, 'Data', cell(8,4));
+set(handles.stats_table, 'Data', cell(8,2));
+
 % Initialize global variables
 handles.path = userpath;
 Event(['Default file path set to ', handles.path]);
+
+handles.abs = 3.0; % percent
+handles.dta = 3.0; % mm
+Event(sprintf('Gamma criteria set to %0.1f%%/%0.1f mm', ...
+    [handles.abs handles.dta]));
+
+%% Load SSH/SCP Scripts
+% A try/catch statement is used in case Ganymed-SSH2 is not available
+try
+    % Start with the handles.calc_dose flag set to 1 (dose calculation
+    % enabled)
+    handles.calc_dose = 1;
+    
+    % Load Ganymed-SSH2 javalib
+    Event('Adding Ganymed-SSH2 javalib');
+    addpath('../ssh2_v2_m1_r5/'); 
+    Event('Ganymed-SSH2 javalib added successfully');
+    
+    % Establish connection to computation server.  The ssh2_config
+    % parameters below should be set to the DNS/IP address of the
+    % computation server, user name, and password with SSH/SCP and
+    % read/write access, respectively.  See the README for more infomation
+    Event('Connecting to tomo-research via SSH2');
+    handles.ssh2_conn = ssh2_config('tomo-research', 'tomo', 'hi-art');
+    
+    % Test the SSH2 connection.  If this fails, catch the error below.
+    [handles.ssh2_conn, ~] = ssh2_command(handles.ssh2_conn, 'ls');
+    Event('SSH2 connection successfully established');
+    
+    % handles.pdut_path represents the local directory that contains the
+    % beam model files required during dose calculation.  See CalcDose or 
+    % the README for more information.
+    handles.pdut_path = 'GPU/';
+    
+catch err
+    % Log failure
+    Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'WARN');
+    
+    % If either the addpath or ssh2_command calls fails, set 
+    % handles.calc_dose flag to zero (dose calculation will be disabled) 
+    Event('Dose calculation will be disabled', 'WARN');
+    handles.calc_dose = 0;
+end
 
 % Update handles structure
 guidata(hObject, handles);
@@ -127,10 +202,46 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function daily_browse_Callback(hObject, ~, handles)
+function daily_browse_Callback(~, ~, handles)
 % hObject    handle to daily_browse (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Log event
+Event('Daily QA browse button selected');
+
+% Request the user to select the Daily QA DICOM or XML
+Event('UI window opened to select file');
+[name, path] = ...
+    uigetfile({'*.dcm', 'Transit Dose File'; '*.xml', 'Patient Archive'}, ...
+    'Select the Daily QA File', handles.path);
+
+% If the user selected a file
+if ~isequal(qa_name, 0);
+    
+    % Update default path
+    handles.path = path;
+    Event(['Default file path updated to ', path]);
+    
+    % Update daily_file text box
+    set(handles.daily_file, 'String', fullfile(path, name));
+    
+    % Extract file contents
+    handles.dailyqa = ParseFileQA(name, path);
+    
+    % Update plot display
+    
+    
+    % Update statistics
+    
+    
+% Otherwise the user did not select a file
+else
+    Event('No Daily QA file was selected');
+end
+
+% Clear temporary variables
+clear name path;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function archive_file_Callback(hObject, ~, handles)
@@ -150,7 +261,6 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
         get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function archive_browse_Callback(hObject, eventdata, handles)
@@ -179,8 +289,8 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function slider1_Callback(hObject, ~, handles)
-% hObject    handle to slider1 (see GCBO)
+function dose_slider_Callback(hObject, ~, handles)
+% hObject    handle to dose_slider (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
@@ -188,8 +298,8 @@ function slider1_Callback(hObject, ~, handles)
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function slider1_CreateFcn(hObject, ~, handles)
-% hObject    handle to slider1 (see GCBO)
+function dose_slider_CreateFcn(hObject, ~, handles)
+% hObject    handle to dose_slider (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -200,8 +310,8 @@ if isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function pushbutton3_Callback(hObject, ~, handles)
-% hObject    handle to pushbutton3 (see GCBO)
+function tcs_button_Callback(hObject, ~, handles)
+% hObject    handle to tcs_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
@@ -255,3 +365,34 @@ function autoselect_box_Callback(hObject, ~, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of autoselect_box
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function figure1_SizeChangedFcn(hObject, ~, handles)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Set units to pixels
+set(hObject,'Units','pixels') 
+
+% Get table width
+pos = get(handles.dvh_table, 'Position') .* ...
+    get(handles.dvh_table, 'Position') .* ...
+    get(hObject, 'Position');
+
+% Update column widths to scale to new table size
+set(handles.dvh_table, 'ColumnWidth', ...
+    {floor(0.4*pos(3)) - 26 floor(0.2*pos(3)) ...
+    floor(0.2*pos(3)) floor(0.2*pos(3))});
+
+% Get table width
+pos = get(handles.stats_table, 'Position') .* ...
+    get(handles.stats_table, 'Position') .* ...
+    get(hObject, 'Position');
+
+% Update column widths to scale to new table size
+set(handles.stats_table, 'ColumnWidth', ...
+    {floor(0.7*pos(3)) - 28 floor(0.3*pos(3))});
+
+% Clear temporary variables
+clear pos;
