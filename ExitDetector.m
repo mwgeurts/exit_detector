@@ -1,26 +1,34 @@
 function varargout = ExitDetector(varargin)
-% EXITDETECTOR MATLAB code for ExitDetector.fig
-%      EXITDETECTOR, by itself, creates a new EXITDETECTOR or raises the existing
-%      singleton*.
+% The TomoTherapy® Exit Detector Analysis project is a GUI based standalone 
+% application written in MATLAB that parses TomoTherapy patient archives 
+% and DICOM RT Exit Dose files and uses the MVCT response collected during 
+% a Static Couch DQA procedure to estimate the fluence delivered through 
+% each MLC leaf during treatment delivery. By comparing the measured 
+% fluence to an expected fluence (calculated during optimization of the 
+% treatment plan), the treatment delivery performance of the TomoTherapy 
+% Treatment System can be observed. The user interface provides graphic and 
+% quantitative analysis of the comparison of the measured and expected 
+% fluence delivered.
 %
-%      H = EXITDETECTOR returns the handle to a new EXITDETECTOR or the handle to
-%      the existing singleton*.
+% TomoTherapy is a registered trademark of Accuray Incorporated. See the
+% README for more information, including installation information and
+% algorithm details.
 %
-%      EXITDETECTOR('CALLBACK',hObject,eventData,handles,...) calls the local
-%      function named CALLBACK in EXITDETECTOR.M with the given input arguments.
+% Author: Mark Geurts, mark.w.geurts@gmail.com
+% Copyright (C) 2014 University of Wisconsin Board of Regents
 %
-%      EXITDETECTOR('Property','Value',...) creates a new EXITDETECTOR or raises the
-%      existing singleton*.  Starting from the left, property value pairs are
-%      applied to the GUI before ExitDetector_OpeningFcn gets called.  An
-%      unrecognized property name or invalid value makes property application
-%      stop.  All inputs are passed to ExitDetector_OpeningFcn via varargin.
+% This program is free software: you can redistribute it and/or modify it 
+% under the terms of the GNU General Public License as published by the  
+% Free Software Foundation, either version 3 of the License, or (at your 
+% option) any later version.
 %
-%      *See GUI Options on GUIDE's Tools menu.  Choose "GUI allows only one
-%      instance to run (singleton)".
-%
-% See also: GUIDE, GUIDATA, GUIHANDLES
-
-% Edit the above text to modify the response to help ExitDetector
+% This program is distributed in the hope that it will be useful, but 
+% WITHOUT ANY WARRANTY; without even the implied warranty of 
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General 
+% Public License for more details.
+% 
+% You should have received a copy of the GNU General Public License along 
+% with this program. If not, see http://www.gnu.org/licenses/.
 
 % Last Modified by GUIDE v2.5 31-Oct-2014 21:52:11
 
@@ -43,9 +51,8 @@ else
 end
 % End initialization code - DO NOT EDIT
 
-
-% --- Executes just before ExitDetector is made visible.
-function ExitDetector_OpeningFcn(hObject, eventdata, handles, varargin)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function ExitDetector_OpeningFcn(hObject, ~, handles, varargin)
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -55,15 +62,42 @@ function ExitDetector_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for ExitDetector
 handles.output = hObject;
 
+% Set version handle
+handles.version = '1.1';
+
+% Set version information.  See LoadVersionInfo for more details.
+handles.versionInfo = LoadVersionInfo;
+
+% Store program and MATLAB/etc version information as a string cell array
+string = {'TomoTherapy Exit Detector IMRT QA Analysis'
+    sprintf('Version: %s (%s)', handles.version, handles.versionInfo{6});
+    sprintf('Author: Mark Geurts <mark.w.geurts@gmail.com>');
+    sprintf('MATLAB Version: %s', handles.versionInfo{2});
+    sprintf('MATLAB License Number: %s', handles.versionInfo{3});
+    sprintf('Operating System: %s', handles.versionInfo{1});
+    sprintf('CUDA: %s', handles.versionInfo{4});
+    sprintf('Java Version: %s', handles.versionInfo{5})
+};
+
+% Add dashed line separators      
+separator = repmat('-', 1,  size(char(string), 2));
+string = sprintf('%s\n', separator, string{:}, separator);
+
+% Log information
+Event(string, 'INIT');
+
+% Set version UI text
+set(handles.version_text, 'String', sprintf('Version %s', handles.version));
+
+% Initialize global variables
+handles.path = userpath;
+Event(['Default file path set to ', handles.path]);
+
 % Update handles structure
 guidata(hObject, handles);
 
-% UIWAIT makes ExitDetector wait for user response (see UIRESUME)
-% uiwait(handles.figure1);
-
-
-% --- Outputs from this function are returned to the command line.
-function varargout = ExitDetector_OutputFcn(hObject, eventdata, handles) 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function varargout = ExitDetector_OutputFcn(~, ~, handles) 
 % varargout  cell array for returning output args (see VARARGOUT);
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -73,91 +107,79 @@ function varargout = ExitDetector_OutputFcn(hObject, eventdata, handles)
 varargout{1} = handles.output;
 
 
-
-function daily_file_Callback(hObject, eventdata, handles)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function daily_file_Callback(~, ~, ~)
 % hObject    handle to daily_file (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of daily_file as text
-%        str2double(get(hObject,'String')) returns contents of daily_file as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function daily_file_CreateFcn(hObject, eventdata, handles)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function daily_file_CreateFcn(hObject, ~, handles)
 % hObject    handle to daily_file (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: edit controls usually have a white background on Windows.
 %       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+if ispc && isequal(get(hObject,'BackgroundColor'), ...
+        get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
 
-
-% --- Executes on button press in daily_browse.
-function daily_browse_Callback(hObject, eventdata, handles)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function daily_browse_Callback(hObject, ~, handles)
 % hObject    handle to daily_browse (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-
-
-function archive_file_Callback(hObject, eventdata, handles)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function archive_file_Callback(hObject, ~, handles)
 % hObject    handle to archive_file (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of archive_file as text
-%        str2double(get(hObject,'String')) returns contents of archive_file as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function archive_file_CreateFcn(hObject, eventdata, handles)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function archive_file_CreateFcn(hObject, ~, handles)
 % hObject    handle to archive_file (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: edit controls usually have a white background on Windows.
 %       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+if ispc && isequal(get(hObject,'BackgroundColor'), ...
+        get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
 
 
-% --- Executes on button press in archive_browse.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function archive_browse_Callback(hObject, eventdata, handles)
 % hObject    handle to archive_browse (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 
-% --- Executes on selection change in dose_display.
-function dose_display_Callback(hObject, eventdata, handles)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function dose_display_Callback(hObject, ~, handles)
 % hObject    handle to dose_display (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: contents = cellstr(get(hObject,'String')) returns dose_display contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from dose_display
-
-
-% --- Executes during object creation, after setting all properties.
-function dose_display_CreateFcn(hObject, eventdata, handles)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function dose_display_CreateFcn(hObject, ~, handles)
 % hObject    handle to dose_display (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: popupmenu controls usually have a white background on Windows.
 %       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+if ispc && isequal(get(hObject,'BackgroundColor'), ...
+        get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
 
-
-% --- Executes on slider movement.
-function slider1_Callback(hObject, eventdata, handles)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function slider1_Callback(hObject, ~, handles)
 % hObject    handle to slider1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -165,76 +187,69 @@ function slider1_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'Value') returns position of slider
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
 
-
-% --- Executes during object creation, after setting all properties.
-function slider1_CreateFcn(hObject, eventdata, handles)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function slider1_CreateFcn(hObject, ~, handles)
 % hObject    handle to slider1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: slider controls usually have a light gray background.
-if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+if isequal(get(hObject,'BackgroundColor'), ...
+        get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor',[.9 .9 .9]);
 end
 
-
-% --- Executes on button press in pushbutton3.
-function pushbutton3_Callback(hObject, eventdata, handles)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function pushbutton3_Callback(hObject, ~, handles)
 % hObject    handle to pushbutton3 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 
-% --- Executes on button press in print_button.
-function print_button_Callback(hObject, eventdata, handles)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function print_button_Callback(hObject, ~, handles)
 % hObject    handle to print_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 
-% --- Executes on button press in autoalign_box.
-function autoalign_box_Callback(hObject, eventdata, handles)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function autoalign_box_Callback(hObject, ~, handles)
 % hObject    handle to autoalign_box (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of autoalign_box
 
-
-% --- Executes on button press in dynamicjaw_box.
-function dynamicjaw_box_Callback(hObject, eventdata, handles)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function dynamicjaw_box_Callback(hObject, ~, handles)
 % hObject    handle to dynamicjaw_box (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of dynamicjaw_box
 
-
-% --- Executes on selection change in results_display.
-function results_display_Callback(hObject, eventdata, handles)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function results_display_Callback(hObject, ~, handles)
 % hObject    handle to results_display (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: contents = cellstr(get(hObject,'String')) returns results_display contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from results_display
-
-
-% --- Executes during object creation, after setting all properties.
-function results_display_CreateFcn(hObject, eventdata, handles)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function results_display_CreateFcn(hObject, ~, handles)
 % hObject    handle to results_display (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: popupmenu controls usually have a white background on Windows.
 %       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+if ispc && isequal(get(hObject,'BackgroundColor'), ...
+        get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
 
-
-% --- Executes on button press in autoselect_box.
-function autoselect_box_Callback(hObject, eventdata, handles)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function autoselect_box_Callback(hObject, ~, handles)
 % hObject    handle to autoselect_box (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
