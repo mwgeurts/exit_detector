@@ -113,9 +113,9 @@ set(handles.tcs_button, 'visible', 'off');
 % Set plot options
 % options = UpdateDoseDisplay();
 % set(handles.dose_display, 'String', options);
-% options = UpdateResultsDisplay();
-% set(handles.results_display, 'String', options);
-% clear options;
+options = UpdateResultsDisplay();
+set(handles.results_display, 'String', options);
+clear options;
 
 % Initialize tables
 set(handles.dvh_table, 'Data', cell(8,4));
@@ -181,7 +181,6 @@ function varargout = ExitDetector_OutputFcn(~, ~, handles)
 % Get default command line output from handles structure
 varargout{1} = handles.output;
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function daily_file_Callback(~, ~, ~)
 % hObject    handle to daily_file (see GCBO)
@@ -212,12 +211,12 @@ Event('Daily QA browse button selected');
 
 % Request the user to select the Daily QA DICOM or XML
 Event('UI window opened to select file');
-[name, path] = ...
-    uigetfile({'*.dcm', 'Transit Dose File'; '*.xml', 'Patient Archive'}, ...
+[name, path] = uigetfile({'*.dcm', 'Transit Dose File (*.dcm)'; ...
+    '*.xml', 'Patient Archive (*.xml)'}, ...
     'Select the Daily QA File', handles.path);
 
 % If the user selected a file
-if ~isequal(qa_name, 0);
+if ~isequal(name, 0);
     
     % Update default path
     handles.path = path;
@@ -230,7 +229,8 @@ if ~isequal(qa_name, 0);
     handles.dailyqa = ParseFileQA(name, path);
     
     % Update plot display
-    
+    set(handles.results_display, 'Value', 2);
+    UpdateResultsDisplay(handles);
     
     % Update statistics
     
@@ -242,6 +242,9 @@ end
 
 % Clear temporary variables
 clear name path;
+
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function archive_file_Callback(hObject, ~, handles)
