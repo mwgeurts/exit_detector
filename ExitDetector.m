@@ -117,6 +117,10 @@ options = UpdateResultsDisplay();
 set(handles.results_display, 'String', options);
 clear options;
 
+% Disable archive_browse (Daily QA must be loaded first)
+set(handles.archive_file, 'Enable', 'off');
+set(handles.archive_browse, 'Enable', 'off');
+
 % Initialize tables
 set(handles.dvh_table, 'Data', cell(8,4));
 set(handles.stats_table, 'Data', cell(8,2));
@@ -188,7 +192,7 @@ function daily_file_Callback(~, ~, ~)
 % handles    structure with handles and user data (see GUIDATA)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function daily_file_CreateFcn(hObject, ~, handles)
+function daily_file_CreateFcn(hObject, ~, ~)
 % hObject    handle to daily_file (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -201,7 +205,7 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function daily_browse_Callback(~, ~, handles)
+function daily_browse_Callback(~, ~, handles) %#ok<*DEFNU>
 % hObject    handle to daily_browse (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -228,12 +232,23 @@ if ~isequal(name, 0);
     % Extract file contents
     handles.dailyqa = ParseFileQA(name, path);
     
+    % If patient data exists, recalculate patient data
+    %
+    %
+    % ADD CODE HERE
+    %
+    %
+    
+    % Enable archive_browse
+    set(handles.archive_file, 'Enable', 'on');
+    set(handles.archive_browse, 'Enable', 'on');
+    
     % Update plot display
     set(handles.results_display, 'Value', 2);
-    UpdateResultsDisplay(handles);
+    handles = UpdateResultsDisplay(handles);
     
     % Update statistics
-    
+    handles = UpdateResultsStatistics(handles);
     
 % Otherwise the user did not select a file
 else
@@ -247,13 +262,13 @@ clear name path;
 guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function archive_file_Callback(hObject, ~, handles)
+function archive_file_Callback(~, ~, ~)
 % hObject    handle to archive_file (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function archive_file_CreateFcn(hObject, ~, handles)
+function archive_file_CreateFcn(hObject, ~, ~)
 % hObject    handle to archive_file (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -266,11 +281,140 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function archive_browse_Callback(hObject, eventdata, handles)
+function archive_browse_Callback(hObject, ~, handles)
 % hObject    handle to archive_browse (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+% Log event
+Event('Patient archive browse button selected');
+
+% Request the user to select the Daily QA DICOM or XML
+Event('UI window opened to select file');
+[name, path] = uigetfile({'*.xml', 'Patient Archive (*.xml)'}, ...
+    'Select the Patient Archive', handles.path);
+
+% If the user selected a file
+if ~isequal(name, 0);
+    
+    % Update default path
+    handles.path = path;
+    Event(['Default file path updated to ', path]);
+    
+    % Update archive_file text box
+    set(handles.archive_file, 'String', fullfile(path, name));
+    
+    % Search archive for static couch QA procedures
+    [handles.plan_uid, handles.raw_data] = ...
+        ParseStaticCouchQA(name, path);
+    
+    % If auto-select is enabled, auto select associated delivery plan
+    if get(handles.autoselect_box, 'Value') == 1
+        %
+        %
+        % ADD CODE HERE
+        %
+        %
+    % Otherwise, prompt user to select
+    else
+        %
+        %
+        % ADD CODE HERE
+        %
+        %
+    end
+    
+    % Calculate sinogram difference
+    %
+    %
+    % ADD CODE HERE
+    %
+    %
+    
+    % Update results display
+    %
+    %
+    % ADD CODE HERE
+    %
+    %
+    
+    % Update results statistics
+    %
+    %
+    % ADD CODE HERE
+    %
+    %
+    
+    % Calculate dose
+    if handles.calc_dose == 1
+        % Ask user if they want to calculate dose
+        choice = questdlg('Continue to Calculate Dose?', ...
+            'Calculate Dose', 'Yes', 'No', 'Yes');
+        
+        % If the user chose yes
+        if strcmp(choice, 'Yes')
+            %
+            %
+            % ADD CODE HERE
+            %
+            %
+        end
+        
+        % Ask user if they want to calculate dose
+        choice = questdlg('Continue to Calculate Gamma?', ...
+            'Calculate Gamma', 'Yes', 'No', 'Yes');
+        
+        % If the user chose yes
+        if strcmp(choice, 'Yes')
+            %
+            %
+            % ADD CODE HERE
+            %
+            %
+        end
+        
+        % Clear temporary variables
+        clear choice;
+        
+        % Update dose plot
+        %
+        %
+        % ADD CODE HERE
+        %
+        %
+        
+        % Update dose statistics table
+        %
+        %
+        % ADD CODE HERE
+        %
+        %
+        
+        % Update results plot to show gamma histogram
+        %
+        %
+        % ADD CODE HERE
+        %
+        %
+        
+        % Update results statistics with dose/gamma results
+        %
+        %
+        % ADD CODE HERE
+        %
+        %
+    end
+    
+% Otherwise the user did not select a file
+else
+    Event('No patient archive was selected');
+end
+
+% Clear temporary variables
+clear name path;
+
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function dose_display_Callback(hObject, ~, handles)
@@ -278,8 +422,14 @@ function dose_display_Callback(hObject, ~, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+% Update plot based on new value
+handles = UpdateDoseDisplay(handles);
+
+% Update handles structure
+guidata(hObject, handles);
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dose_display_CreateFcn(hObject, ~, handles)
+function dose_display_CreateFcn(hObject, ~, ~)
 % hObject    handle to dose_display (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -301,7 +451,7 @@ function dose_slider_Callback(hObject, ~, handles)
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dose_slider_CreateFcn(hObject, ~, handles)
+function dose_slider_CreateFcn(hObject, ~, ~)
 % hObject    handle to dose_slider (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -348,8 +498,14 @@ function results_display_Callback(hObject, ~, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+% Update plot based on new value
+handles = UpdateResultsDisplay(handles);
+
+% Update handles structure
+guidata(hObject, handles);
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function results_display_CreateFcn(hObject, ~, handles)
+function results_display_CreateFcn(hObject, ~, ~)
 % hObject    handle to results_display (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called

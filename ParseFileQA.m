@@ -187,391 +187,398 @@ dailyqa.channel_gold = [45.8720005199238,47.8498858353154,49.3011672921640,...
     53.8779818321116,53.5184133183749,53.5184133183749,53.5184133183749,...
     53.5184133183749];
 
-try    
-    % Search for an xml extension
-    s = regexpi(name, '.xml$');
+% Execute in try/catch statement
+try  
     
-    % If .xml was not found, use DICOM RT to load daily QA result     
-    if isempty(s) 
-        
-        % Read DICOM header
-        info = dicominfo(fullfile(path, name));
-        
-        % Open read handle to DICOM file (dicomread can't do RT RECORDS)
-        fid = fopen(fullfile(path, name), 'r', 'l');
-        
-        % The daily QA is 9000 projections long
-        numprojections = 9000;
-        
-        % Set rows to the number of detector channels included in the DICOM
-        % file. For gen4 (TomoDetectors), this should be 531 
-        % (detectorChanSelection is set to KEEP_OPEN_FIELD_CHANNELS for the 
-        % Daily QA XML)
-        rows = 531;
-        
-        % Set file pointer to the beginning of the data (stored under
-        % PixelDataGroupLength).  Note you need to go forward two bytes
-        fseek(fid, -(int32(info.PixelDataGroupLength) - 8),'eof');
-        
-        % Read daily QA data into temporary array
-        arr = reshape(fread(fid, (int32(info.PixelDataGroupLength) - 8) / 4, ...
-            'uint32'), rows, []);
-        
-        % Now set rows to the number of active MVCT data channels.
-        % Typically the last three channels are monitor chamber data
-        rows = 528;
-        
-        % Read from the temporary array into qa_data, which should be just
-        % MVCT channel data
-        qa_data = arr(1:rows, 1:numprojections);
-        
-        % Close file handle
-        fclose(fid);
-        
-        % Clear temporary variables
-        clear fid arr;
-    
-    % Else .xml was found, so use patient archive to load daily QA result
-    else 
-        % show_all is a local flag.  When set to 1, all procedure return
-        % data found in the XML will be displayed to the user.  This should
-        % be enabled only for testing purposes.
-        show_all = 0;
-        
-        % Initialize a progress bar to indicate the status to the user
-        progress = waitbar(0.1, 'Loading XML tree...');
-        
-        % The patient XML is parsed using xpath class
-        import javax.xml.xpath.*
-        
-        % Read in the patient XML and store the Document Object Model node 
-        % to doc
-        doc = xmlread(fullfile(path, name));
-        
-        % Initialize a new xpath instance to the variable factory
-        factory = XPathFactory.newInstance;
-        
-        % Initialize a new xpath to the variable xpath
-        xpath = factory.newXPath;
+% Search for an xml extension
+s = regexpi(name, '.xml$');
 
-        % Compile a new xpath expression to find all procedureReturnData
-        % entries in the patient XML
-        expression = ...
-            xpath.compile('//fullProcedureReturnData/procedureReturnData');
-        
+% If .xml was not found, use DICOM RT to load daily QA result     
+if isempty(s) 
+
+    % Read DICOM header
+    info = dicominfo(fullfile(path, name));
+
+    % Open read handle to DICOM file (dicomread can't do RT RECORDS)
+    fid = fopen(fullfile(path, name), 'r', 'l');
+
+    % The daily QA is 9000 projections long
+    numprojections = 9000;
+
+    % Set rows to the number of detector channels included in the DICOM
+    % file. For gen4 (TomoDetectors), this should be 531 
+    % (detectorChanSelection is set to KEEP_OPEN_FIELD_CHANNELS for the 
+    % Daily QA XML)
+    rows = 531;
+
+    % Set file pointer to the beginning of the data (stored under
+    % PixelDataGroupLength).  Note you need to go forward two bytes
+    fseek(fid, -(int32(info.PixelDataGroupLength) - 8),'eof');
+
+    % Read daily QA data into temporary array
+    arr = reshape(fread(fid, (int32(info.PixelDataGroupLength) - 8) / 4, ...
+        'uint32'), rows, []);
+
+    % Now set rows to the number of active MVCT data channels.
+    % Typically the last three channels are monitor chamber data
+    rows = 528;
+
+    % Read from the temporary array into qa_data, which should be just
+    % MVCT channel data
+    qa_data = arr(1:rows, 1:numprojections);
+
+    % Close file handle
+    fclose(fid);
+
+    % Clear temporary variables
+    clear fid arr;
+
+% Else .xml was found, so use patient archive to load daily QA result
+else 
+    % show_all is a local flag.  When set to 1, all procedure return
+    % data found in the XML will be displayed to the user.  This should
+    % be enabled only for testing purposes.
+    show_all = 0;
+
+    % Initialize a progress bar to indicate the status to the user
+    progress = waitbar(0.1, 'Loading XML tree...');
+
+    % The patient XML is parsed using xpath class
+    import javax.xml.xpath.*
+
+    % Read in the patient XML and store the Document Object Model node 
+    % to doc
+    doc = xmlread(fullfile(path, name));
+
+    % Initialize a new xpath instance to the variable factory
+    factory = XPathFactory.newInstance;
+
+    % Initialize a new xpath to the variable xpath
+    xpath = factory.newXPath;
+
+    % Compile a new xpath expression to find all procedureReturnData
+    % entries in the patient XML
+    expression = ...
+        xpath.compile('//fullProcedureReturnData/procedureReturnData');
+
+    % Retrieve the results
+    nodeList = expression.evaluate(doc, XPathConstants.NODESET);
+
+    % Preallocate cell arrrays
+    dailyqa.returnQAData = cell(1, nodeList.getLength);
+    dailyqa.returnQADataList = cell(1, nodeList.getLength);
+
+    % Loop through the results
+    for i = 1:nodeList.getLength
+
+        % Update the progress bar based on the number of results
+        waitbar(0.1 + 0.8 * i / nodeList.getLength, progress);
+
+        % Retrieve a handle to the next result
+        node = nodeList.item(i-1);
+
+        % Search for delivery plan XML object purpose
+        subexpression = ...
+            xpath.compile('deliveryResults/deliveryResults/pulseCount');
+
         % Retrieve the results
-        nodeList = expression.evaluate(doc, XPathConstants.NODESET);
-        
-        % Preallocate cell arrrays
-        dailyqa.returnQAData = cell(1, nodeList.getLength);
-        dailyqa.returnQADataList = cell(1, nodeList.getLength);
-        
-        % Loop through the results
-        for i = 1:nodeList.getLength
-            
-            % Update the progress bar based on the number of results
-            waitbar(0.1 + 0.8 * i / nodeList.getLength, progress);
-            
-            % Retrieve a handle to the next result
-            node = nodeList.item(i-1);
-        
-            % Search for delivery plan XML object purpose
-            subexpression = ...
-                xpath.compile('deliveryResults/deliveryResults/pulseCount');
-            
-            % Retrieve the results
-            subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
-            subnode = subnodeList.item(0);
-            
-            % If show_all == 0, only include this returndata if the
-            % pulseCount for the procedure equals 90000 (the size of a TQA
-            % Daily QA procedure).  Otherwise, continue to the next result
-            if show_all == 0 && ...
-                    str2double(subnode.getFirstChild.getNodeValue) ~= 90000
-                continue
-            end
-            
-            % Store the pulse count of the return data
-            dailyqa.returnQAData{i}.pulseCount = ...
-                str2double(subnode.getFirstChild.getNodeValue);
-            
-            % Search for delivery plan XML object uid
-            subexpression = ...
-                xpath.compile('detectorSinogram/dbInfo/databaseUID');
-            
-            % Retrieve the results
-            subnodeList = ...
-                subexpression.evaluate(node, XPathConstants.NODESET);
-            subnode = subnodeList.item(0);
-            
-            % Store the database uid of the plan
-            dailyqa.returnQAData{i}.uid = ...
-                char(subnode.getFirstChild.getNodeValue);
-            
-            % Search for delivery plan XML object date
-            subexpression = xpath.compile(['detectorSinogram/dbInfo/', ...
-                'creationTimestamp/date']);
-            
-            % Retrieve the results
-            subnodeList = ...
-                subexpression.evaluate(node, XPathConstants.NODESET);
-            subnode = subnodeList.item(0);
-            
-            % Store the date of the return data
-            dailyqa.returnQAData{i}.date = ...
-                char(subnode.getFirstChild.getNodeValue);
-            
-            % Search for delivery plan XML object time
-            subexpression = xpath.compile(['detectorSinogram/dbInfo/', ...
-                'creationTimestamp/time']);
-            
-            % Retrieve the results
-            subnodeList = ...
-                subexpression.evaluate(node, XPathConstants.NODESET);
-            subnode = subnodeList.item(0);
-            
-            % Store the time of the return data
-            dailyqa.returnQAData{i}.time = ...
-                char(subnode.getFirstChild.getNodeValue);
-            
-            % Add to the formatted list of plans found, using the format
-            % "UID (date-time)"
-            dailyqa.returnQADataList{i} = ...
-                strcat(dailyqa.returnQAData{i}.uid, ' (', ...
-            dailyqa.returnQAData{i}.date, '-', ...
-            dailyqa.returnQAData{i}.time, ')');
-            
-            % Search for delivery plan XML object sinogram
-            subexpression = xpath.compile(['detectorSinogram/arrayHeader', ...
-                '/sinogramDataFile']);
-            
-            % Retrieve the results
-            subnodeList = subexpression.evaluate(node, ...
-                XPathConstants.NODESET);
-            subnode = subnodeList.item(0);
-            
-            % Store the path to the sinogram containing the return data
-            dailyqa.returnQAData{i}.sinogram = strcat(dailyqa.qa_path, ...
-                char(subnode.getFirstChild.getNodeValue));
-            
-            % Search for delivery plan XML object sinogram dimensions
-            subexpression = xpath.compile(['detectorSinogram/arrayHeader', ...
-                '/dimensions/dimensions');
-            % Retrieve the results
-            subnodeList = ...
-                subexpression.evaluate(node, XPathConstants.NODESET);
-            
-            % Store the dimensions of the sinogram as a 2 element vector
-            subnode = subnodeList.item(0);
-            dailyqa.returnQAData{i}.dimensions(1) = ...
-                str2double(subnode.getFirstChild.getNodeValue);
-            subnode = subnodeList.item(1);
-            dailyqa.returnQAData{i}.dimensions(2) = ...
-                str2double(subnode.getFirstChild.getNodeValue);
-        end
-        
-        % Remove empty cells due to hidden delivery plans
-        if show_all == 0
-            dailyqa.returnQAData = ...
-                dailyqa.returnQAData(~cellfun('isempty', ...
-                dailyqa.returnQAData));
-            dailyqa.returnQADataList = ...
-                dailyqa.returnQADataList(~cellfun('isempty', ...
-                dailyqa.returnQADataList));
-        end
-    
-        % Update the progress bar, indicating the the process finished
-        waitbar(1.0, progress, 'Done.');
-    
-        % Prompt user to select which return data to process
-        if size(dailyqa.returnQAData,2) == 0
-            
-            % If none were found in the XML, throw an error
-            error('No delivery plans found in XML file.');
-            
-        elseif size(dailyqa.returnQAData,2) == 1
-            
-            % If only one was found, assume the user will select that one
-            plan = 1;
-            
-        else
-            
-            % Otherwise, prompt the user to select from h.returnQADataList 
-            plan = menu(['Multiple QA procedure return data was found.', ...
-                ' Choose one (Date-Time):'], dailyqa.returnQADataList);
-            
-            % If the user does not select one, throw an error
-            if plan == 0
-                error('No delivery plan was chosen.');
-            end
-        end
-        
-        %% Load return data
-        % Open read handle to sinogram file
-        fid = fopen(dailyqa.returnQAData{plan}.sinogram, 'r', 'b');
-        
-        % The daily QA is 9000 projections long.  If the sinogram data is
-        % different, the data will be manipulated below to fit
-        numprojections = 9000;
-        
-        % Set rows to the number of detector channels from dimensions(1)
-        rows = dailyqa.returnQAData{plan}.dimensions(1);
-        
-        % Read daily QA data into temporary array
-        arr = reshape(fread(fid, ...
-            rows*dailyqa.returnQAData{plan}.dimensions(2),'single'), ...
-            rows, dailyqa.returnQAData{plan}.dimensions(2));
-        
-        % Now set rows to the number of active MVCT data channels.  Typically
-        % the last three channels are monitor chamber data
-        rows = dailyqa.returnQAData{plan}.dimensions(1) - 3;
-        
-        % If the number of projections is greater than 9000, it is likely
-        % that the compression factor was set to 1.  The below analysis 
-        % requires the data to be downsampled by a factor of 10
-        if size(arr,2) > numprojections
-            arr = imresize(arr,[dailyqa.returnQAData{plan}.dimensions(1) ...
-                floor(dailyqa.returnQAData{plan}.dimensions(2)/10)]);
-        end
-        
-        % Otherwise, if the number of projections is less than 9000, pad
-        % the data to total 9000
-        if size(arr,2) < numprojections
-            arr = padarray(arr,[0 numprojections-size(arr,2)],'post');
-        end
-        
-        % Read from the temporary array into qa_data, which should be just
-        % MVCT channel data
-        qa_data = arr(1:rows,1:numprojections);
-        
-        % Close file handle
-        fclose(fid);
-        
-        % Clear temporary variables
-        clear fid arr;  
-        clear plan;
-        
-        % Close progress bar graphic
-        close(progress);
+        subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
+        subnode = subnodeList.item(0);
 
-        % Clear xpath temporary variables
-        clear doc factory xpath;
-    end
-    
-    % Clear temporary variables
-    clear s;
-    
-    %% Parse leaf map, and background from Daily QA data
-    % The odd leaves are measured in projections 5401-5699; note that 
-    % averaging determines the mean MLC channel over gantry rotation
-    dailyqa.odd_leaves = mean(qa_data(:, 5401:5699), 2);
-   
-    % The even leaves are measured in projections 5701-5999
-    dailyqa.even_leaves = mean(qa_data(:, 5701:5999), 2);
-    
-    % Read background from center channels (200-300), over projections
-    % 6001-6099; background is intended to be measured under closed leaves
-    dailyqa.background = mean2(qa_data(200:300,6001:6099));
-    
-    % Initialize leaf_map vector.  leaf_map correlates the center MVCT
-    % channel for each leaf (1-64)
-    dailyqa.leaf_map = zeros(64,1);
-    
-    % Find peaks in the odd leaves detector data
-    peaks = find(dailyqa.odd_leaves(2:end-1) >= ...
-        dailyqa.odd_leaves(1:end-2) & dailyqa.odd_leaves(2:end-1) >= ...
-        dailyqa.odd_leaves(3:end)) + 1;
-    
-    % Clear peaks less than 1/3
-    peaks(dailyqa.odd_leaves(peaks) <= max(dailyqa.odd_leaves)/3) = [];
-    
-    % Start infinite loop
-    while 1
-        del = diff(peaks) < round(rows/64);
-        if ~any(del), break; end
-        pks = dailyqa.odd_leaves(peaks);
-        [~,mins] = min([pks(del) ; pks([false del])]); 
-        deln = find(del);
-        deln = [deln(mins == 1) deln(mins == 2) + 1];
-        peaks(deln) = [];
-    end
-    
-    % Clear temporary variables
-    clear del deln pks;
+        % If show_all == 0, only include this returndata if the
+        % pulseCount for the procedure equals 90000 (the size of a TQA
+        % Daily QA procedure).  Otherwise, continue to the next result
+        if show_all == 0 && ...
+                str2double(subnode.getFirstChild.getNodeValue) ~= 90000
+            continue
+        end
 
-    % If findpeaks could not find 32 leaves, the final leaf is at the edge
-    % channel
-    if size(peaks,1) == 31
-        peaks(32) = rows;
-    end
-    
-    % Store the peak channels in descending order for leaves 1, 3, ... 63
-    dailyqa.leaf_map(1:2:64) = sort(peaks, 'descend');
-    
-    % Find peaks in the even leaves detector data
-    peaks = find(dailyqa.even_leaves(2:end-1) >= dailyqa.even_leaves(1:end-2) ...
-        & dailyqa.even_leaves(2:end-1) >= dailyqa.even_leaves(3:end)) + 1;
-    
-    % Clear peaks less than 1/3
-    peaks(dailyqa.even_leaves(peaks) <= max(dailyqa.even_leaves)/3) = [];
-    
-    % Start infinite loop
-    while 1
-        del = diff(peaks) < round(rows/64);
-        if ~any(del), break; end
-        pks = dailyqa.even_leaves(peaks);
-        [~,mins] = min([pks(del) ; pks([false del])]); 
-        deln = find(del);
-        deln = [deln(mins == 1) deln(mins == 2) + 1];
-        peaks(deln) = [];
-    end
-    
-    % Clear temporary variables
-    clear del deln pks;
-    
-    % If findpeaks could not find 32 leaves, the final leaf is at the edge
-    % channel
-    if size(peaks,1) == 31
-        peaks(32) = 1;
-    end
-    
-    % Store the peak channels in descending order for leaves 2, 4, ... 64
-    dailyqa.leaf_map(2:2:64) = sort(peaks, 'descend');
+        % Store the pulse count of the return data
+        dailyqa.returnQAData{i}.pulseCount = ...
+            str2double(subnode.getFirstChild.getNodeValue);
 
-    %% Calculate channel calibration vector channel_cal
-    % Calculate the effective channel response function channel_cal,
-    % defined as the "actual" response in a 5cm (J42) open field divided by
-    % the "expected" response, derived from the beam model (see above).
-    % The average response of each channel over projections 1000-2000 is
-    % used
-    dailyqa.channel_cal = mean(qa_data(:,1000:2000),2)'./dailyqa.channel_gold;
-    
-    % Normalize the channel_cal to its mean value
-    dailyqa.channel_cal = dailyqa.channel_cal/mean(dailyqa.channel_cal);
+        % Search for delivery plan XML object uid
+        subexpression = ...
+            xpath.compile('detectorSinogram/dbInfo/databaseUID');
 
-    %% Calculate leaf spread function
-    % Initialize the leaf spread function vector leaf_spread.  The leaf
-    % spread array stores the relative MVCT response for an open leaf
-    % relative to 15 nearby closed leaves.  15 is arbitrarily chosen.
-    dailyqa.leaf_spread = zeros(1,16);
-    
-    % Loop through leaves 33-18
-    for i = 1:size(dailyqa.leaf_spread,2)
-        
-        % Read the MVCT signal for leaves 33 - 18 over projections 6225-6230  
-        % At this projection, leaf 33 is open, while leaves 32-18 are closed
-        % Note leaf_spread accounts for channel calibration
-        dailyqa.leaf_spread(i) = mean(qa_data(dailyqa.leaf_map(34-i),6225:6230)) ...
-            /dailyqa.channel_cal(dailyqa.leaf_map(34-i))-dailyqa.background;
+        % Retrieve the results
+        subnodeList = ...
+            subexpression.evaluate(node, XPathConstants.NODESET);
+        subnode = subnodeList.item(0);
+
+        % Store the database uid of the plan
+        dailyqa.returnQAData{i}.uid = ...
+            char(subnode.getFirstChild.getNodeValue);
+
+        % Search for delivery plan XML object date
+        subexpression = xpath.compile(['detectorSinogram/dbInfo/', ...
+            'creationTimestamp/date']);
+
+        % Retrieve the results
+        subnodeList = ...
+            subexpression.evaluate(node, XPathConstants.NODESET);
+        subnode = subnodeList.item(0);
+
+        % Store the date of the return data
+        dailyqa.returnQAData{i}.date = ...
+            char(subnode.getFirstChild.getNodeValue);
+
+        % Search for delivery plan XML object time
+        subexpression = xpath.compile(['detectorSinogram/dbInfo/', ...
+            'creationTimestamp/time']);
+
+        % Retrieve the results
+        subnodeList = ...
+            subexpression.evaluate(node, XPathConstants.NODESET);
+        subnode = subnodeList.item(0);
+
+        % Store the time of the return data
+        dailyqa.returnQAData{i}.time = ...
+            char(subnode.getFirstChild.getNodeValue);
+
+        % Add to the formatted list of plans found, using the format
+        % "UID (date-time)"
+        dailyqa.returnQADataList{i} = ...
+            strcat(dailyqa.returnQAData{i}.uid, ' (', ...
+        dailyqa.returnQAData{i}.date, '-', ...
+        dailyqa.returnQAData{i}.time, ')');
+
+        % Search for delivery plan XML object sinogram
+        subexpression = xpath.compile(['detectorSinogram/arrayHeader', ...
+            '/sinogramDataFile']);
+
+        % Retrieve the results
+        subnodeList = subexpression.evaluate(node, ...
+            XPathConstants.NODESET);
+        subnode = subnodeList.item(0);
+
+        % Store the path to the sinogram containing the return data
+        dailyqa.returnQAData{i}.sinogram = strcat(dailyqa.qa_path, ...
+            char(subnode.getFirstChild.getNodeValue));
+
+        % Search for delivery plan XML object sinogram dimensions
+        subexpression = xpath.compile(['detectorSinogram/arrayHeader', ...
+            '/dimensions/dimensions']);
+
+        % Retrieve the results
+        subnodeList = ...
+            subexpression.evaluate(node, XPathConstants.NODESET);
+
+        % Store the dimensions of the sinogram as a 2 element vector
+        subnode = subnodeList.item(0);
+        dailyqa.returnQAData{i}.dimensions(1) = ...
+            str2double(subnode.getFirstChild.getNodeValue);
+        subnode = subnodeList.item(1);
+        dailyqa.returnQAData{i}.dimensions(2) = ...
+            str2double(subnode.getFirstChild.getNodeValue);
     end
-    
-    % Normalize the leaf_spread vector to the maximum value (open leaf)
-    dailyqa.leaf_spread = dailyqa.leaf_spread/max(dailyqa.leaf_spread);
+
+    % Remove empty cells due to hidden delivery plans
+    if show_all == 0
+        dailyqa.returnQAData = ...
+            dailyqa.returnQAData(~cellfun('isempty', ...
+            dailyqa.returnQAData));
+        dailyqa.returnQADataList = ...
+            dailyqa.returnQADataList(~cellfun('isempty', ...
+            dailyqa.returnQADataList));
+    end
+
+    % Update the progress bar, indicating the the process finished
+    waitbar(1.0, progress, 'Done.');
+
+    % Prompt user to select which return data to process
+    if size(dailyqa.returnQAData,2) == 0
+
+        % If none were found in the XML, throw an error
+        error('No delivery plans found in XML file.');
+
+    elseif size(dailyqa.returnQAData,2) == 1
+
+        % If only one was found, assume the user will select that one
+        plan = 1;
+
+    else
+
+        % Otherwise, prompt the user to select from h.returnQADataList 
+        plan = menu(['Multiple QA procedure return data was found.', ...
+            ' Choose one (Date-Time):'], dailyqa.returnQADataList);
+
+        % If the user does not select one, throw an error
+        if plan == 0
+            error('No delivery plan was chosen.');
+        end
+    end
+
+    %% Load return data
+    % Open read handle to sinogram file
+    fid = fopen(dailyqa.returnQAData{plan}.sinogram, 'r', 'b');
+
+    % The daily QA is 9000 projections long.  If the sinogram data is
+    % different, the data will be manipulated below to fit
+    numprojections = 9000;
+
+    % Set rows to the number of detector channels from dimensions(1)
+    rows = dailyqa.returnQAData{plan}.dimensions(1);
+
+    % Read daily QA data into temporary array
+    arr = reshape(fread(fid, ...
+        rows*dailyqa.returnQAData{plan}.dimensions(2),'single'), ...
+        rows, dailyqa.returnQAData{plan}.dimensions(2));
+
+    % Now set rows to the number of active MVCT data channels.  Typically
+    % the last three channels are monitor chamber data
+    rows = dailyqa.returnQAData{plan}.dimensions(1) - 3;
+
+    % If the number of projections is greater than 9000, it is likely
+    % that the compression factor was set to 1.  The below analysis 
+    % requires the data to be downsampled by a factor of 10
+    if size(arr,2) > numprojections
+        arr = imresize(arr,[dailyqa.returnQAData{plan}.dimensions(1) ...
+            floor(dailyqa.returnQAData{plan}.dimensions(2)/10)]);
+    end
+
+    % Otherwise, if the number of projections is less than 9000, pad
+    % the data to total 9000
+    if size(arr,2) < numprojections
+        arr = padarray(arr,[0 numprojections-size(arr,2)],'post');
+    end
+
+    % Read from the temporary array into qa_data, which should be just
+    % MVCT channel data
+    qa_data = arr(1:rows,1:numprojections);
+
+    % Close file handle
+    fclose(fid);
 
     % Clear temporary variables
-    clear i peaks;
+    clear fid arr;  
+    clear plan;
+
+    % Close progress bar graphic
+    close(progress);
+
+    % Clear xpath temporary variables
+    clear doc factory xpath;
+end
+
+% Clear temporary variables
+clear s;
+
+%% Parse leaf map, and background from Daily QA data
+% The odd leaves are measured in projections 5401-5699; note that 
+% averaging determines the mean MLC channel over gantry rotation
+dailyqa.odd_leaves = mean(qa_data(:, 5401:5699), 2);
+
+% The even leaves are measured in projections 5701-5999
+dailyqa.even_leaves = mean(qa_data(:, 5701:5999), 2);
+
+% Read background from center channels (200-300), over projections
+% 6001-6099; background is intended to be measured under closed leaves
+dailyqa.background = mean2(qa_data(200:300,6001:6099));
+
+% Initialize leaf_map vector.  leaf_map correlates the center MVCT
+% channel for each leaf (1-64)
+dailyqa.leaf_map = zeros(64,1);
+
+% Find peaks in the odd leaves detector data
+peaks = find(dailyqa.odd_leaves(2:end-1) >= ...
+    dailyqa.odd_leaves(1:end-2) & dailyqa.odd_leaves(2:end-1) >= ...
+    dailyqa.odd_leaves(3:end)) + 1;
+
+% Clear peaks less than 1/3
+peaks(dailyqa.odd_leaves(peaks) <= max(dailyqa.odd_leaves)/3) = [];
+
+% Start infinite loop
+while 1
+    del = diff(peaks) < round(rows/64);
+    if ~any(del), break; end
+    pks = dailyqa.odd_leaves(peaks);
+    [~,mins] = min([pks(del) ; pks([false del])]); 
+    deln = find(del);
+    deln = [deln(mins == 1) deln(mins == 2) + 1];
+    peaks(deln) = [];
+end
+
+% Clear temporary variables
+clear del deln pks;
+
+% If findpeaks could not find 32 leaves, the final leaf is at the edge
+% channel
+if size(peaks,1) == 31
+    peaks(32) = rows;
+end
+
+% Store the peak channels in descending order for leaves 1, 3, ... 63
+dailyqa.leaf_map(1:2:64) = sort(peaks, 'descend');
+
+% Find peaks in the even leaves detector data
+peaks = find(dailyqa.even_leaves(2:end-1) >= dailyqa.even_leaves(1:end-2) ...
+    & dailyqa.even_leaves(2:end-1) >= dailyqa.even_leaves(3:end)) + 1;
+
+% Clear peaks less than 1/3
+peaks(dailyqa.even_leaves(peaks) <= max(dailyqa.even_leaves)/3) = [];
+
+% Start infinite loop
+while 1
+    del = diff(peaks) < round(rows/64);
+    if ~any(del), break; end
+    pks = dailyqa.even_leaves(peaks);
+    [~,mins] = min([pks(del) ; pks([false del])]); 
+    deln = find(del);
+    deln = [deln(mins == 1) deln(mins == 2) + 1];
+    peaks(deln) = [];
+end
+
+% Clear temporary variables
+clear del deln pks;
+
+% If findpeaks could not find 32 leaves, the final leaf is at the edge
+% channel
+if size(peaks,1) == 31
+    peaks(32) = 1;
+end
+
+% Store the peak channels in descending order for leaves 2, 4, ... 64
+dailyqa.leaf_map(2:2:64) = sort(peaks, 'descend');
+
+%% Calculate channel calibration vector channel_cal
+% Calculate the effective channel response function channel_cal,
+% defined as the "actual" response in a 5cm (J42) open field divided by
+% the "expected" response, derived from the beam model (see above).
+% The average response of each channel over projections 1000-2000 is
+% used
+dailyqa.channel_cal = mean(qa_data(:,1000:2000),2)'./dailyqa.channel_gold;
+
+% Normalize the channel_cal to its mean value
+dailyqa.channel_cal = dailyqa.channel_cal/mean(dailyqa.channel_cal);
+
+%% Calculate leaf spread function
+% Initialize the leaf spread function vector leaf_spread.  The leaf
+% spread array stores the relative MVCT response for an open leaf
+% relative to 15 nearby closed leaves.  15 is arbitrarily chosen.
+dailyqa.leaf_spread = zeros(1,16);
+
+% Loop through leaves 33-18
+for i = 1:size(dailyqa.leaf_spread,2)
+
+    % Read the MVCT signal for leaves 33 - 18 over projections 6225-6230  
+    % At this projection, leaf 33 is open, while leaves 32-18 are closed
+    % Note leaf_spread accounts for channel calibration
+    dailyqa.leaf_spread(i) = mean(qa_data(dailyqa.leaf_map(34-i),6225:6230)) ...
+        /dailyqa.channel_cal(dailyqa.leaf_map(34-i))-dailyqa.background;
+end
+
+% Normalize the leaf_spread vector to the maximum value (open leaf)
+dailyqa.leaf_spread = dailyqa.leaf_spread/max(dailyqa.leaf_spread);
+
+% Clear temporary variables
+clear i peaks;
 
 % Catch errors, log, and rethrow
 catch err
+    % Delete progress handle if it exists
+    if ishandle(progress), delete(progress); end
+    
+    % Log error via Event.m
     Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'ERROR');
 end
