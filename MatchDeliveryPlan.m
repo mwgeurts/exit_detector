@@ -1,4 +1,4 @@
-function varargout = MatchDeliveryPlan(varargin)
+function [plan_uid, sinogram, maxcorr] = MatchDeliveryPlan(varargin)
 % MatchDeliveryPlan searches through a patient XML specified by name, path
 % and finds all delivery plans (see below for filter flags).  If auto
 % selection is enabled, the delivery plan that matches closest to an input
@@ -30,8 +30,7 @@ function varargout = MatchDeliveryPlan(varargin)
 % The following variables are returned upon succesful completion:
 %   plan_uid: UID of the plan selected or optimally determined
 %   sinogram: 64 x n leaf open time sinogram of the selected delivery plan
-%   maxcorr (optional): if auto_select is set to 1, the maximum correlation
-%       determined
+%   maxcorr: if auto_select is set to 1, the maximum correlation determined
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
 % Copyright (C) 2014 University of Wisconsin Board of Regents
@@ -113,13 +112,10 @@ nodeList = expression.evaluate(doc, XPathConstants.NODESET);
 deliveryPlans = cell(1, nodeList.getLength);
 deliveryPlanList = cell(1, nodeList.getLength);
 
-% Initialize the maximum correlation temp variable
-maxcorr = 0;
-
 % Loop through the results
 for i = 1:nodeList.getLength
     % Update the progress bar based on the number of returned results
-    waitbar(0.1 + 0.8 * i / nodeList.getLength, progress);
+    waitbar(0.1 + 0.5 * i / nodeList.getLength, progress);
 
     % Set a handle to the current result
     node = nodeList.item(i-1);
@@ -394,25 +390,28 @@ if auto_select == 0
     end
 
     % Set the plan_uid return variable
-    varargout{1} = deliveryPlans{plan}.parentuid;
+    plan_uid = deliveryPlans{plan}.parentuid;
     
     % Set the sinogram return variable to the start_ and stop_trimmed
     % binary array
-    varargout{2} = arr(:, start_trim:stop_trim);
+    sinogram = arr(:, start_trim:stop_trim);
 
+    % Set maxcorr to -1
+    maxcorr = -1;
+    
     % Clear temporary variables
     clear arr start_trim stop_trim;
 
 % Otherwise, automatically determine optimal plan
 else
     % Update the progress bar
-    waitbar(0.8, progress, ['Loading sinogram data and selecting', ...
-        'optimal plan...']);
+    waitbar(0.6, progress, ['Loading sinogram data and selecting', ...
+        ' optimal plan...']);
     
     % Loop through the deliveryPlan cell array
     for plan = 1:size(deliveryPlans, 2)
         % Update the progress bar
-        waitbar(0.8 + 0.15 * plan/size(deliveryPlans, 2), progress);
+        waitbar(0.6 + 0.35 * plan/size(deliveryPlans, 2), progress);
         
         % Open read file handle to delivery plan, using binary mode
         fid = fopen(deliveryPlans{plan}.dplan, 'r', 'b');
@@ -516,8 +515,8 @@ else
 
                 % If the maximum correlation is less than the current 
                 % correlation, update the maximum correlation parameter
-                if j > h.deliveryPlans{plan}.maxcorr
-                    h.deliveryPlans{plan}.maxcorr = j;
+                if j > deliveryPlans{plan}.maxcorr
+                    deliveryPlans{plan}.maxcorr = j;
                 end
             end
 
@@ -535,24 +534,24 @@ else
     end
 
     % Initialize the maximum correlation return variable
-    varargout{3} = 0;
+    maxcorr = 0;
 
     % Loop through the delivery plans
     for plan = 1:size(deliveryPlans, 2)
 
         % If the maximum correlation for that delivery plan has been
         % computed, and the delivery plan's max correlation is highest
-        if isfield(deliveryPlans{plan}, 'maxcorr') && (varargout{3} == 0 ...
-                || deliveryPlans{plan}.maxcorr > varargout{3}) 
+        if isfield(deliveryPlans{plan}, 'maxcorr') && (maxcorr == 0 ...
+                || deliveryPlans{plan}.maxcorr > maxcorr) 
 
             % Update the maxcorr to this one
-            varargout{3} = deliveryPlans{plan}.maxcorr;
+            maxcorr = deliveryPlans{plan}.maxcorr;
 
             % Set sinogram variable to this delivery plan's sinogram
-            varargout{2} = deliveryPlans{plan}.sinogram; 
+            sinogram = deliveryPlans{plan}.sinogram; 
 
             % Set the plan_uid return variable to this delivery plan
-            varargout{1} = deliveryPlans{plan}.parentuid; 
+            plan_uid = deliveryPlans{plan}.parentuid; 
         end
     end
 end
@@ -569,7 +568,7 @@ clear plan doc factory xpath;
 % Catch errors, log, and rethrow
 catch err
     % Delete progress handle if it exists
-    if ishandle(progress), delete(progress); end
+    if exist('progress','var') && ishandle(progress), delete(progress); end
     
     % Log error via Event.m
     Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'ERROR');

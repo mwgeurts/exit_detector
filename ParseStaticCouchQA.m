@@ -44,7 +44,7 @@ function [plan_uid, raw_data] = ParseStaticCouchQA(name, path, left_trim, ...
 try  
 
 % Start a new h.progress bar to indicate XML parse status to the user
-progress = waitbar(0.0, 'Loading XML tree...');
+progress = waitbar(0.05, 'Loading XML tree...');
 
 % The patient XML is parsed using xpath class
 import javax.xml.xpath.*
@@ -219,7 +219,7 @@ if size(returnDQAData,2) == 0
     Event(['No static couch data was found in patient archive. ', ...
         'Requesting user to select DICOM file.'], 'WARN');
     [name, path] = uigetfile({'*.dcm', 'Transit Dose File (*.dcm)'}, ...
-        'Select the Static-Couch DQA File', handles.path);
+        'Select the Static-Couch DQA File', path);
 
     % If the user selected a file
     if ~isequal(name, 0)
@@ -347,11 +347,11 @@ else
 
     % Initialize an xpath expression to find all plan data arrays
     expression = xpath.compile(['//fullPlanDataArray/fullPlanDataArray/', ...
-        'plan/briefPlan/']);
+        'plan/briefPlan/dbInfo']);
 
     % Retrieve the results
     nodeList = expression.evaluate(doc, XPathConstants.NODESET);
-
+    
     % Loop through results, looking for Static-Couch descriptions
     for i = 1:nodeList.getLength
         % Set a handle to the result
@@ -439,7 +439,7 @@ else
     waitbar(1.0, progress, 'Done.');
 
     % Clear all temporary variables
-    clear fid arr left_trim right_trim start_trim stop_trim rows plan;
+    clear fid arr right_trim start_trim stop_trim rows plan;
 end
 
 % Close the progress indicator
@@ -451,7 +451,7 @@ clear doc factory xpath;
 % Catch errors, log, and rethrow
 catch err
     % Delete progress handle if it exists
-    if ishandle(progress), delete(progress); end
+    if exist('progress','var') && ishandle(progress), delete(progress); end
     
     % Log error via Event.m
     Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'ERROR');

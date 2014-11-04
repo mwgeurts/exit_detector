@@ -208,13 +208,22 @@ if isempty(s)
     % PixelDataGroupLength).  Note you need to go forward two bytes
     fseek(fid, -(int32(info.PixelDataGroupLength) - 8),'eof');
 
+    % Set rows to the number of detector channels included in the DICOM file
+    % For gen4 (TomoDetectors), this should be 531 (detectorChanSelection
+    % is set to KEEP_OPEN_FIELD_CHANNELS for the Daily QA XML)
+    rows = open_rows;
+    
     % Read daily QA data into temporary array
     arr = reshape(fread(fid, (int32(info.PixelDataGroupLength) - 8) / 4, ...
-        'uint32'), open_rows, []);
+        'uint32'), rows, []);
 
+    % Now set rows to the number of active MVCT data channels.  Typically
+    % the last three channels are monitor chamber data
+    rows = mvct_rows;
+    
     % Read from the temporary array into qa_data, which should be just
     % MVCT channel data
-    qa_data = arr(1:mvct_rows, 1:numprojections);
+    qa_data = arr(1:rows, 1:numprojections);
 
     % Close file handle
     fclose(fid);
@@ -570,7 +579,7 @@ clear i peaks;
 % Catch errors, log, and rethrow
 catch err
     % Delete progress handle if it exists
-    if ishandle(progress), delete(progress); end
+    if exist('progress','var') && ishandle(progress), delete(progress); end
     
     % Log error via Event.m
     Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'ERROR');

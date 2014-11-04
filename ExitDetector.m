@@ -302,7 +302,7 @@ if ~isequal(name, 0)
     set(handles.daily_file, 'String', fullfile(path, name));
     
     % Extract file contents
-    handles.dailyqa = ParseFileQA(name, path, handles.numprojections, ...
+    handles.dailyqa = ParseFileQA(name, path, handles.dailyqa_projections, ...
         handles.open_rows, handles.mvct_rows);
     
     % If ParseFileQA was successful
@@ -381,32 +381,23 @@ if ~isequal(name, 0);
     
     % Search archive for static couch QA procedures
     [handles.plan_uid, handles.raw_data] = ...
-        ParseStaticCouchQA(name, path, handles.left_trim, handles.dailyqa, ...
-        handles.detector_rows);
+        ParseStaticCouchQA(name, path, handles.left_trim, ...
+        handles.dailyqa.channel_cal, handles.detector_rows);
     
     % If ParseStaticCouchQA was successful
     if ~strcmp(handles.plan_uid, '')
         
         %% Auto-select delivery plan
         % If the plan_uid is not known
-        if strcmp(handles.plan_uid, 'UNKNOWN')
-            
-            % If auto-select is enabled, auto-select matching delivery plan
-            if get(handles.autoselect_box, 'Value') == 1
-                %
-                %
-                % ADD CODE HERE
-                %
-                %
-            
-            % Otherwise, prompt user to select
-            else
-                %
-                %
-                % ADD CODE HERE
-                %
-                %
-            end
+        handles.plan_uid = 'UNKNOWN';
+        if strcmp(handles.plan_uid, 'UNKNOWN')        
+            [handles.plan_uid, handles.sinogram, handles.maxcorr] = ...
+                MatchDeliveryPlan(name, path, handles.hide_fluence, ...
+                handles.hide_machspecific, ...
+                get(handles.autoselect_box, 'Value'), ...
+                get(handles.autoshift_box, 'Value'), ...
+                handles.dailyqa.background, handles.dailyqa.leaf_map, ...
+                handles.raw_data);
         end
         
         %% Load structures
