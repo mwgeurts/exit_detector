@@ -1,10 +1,28 @@
-function [plan_uid, raw_data] = ParseStaticCouchQA(name, path, left_trim, dailyqa)
+function [plan_uid, raw_data] = ParseStaticCouchQA(name, path, left_trim, ...
+    channel_cal, detector_rows)
 % ParseStaticCouchQA is called by ExitDetector.m and searches a TomoTherapy
 % machine archive (given by the name and path input variables) for static 
 % couch QA procedures. If more than one is found, it prompts the user to 
 % select one to load (using listdlg call) and reads the exit detector data
 % into the return variable raw_data. The parent plan UID is returned in the
 % variable plan_uid.
+%
+% The following variables are required for proper execution:
+%   name: name of the DICOM RT file or patient archive XML file
+%   path: path to the DICOM RT file or patient archive XML file
+%   left_trim: the channel in the exit detector data that corresponds to 
+%       the first channel in the channel_calibration array
+%   channel_cal: array containing the relative response of each
+%       detector channel in an open field given KEEP_OPEN_FIELD_CHANNELS,
+%       created by ParseFileQA.m
+%   detector_rows: number of detector channels included in the DICOM file
+%
+% The following variables are returned upon succesful completion:
+%   plan_uid: UID of the plan if parsed from the patient XML, otherwise
+%       'UNKNOWN' if parsed from a transit dose DICOM file
+%   raw_data: n x detector_rows of uncorrected exit detector data for a 
+%       delivered static couch DQA plan, where n is the number of 
+%       projections in the plan
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
 % Copyright (C) 2014 University of Wisconsin Board of Regents
@@ -42,7 +60,7 @@ xpath = factory.newXPath;
 
 % Start a progress bar at 10%, indicating that now the XML
 % is going to be parsed for Static Couch DQA return data
-waitbar(0.1, progress, 'Loading Static-Couch DQA procedures...');
+waitbar(0.1, progress, 'Searching for Static-Couch DQA procedures...');
 
 % Initialize an xpath expression to find all procedurereturndata
 expression = ...
@@ -59,7 +77,7 @@ returnDQADataList = cell(1, nodeList.getLength);
 for i = 1:nodeList.getLength
 
     % Update the progress bar based on the number of results
-    waitbar(0.1 + 0.5 * i / nodeList.getLength,progress);
+    waitbar(0.1 + 0.5 * i / nodeList.getLength, progress);
 
     % Set a handle to the result
     node = nodeList.item(i-1);
@@ -197,22 +215,109 @@ waitbar(0.7, progress, 'Reading DQA return data array...');
 
 % Prompt user to select return data
 if size(returnDQAData,2) == 0
-    % If no results were found, throw an error
-    error('No Static-Couch DQA delivery plans found in XML file.');
+    % Request the user to select the DQA exit detector DICOM
+    Event(['No static couch data was found in patient archive. ', ...
+        'Requesting user to select DICOM file.'], 'WARN');
+    [name, path] = uigetfile({'*.dcm', 'Transit Dose File (*.dcm)'}, ...
+        'Select the Static-Couch DQA File', handles.path);
+
+    % If the user selected a file
+    if ~isequal(name, 0)
+        % right_trim should be set to the channel in the exit detector data
+        % that corresponds to the last channel in the Daily QA data, and is
+        % easily calculated form left_trim using the size of channel_cal
+        right_trim = size(channel_cal, 2) + left_trim - 1; 
+ 
+        % Read the DICOM header information for the DQA plan into exit_info
+        exit_info = dicominfo(fullfile(path, name));
+
+        % Open read handle to DICOM file (dicomread can't handle RT 
+        % RECORDS) 
+        fid = fopen(fullfile(path, name), 'r', 'l');
+
+        % For static couch DQA RT records, the Private_300d_2026 tag is set 
+        % and lists the start and stop of active projections.  However, if 
+        % this field does not exist (such as for machine QA XMLs), prompt 
+        % the user to enter the total number of projections delivered.  
+        % StartTrim accounts for the fact that for treatment procedures, 10 
+        % seconds of closed MLC projections are added for linac warmup
+        if isfield(exit_info,'Private_300d_2026') == 0
+            
+            % Prompt user for the number of projections in the procedure
+            x = inputdlg(['Trim Values not found.  Enter the total ', ...
+                'number of projections delivered:'], 'Transit DQA', [1 50]);
+            
+            % Set Private_300d_2026 StopTrim tag to the number of 
+            % projections (note, this assumes the procedure was stopped 
+            % after the last active projection)
+            exit_info.Private_300d_2026.Item_1.StopTrim = str2double(x);
+            
+            % Clear temporary variables
+            clear x;
+            
+            % Set the Private_300d_2026 StartTrim tag to 0.  The
+            % raw_data will be longer than the sinogram but will be
+            % auto-aligned based on the StopTrim value set above
+            exit_info.Private_300d_2026.Item_1.StartTrim = 0;
+        end
+        
+        % Set the variables start_trim and stop_trim to the values in the 
+        % DICOM tag Private_300d_2026.  Start_trim is increased by 1 as the 
+        % sinogram array (set above) is indexed starting at 1
+        start_trim = exit_info.Private_300d_2026.Item_1.StartTrim + 1;
+        stop_trim = exit_info.Private_300d_2026.Item_1.StopTrim;
+        
+        % For most DICOM RT Records, the tag PixelDataGroupLength is 
+        % provided, which provides the length of the binary data.  However, 
+        % if the DICOM object is anonymized or otherwise processed, this 
+        % tag can be removed, requiring the length to be determined 
+        % empirically
+        if isfield(exit_info, 'PixelDataGroupLength') == 0
+            
+            % Set the DICOM PixelDataGroupLength tag based on the length of 
+            % the procedure (StopTrim) multiplied by the number of detector
+            % rows and 4 (each data point is 32-bit, or 4 bytes).  Two 
+            % extra bytes are added to account for the "end of DICOM 
+            % header" identifier
+            exit_info.PixelDataGroupLength = ...
+                (exit_info.Private_300d_2026.Item_1.StopTrim * ...
+                detector_rows * 4) + 8;
+        end
+        
+        % Move the file pointer to the beginning of the detector data,
+        % determined from the PixelDataGroupLength tag relative to the end 
+        % of the file
+        fseek(fid,-(int32(exit_info.PixelDataGroupLength) - 8), 'eof');
+        
+        % Read the data as unsigned integers into a temporary array, 
+        % reshaping into the number of rows by the number of projections
+        arr = reshape(fread(fid, (int32(exit_info.PixelDataGroupLength) ...
+            - 8) / 4, 'uint32'), detector_rows, []);
+        
+        % Set raw_data by trimming the temporary array by left_trim and 
+        % right_trim channels (to match the QA data and leaf_map) and 
+        % start_trim and stop_trim projections (to match the sinogram)
+        raw_data = arr(left_trim:right_trim, start_trim:stop_trim);
+        
+        % Divide each projection by channel_cal to account for relative 
+        % channel sensitivity effects (see ParseFileQA.m for more info)
+        raw_data = raw_data ./ (channel_cal' * ones(1, size(raw_data,2)));
+        
+        % Close the file handle
+        fclose(fid);
+        
+        % Clear all temporary variables
+        clear fid arr right_trim start_trim stop_trim exit_info;
     
-    % Prompt user for Transit DICOM
-    %
-    %
-    %
-    %
-    % ADD CODE HERE
-    %
-    %
-    %
-    %
-    
-    % Set plan UID to UNKNOWN, indicating that the tool must auto-select
-    plan_uid = 'UNKNOWN';
+        % Set plan UID to UNKNOWN, informing the tool must auto-select
+        plan_uid = 'UNKNOWN';
+
+    % Otherwise the user did not select a file
+    else
+        Event(['No Static-Couch DQA data was loaded. The data must be ', ...
+            'contained in the patient archive or loaded as a Transit ', ...
+            'Dose DICOM Exported file'], 'ERROR');
+    end
 else
     % If only one result was found, assume the user will pick it
     if size(returnDQAData,2) == 1
@@ -242,7 +347,7 @@ else
 
     % Initialize an xpath expression to find all plan data arrays
     expression = xpath.compile(['//fullPlanDataArray/fullPlanDataArray/', ...
-        'plan/briefPlan/dbInfo']);
+        'plan/briefPlan/']);
 
     % Retrieve the results
     nodeList = expression.evaluate(doc, XPathConstants.NODESET);
@@ -266,8 +371,8 @@ else
         % Otherwise retrieve the results
         subnode = subnodeList.item(0);
 
-        % If the database UID does not match the selected static couch QA plan,
-        % skip ahead to the next result
+        % If the database UID does not match the selected static couch QA 
+        % plan, skip ahead to the next result
         if strcmp(char(subnode.getFirstChild.getNodeValue), ...
                 returnDQAData{plan}.parentuid) == 0
             continue
@@ -288,19 +393,19 @@ else
     end
 
     %% Load raw_data
-    % Update the status bar
+    % Update the progress bar
     waitbar(0.9, progress, 'Reading exit detector raw data...');
 
     % right_trim should be set to the channel in the exit detector data
     % that corresponds to the last channel in the Daily QA data, and is
     % easily calculated form left_trim using the size of channel_cal
-    right_trim = size(dailyqa.channel_cal, 2) + left_trim - 1; 
+    right_trim = size(channel_cal, 2) + left_trim - 1; 
 
     % Open read handle to sinogram file
     fid = fopen(returnDQAData{plan}.sinogram, 'r', 'b');
 
-    % Set rows to the number of detector channels included in the DICOM file
-    % For gen4 (TomoDetectors), this should be 643
+    % Set rows to the number of detector channels included in the DICOM 
+    % file. For gen4 (TomoDetectors), this should be 643
     rows = returnDQAData{plan}.dimensions(1);
 
     % Set the variables start_trim to 1.  The raw_data will be longer 
@@ -325,7 +430,7 @@ else
 
     % Divide each projection by channel_cal to account for relative channel
     % sensitivity effects (see calculation of channel_cal above)
-    raw_data = raw_data ./ (dailyqa.channel_cal' * ones(1, size(raw_data, 2)));
+    raw_data = raw_data ./ (channel_cal' * ones(1, size(raw_data, 2)));
 
     % Close the file handle
     fclose(fid);
@@ -337,7 +442,7 @@ else
     clear fid arr left_trim right_trim start_trim stop_trim rows plan;
 end
 
-% Close the h.progress indicator
+% Close the progress indicator
 close(progress);
 
 % Clear xpath temporary variables

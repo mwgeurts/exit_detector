@@ -1,4 +1,5 @@
-function dailyqa = ParseFileQA(name, path)
+function dailyqa = ParseFileQA(name, path, numprojections, open_rows, ...
+    mvct_rows)
 % ParseFileQA is called from ExitDetector.m and parses a TomoTherapy
 % Transit Dose DICOM RT object or Patient Archive XML file for procedure 
 % return data, depending on the value of the h.transit_qa flag.
@@ -6,13 +7,14 @@ function dailyqa = ParseFileQA(name, path)
 % PaseFileXML, AutoSelectDeliveryPlan, CalcSinogramDiff, CalcDose, and 
 % CalcGamma.
 %
-% The following handle structures are read by ParseFileQA and are required
-% for proper execution:
-%   path: path to the DICOM RT file or patient archive XML file
+% The following variables are required for proper execution:
 %   name: name of the DICOM RT file or patient archive XML file
+%   path: path to the DICOM RT file or patient archive XML file
+%   numprojections: number of projections in the daily QA procedure
+%   open_rows: number of detector channels included in the DICOM file
+%   mvct_rows: the number of active MVCT data channels
 %
-% The following dailyqa structure fields are returned upon succesful 
-% completion:
+% The following variables are returned upon succesful completion:
 %   dailyqa.background: a double representing the mean background signal on
 %       the MVCT detector when the MLC leaves are closed
 %   dailyqa.leaf_map: an array of MVCT detector channel to MLC leaf 
@@ -202,30 +204,17 @@ if isempty(s)
     % Open read handle to DICOM file (dicomread can't do RT RECORDS)
     fid = fopen(fullfile(path, name), 'r', 'l');
 
-    % The daily QA is 9000 projections long
-    numprojections = 9000;
-
-    % Set rows to the number of detector channels included in the DICOM
-    % file. For gen4 (TomoDetectors), this should be 531 
-    % (detectorChanSelection is set to KEEP_OPEN_FIELD_CHANNELS for the 
-    % Daily QA XML)
-    rows = 531;
-
     % Set file pointer to the beginning of the data (stored under
     % PixelDataGroupLength).  Note you need to go forward two bytes
     fseek(fid, -(int32(info.PixelDataGroupLength) - 8),'eof');
 
     % Read daily QA data into temporary array
     arr = reshape(fread(fid, (int32(info.PixelDataGroupLength) - 8) / 4, ...
-        'uint32'), rows, []);
-
-    % Now set rows to the number of active MVCT data channels.
-    % Typically the last three channels are monitor chamber data
-    rows = 528;
+        'uint32'), open_rows, []);
 
     % Read from the temporary array into qa_data, which should be just
     % MVCT channel data
-    qa_data = arr(1:rows, 1:numprojections);
+    qa_data = arr(1:mvct_rows, 1:numprojections);
 
     % Close file handle
     fclose(fid);
@@ -241,7 +230,7 @@ else
     show_all = 0;
 
     % Initialize a progress bar to indicate the status to the user
-    progress = waitbar(0.1, 'Loading XML tree...');
+    progress = waitbar(0.1, 'Searching for exit detector data...');
 
     % The patient XML is parsed using xpath class
     import javax.xml.xpath.*
@@ -381,9 +370,7 @@ else
             dailyqa.returnQADataList(~cellfun('isempty', ...
             dailyqa.returnQADataList));
     end
-
     
-
     % Prompt user to select which return data to process
     if size(dailyqa.returnQAData, 2) == 0
 
@@ -419,10 +406,6 @@ else
     
     % Open read handle to sinogram file
     fid = fopen(dailyqa.returnQAData{plan}.sinogram, 'r', 'b');
-
-    % The daily QA is 9000 projections long.  If the sinogram data is
-    % different, the data will be manipulated below to fit
-    numprojections = 9000;
 
     % Set rows to the number of detector channels from dimensions(1)
     rows = dailyqa.returnQAData{plan}.dimensions(1);

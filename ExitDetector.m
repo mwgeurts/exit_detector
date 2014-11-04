@@ -30,7 +30,7 @@ function varargout = ExitDetector(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Last Modified by GUIDE v2.5 01-Nov-2014 13:20:48
+% Last Modified by GUIDE v2.5 03-Nov-2014 22:43:20
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -89,6 +89,7 @@ string = sprintf('%s\n', separator, string{:}, separator);
 % Log information
 Event(string, 'INIT');
 
+%% Initialize UI
 % Set version UI text
 set(handles.version_text, 'String', sprintf('Version %s', handles.version));
 
@@ -121,15 +122,61 @@ clear options;
 set(handles.archive_file, 'Enable', 'off');
 set(handles.archive_browse, 'Enable', 'off');
 
+% Set checkbox defaults
+set(handles.autoselect_box, 'Enable', 'on');
+set(handles.autoselect_box, 'Value', 1);
+Event('Delivery plan auto-selection enabled by default');
+
+set(handles.autoshift_box, 'Enable', 'on');
+set(handles.autoshift_box, 'Value', 1);
+Event('Delivery plan auto-alignment enabled by default');
+
+set(handles.dynamicjaw_box, 'Enable', 'off');
+set(handles.dynamicjaw_box, 'Value', 0);
+Event('Dynamic jaw compensation is not currently available');
+
 % Initialize tables
 set(handles.dvh_table, 'Data', cell(8,5));
 set(handles.stats_table, 'Data', cell(8,2));
 
-% Initialize global variables
-
+%% Initialize global variables
 % Default folder path when selecting input files
 handles.path = userpath;
 Event(['Default file path set to ', handles.path]);
+
+% Flags used by MatchDeliveryPlan.  Set to 1 to hide machine specific and 
+% fluence delivery plans from delivery plan selection
+handles.hide_machspecific = 1;
+Event(sprintf('Hide machine specific delivery plan flag set to %i', ...
+    handles.hide_machspecific));
+handles.hide_fluence = 1;
+Event(sprintf('Hide fluence delivery plan flag set to %i', ...
+    handles.hide_fluence));
+
+% The daily QA is 9000 projections long.  If the sinogram data is
+% different, the data will be manipulated below to fit
+handles.dailyqa_projections = 9000;
+Event(sprintf('Daily QA expected projections set to %i', ...
+    handles.dailyqa_projections));
+
+% Set the number of detector channels included in the DICOM file. For gen4 
+% (TomoDetectors), this should be 643
+handles.detector_rows = 643;
+Event(sprintf('Number of expected exit detector channels set to %i', ...
+    handles.detector_rows));
+
+% Set the number of detector channels included in the DICOM file. For gen4 
+% (TomoDetectors), this should be 531 (detectorChanSelection is set to 
+% KEEP_OPEN_FIELD_CHANNELS for the Daily QA XML)
+handles.open_rows = 531;
+Event(sprintf('Number of KEEP_OPEN_FIELD_CHANNELS set to %i', ...
+    handles.open_rows));
+
+% Set the number of active MVCT data channels. Typically the last three 
+% channels are monitor chamber data
+handles.mvct_rows = 528;
+Event(sprintf('Number of active MVCT channels set to %i', ...
+    handles.mvct_rows));
 
 % GLOBAL Gamma criteria
 handles.abs = 3.0; % percent
@@ -143,7 +190,7 @@ handles.dose_threshold = 0.2;
 Event(sprintf('Dose threshold set to %0.1f%% of maximum dose', ...
     handles.dose_threshold * 100));
 
-% This should be set to the  channel in the exit detector data that 
+% This should be set to the channel in the exit detector data that 
 % corresponds to the first channel in the channel_calibration array. For  
 % gen4 (TomoDetectors), this should be 27, as detectorChanSelection is set
 % to KEEP_OPEN_FIELD_CHANNELS for the Daily QA XML)
@@ -245,7 +292,7 @@ Event('UI window opened to select file');
     'Select the Daily QA File', handles.path);
 
 % If the user selected a file
-if ~isequal(name, 0);
+if ~isequal(name, 0)
     
     % Update default path
     handles.path = path;
@@ -255,7 +302,8 @@ if ~isequal(name, 0);
     set(handles.daily_file, 'String', fullfile(path, name));
     
     % Extract file contents
-    handles.dailyqa = ParseFileQA(name, path);
+    handles.dailyqa = ParseFileQA(name, path, handles.numprojections, ...
+        handles.open_rows, handles.mvct_rows);
     
     % If ParseFileQA was successful
     if isfield(handles.dailyqa, 'channel_cal')
@@ -333,7 +381,8 @@ if ~isequal(name, 0);
     
     % Search archive for static couch QA procedures
     [handles.plan_uid, handles.raw_data] = ...
-        ParseStaticCouchQA(name, path, handles.left_trim, handles.dailyqa);
+        ParseStaticCouchQA(name, path, handles.left_trim, handles.dailyqa, ...
+        handles.detector_rows);
     
     % If ParseStaticCouchQA was successful
     if ~strcmp(handles.plan_uid, '')
@@ -521,12 +570,12 @@ function print_button_Callback(hObject, ~, handles)
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function autoalign_box_Callback(hObject, ~, handles)
-% hObject    handle to autoalign_box (see GCBO)
+function autoshift_box_Callback(hObject, ~, handles)
+% hObject    handle to autoshift_box (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hint: get(hObject,'Value') returns toggle state of autoalign_box
+% Hint: get(hObject,'Value') returns toggle state of autoshift_box
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function dynamicjaw_box_Callback(hObject, ~, handles)
