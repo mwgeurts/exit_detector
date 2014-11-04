@@ -44,7 +44,7 @@ if nargin == 0
     return;
     
 % Otherwise, if 1, set the input variable and update the plot
-elseif nargin == 2
+elseif nargin == 1
     
     % Set input variables
     handles = varargin{1};

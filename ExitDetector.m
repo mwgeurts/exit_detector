@@ -111,8 +111,8 @@ set(handles.dose_slider, 'visible', 'off');
 set(handles.tcs_button, 'visible', 'off');
 
 % Set plot options
-% options = UpdateDoseDisplay();
-% set(handles.dose_display, 'String', options);
+options = UpdateDoseDisplay();
+set(handles.dose_display, 'String', options);
 options = UpdateResultsDisplay();
 set(handles.results_display, 'String', options);
 clear options;
@@ -122,17 +122,33 @@ set(handles.archive_file, 'Enable', 'off');
 set(handles.archive_browse, 'Enable', 'off');
 
 % Initialize tables
-set(handles.dvh_table, 'Data', cell(8,4));
+set(handles.dvh_table, 'Data', cell(8,5));
 set(handles.stats_table, 'Data', cell(8,2));
 
 % Initialize global variables
+
+% Default folder path when selecting input files
 handles.path = userpath;
 Event(['Default file path set to ', handles.path]);
 
+% GLOBAL Gamma criteria
 handles.abs = 3.0; % percent
 handles.dta = 3.0; % mm
-Event(sprintf('Gamma criteria set to %0.1f%%/%0.1f mm', ...
+Event(sprintf('Gamma criteria set to %0.1f%%/%0.1f mm global', ...
     [handles.abs handles.dta]));
+
+% Scalar representing the threshold (dose relative to the maximum dose)
+% below which the Gamma index will not be reported. 
+handles.dose_threshold = 0.2;
+Event(sprintf('Dose threshold set to %0.1f%% of maximum dose', ...
+    handles.dose_threshold * 100));
+
+% This should be set to the  channel in the exit detector data that 
+% corresponds to the first channel in the channel_calibration array. For  
+% gen4 (TomoDetectors), this should be 27, as detectorChanSelection is set
+% to KEEP_OPEN_FIELD_CHANNELS for the Daily QA XML)
+handles.left_trim = 27;
+Event(sprintf('Left trim channel set to %i', handles.left_trim));
 
 %% Load SSH/SCP Scripts
 % A try/catch statement is used in case Ganymed-SSH2 is not available
@@ -205,7 +221,7 @@ if ispc && isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function daily_browse_Callback(~, ~, handles) %#ok<*DEFNU>
+function daily_browse_Callback(hObject, ~, handles) %#ok<*DEFNU>
 % hObject    handle to daily_browse (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -216,7 +232,7 @@ Event('Daily QA browse button selected');
 % Request the user to select the Daily QA DICOM or XML
 Event('UI window opened to select file');
 [name, path] = uigetfile({'*.dcm', 'Transit Dose File (*.dcm)'; ...
-    '*.xml', 'Patient Archive (*.xml)'}, ...
+    '*_patient.xml', 'Patient Archive (*.xml)'}, ...
     'Select the Daily QA File', handles.path);
 
 % If the user selected a file
@@ -232,24 +248,26 @@ if ~isequal(name, 0);
     % Extract file contents
     handles.dailyqa = ParseFileQA(name, path);
     
-    % If patient data exists, recalculate patient data
-    %
-    %
-    % ADD CODE HERE
-    %
-    %
-    
-    % Enable archive_browse
-    set(handles.archive_file, 'Enable', 'on');
-    set(handles.archive_browse, 'Enable', 'on');
-    
-    % Update plot display
-    set(handles.results_display, 'Value', 2);
-    handles = UpdateResultsDisplay(handles);
-    
-    % Update statistics
-    handles = UpdateResultsStatistics(handles);
-    
+    % If ParseFileQA was successful
+    if isfield(handles.dailyqa, 'channel_cal')
+        % If patient data exists, recalculate patient data
+        %
+        %
+        % ADD CODE HERE
+        %
+        %
+
+        % Enable archive_browse
+        set(handles.archive_file, 'Enable', 'on');
+        set(handles.archive_browse, 'Enable', 'on');
+
+        % Update plot display
+        set(handles.results_display, 'Value', 2);
+        handles = UpdateResultsDisplay(handles);
+
+        % Update statistics
+        handles = UpdateResultsStatistics(handles);
+    end
 % Otherwise the user did not select a file
 else
     Event('No Daily QA file was selected');
@@ -289,9 +307,9 @@ function archive_browse_Callback(hObject, ~, handles)
 % Log event
 Event('Patient archive browse button selected');
 
-% Request the user to select the Daily QA DICOM or XML
+% Request the user to select the Patient Archive
 Event('UI window opened to select file');
-[name, path] = uigetfile({'*.xml', 'Patient Archive (*.xml)'}, ...
+[name, path] = uigetfile({'*_patient.xml', 'Patient Archive (*.xml)'}, ...
     'Select the Patient Archive', handles.path);
 
 % If the user selected a file
@@ -306,105 +324,111 @@ if ~isequal(name, 0);
     
     % Search archive for static couch QA procedures
     [handles.plan_uid, handles.raw_data] = ...
-        ParseStaticCouchQA(name, path);
+        ParseStaticCouchQA(name, path, handles.left_trim, handles.dailyqa);
     
-    % If auto-select is enabled, auto select associated delivery plan
-    if get(handles.autoselect_box, 'Value') == 1
+    % If ParseStaticCouchQA was successful
+    if ~strcmp(handles.plan_uid, '')
+        % If the plan_uid is not known
+        if strcmp(handles.plan_uid, 'UNKNOWN')
+            % If auto-select is enabled, auto-select matching delivery plan
+            if get(handles.autoselect_box, 'Value') == 1
+                %
+                %
+                % ADD CODE HERE
+                %
+                %
+            
+            % Otherwise, prompt user to select
+            else
+                %
+                %
+                % ADD CODE HERE
+                %
+                %
+            end
+        end
+
+        % Calculate sinogram difference
         %
         %
         % ADD CODE HERE
         %
         %
-    % Otherwise, prompt user to select
-    else
+
+        % Update results display
         %
         %
         % ADD CODE HERE
         %
         %
-    end
-    
-    % Calculate sinogram difference
-    %
-    %
-    % ADD CODE HERE
-    %
-    %
-    
-    % Update results display
-    %
-    %
-    % ADD CODE HERE
-    %
-    %
-    
-    % Update results statistics
-    %
-    %
-    % ADD CODE HERE
-    %
-    %
-    
-    % Calculate dose
-    if handles.calc_dose == 1
-        % Ask user if they want to calculate dose
-        choice = questdlg('Continue to Calculate Dose?', ...
-            'Calculate Dose', 'Yes', 'No', 'Yes');
-        
-        % If the user chose yes
-        if strcmp(choice, 'Yes')
+
+        % Update results statistics
+        %
+        %
+        % ADD CODE HERE
+        %
+        %
+
+        % Calculate dose
+        if handles.calc_dose == 1
+            % Ask user if they want to calculate dose
+            choice = questdlg('Continue to Calculate Dose?', ...
+                'Calculate Dose', 'Yes', 'No', 'Yes');
+
+            % If the user chose yes
+            if strcmp(choice, 'Yes')
+                %
+                %
+                % ADD CODE HERE
+                %
+                %
+            end
+
+            % Ask user if they want to calculate dose
+            choice = questdlg('Continue to Calculate Gamma?', ...
+                'Calculate Gamma', 'Yes', 'No', 'Yes');
+
+            % If the user chose yes
+            if strcmp(choice, 'Yes')
+                %
+                %
+                % ADD CODE HERE
+                %
+                %
+            end
+
+            % Clear temporary variables
+            clear choice;
+
+            % Update dose plot
+            %
+            %
+            % ADD CODE HERE
+            %
+            %
+
+            % Update dose statistics table
+            %
+            %
+            % ADD CODE HERE
+            %
+            %
+
+            % Update results plot to show gamma histogram
+            %
+            %
+            % ADD CODE HERE
+            %
+            %
+
+            % Update results statistics with dose/gamma results
             %
             %
             % ADD CODE HERE
             %
             %
         end
-        
-        % Ask user if they want to calculate dose
-        choice = questdlg('Continue to Calculate Gamma?', ...
-            'Calculate Gamma', 'Yes', 'No', 'Yes');
-        
-        % If the user chose yes
-        if strcmp(choice, 'Yes')
-            %
-            %
-            % ADD CODE HERE
-            %
-            %
-        end
-        
-        % Clear temporary variables
-        clear choice;
-        
-        % Update dose plot
-        %
-        %
-        % ADD CODE HERE
-        %
-        %
-        
-        % Update dose statistics table
-        %
-        %
-        % ADD CODE HERE
-        %
-        %
-        
-        % Update results plot to show gamma histogram
-        %
-        %
-        % ADD CODE HERE
-        %
-        %
-        
-        % Update results statistics with dose/gamma results
-        %
-        %
-        % ADD CODE HERE
-        %
-        %
     end
-    
 % Otherwise the user did not select a file
 else
     Event('No patient archive was selected');
@@ -541,8 +565,8 @@ pos = get(handles.dvh_table, 'Position') .* ...
 
 % Update column widths to scale to new table size
 set(handles.dvh_table, 'ColumnWidth', ...
-    {floor(0.4*pos(3)) - 26 floor(0.2*pos(3)) ...
-    floor(0.2*pos(3)) floor(0.2*pos(3))});
+    {floor(0.46*pos(3)) - 46 20 floor(0.18*pos(3)) ...
+    floor(0.18*pos(3)) floor(0.18*pos(3))});
 
 % Get table width
 pos = get(handles.stats_table, 'Position') .* ...

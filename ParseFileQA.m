@@ -272,7 +272,7 @@ else
     for i = 1:nodeList.getLength
 
         % Update the progress bar based on the number of results
-        waitbar(0.1 + 0.8 * i / nodeList.getLength, progress);
+        waitbar(0.1 + 0.7 * i / nodeList.getLength, progress);
 
         % Retrieve a handle to the next result
         node = nodeList.item(i-1);
@@ -337,11 +337,10 @@ else
             char(subnode.getFirstChild.getNodeValue);
 
         % Add to the formatted list of plans found, using the format
-        % "UID (date-time)"
+        % "date-time | UID"
         dailyqa.returnQADataList{i} = ...
-            strcat(dailyqa.returnQAData{i}.uid, ' (', ...
-        dailyqa.returnQAData{i}.date, '-', ...
-        dailyqa.returnQAData{i}.time, ')');
+            sprintf('%s-%s   |   %s', dailyqa.returnQAData{i}.date, ...
+            dailyqa.returnQAData{i}.time, dailyqa.returnQAData{i}.uid);
 
         % Search for delivery plan XML object sinogram
         subexpression = xpath.compile(['detectorSinogram/arrayHeader', ...
@@ -353,7 +352,7 @@ else
         subnode = subnodeList.item(0);
 
         % Store the path to the sinogram containing the return data
-        dailyqa.returnQAData{i}.sinogram = strcat(dailyqa.qa_path, ...
+        dailyqa.returnQAData{i}.sinogram = fullfile(path, ...
             char(subnode.getFirstChild.getNodeValue));
 
         % Search for delivery plan XML object sinogram dimensions
@@ -383,33 +382,41 @@ else
             dailyqa.returnQADataList));
     end
 
-    % Update the progress bar, indicating the the process finished
-    waitbar(1.0, progress, 'Done.');
+    
 
     % Prompt user to select which return data to process
-    if size(dailyqa.returnQAData,2) == 0
+    if size(dailyqa.returnQAData, 2) == 0
 
         % If none were found in the XML, throw an error
         error('No delivery plans found in XML file.');
 
+    % If only one result was found, assume the user will pick it
     elseif size(dailyqa.returnQAData,2) == 1
 
-        % If only one was found, assume the user will select that one
+        % Set the plan index to 1
         plan = 1;
 
     else
+        % Otherwise, prompt the user to select from returnQADataList
+        [plan, ok] = listdlg('Name', 'Select Daily QA', ...
+            'PromptString', ['Multiple Daily QA ', ...
+            'data was found.  Choose one:'],...
+                'SelectionMode', 'single', 'ListSize', [500 300], ...
+                'ListString', dailyqa.returnQADataList);
 
-        % Otherwise, prompt the user to select from h.returnQADataList 
-        plan = menu(['Multiple QA procedure return data was found.', ...
-            ' Choose one (Date-Time):'], dailyqa.returnQADataList);
-
-        % If the user does not select one, throw an error
-        if plan == 0
+        % If the user selected cancel, throw an error
+        if ok == 0
             error('No delivery plan was chosen.');
         end
+        
+        % Clear temporary variables
+        clear ok;
     end
 
     %% Load return data
+    % Update the status bar
+    waitbar(0.9, progress, 'Reading exit detector raw data...');
+    
     % Open read handle to sinogram file
     fid = fopen(dailyqa.returnQAData{plan}.sinogram, 'r', 'b');
 
@@ -453,6 +460,9 @@ else
     % Clear temporary variables
     clear fid arr;  
     clear plan;
+    
+    % Update the progress bar, indicating the the process finished
+    waitbar(1.0, progress, 'Done.');
 
     % Close progress bar graphic
     close(progress);

@@ -47,7 +47,7 @@ if nargin == 0
     return;
     
 % Otherwise, if 1, set the input variable and update the plot
-elseif nargin == 2
+elseif nargin == 1
     
     % Set input variables
     handles = varargin{1};
@@ -74,82 +74,105 @@ set(handles.results_axes, 'visible', 'off');
 switch get(handles.results_display, 'Value')
     % Leaf Offsets (aka Even/Odd leaves plot) plot
     case 2
+        % Log plot selection
+        Event('Leaf offsets plot selected');
+        
         % If the even_leaves and odd_leaves vectors are not empty
-        if size(handles.dailyqa.even_leaves, 1) > 0 && ...
+        if isfield(handles, 'dailyqa') && ...
+                isfield(handles.dailyqa, 'even_leaves') && ...
+                isfield(handles.dailyqa, 'odd_leaves') && ...
+                size(handles.dailyqa.even_leaves, 1) > 0 && ...
                 size(handles.dailyqa.odd_leaves, 1) > 0
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes, 'visible', 'on');
             
-            % Set focus on plot handle
-            axes(handles.results_axes);
-            
             % Plot even and odd leaves
-            plot([handles.even_leaves handles.odd_leaves])
+            plot([handles.dailyqa.even_leaves handles.dailyqa.odd_leaves])
             
             % Set plot options
             axis tight
-            axis 'auto y'
             xlabel('Channel')
             ylabel('Signal')
+            grid on
+            zoom on
+        else
+            % Log why plot was not displayed
+            Event('Leaf offsets not displayed as no data exists');
         end
         
     % MLC leaf to MVCT channel map plot
     case 3
+        % Log plot selection
+        Event('MLC leaf to MVCT channel map plot selected');
+        
         % If the leaf_map array is not empty
-        if size(handles.dailyq.leaf_map, 1) > 0
+        if isfield(handles, 'dailyqa') && ...
+                isfield(handles.dailyqa, 'leaf_map')&& ...
+                size(handles.dailyqa.leaf_map, 1) > 0
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
-            
-            % Set focus on plot handle
-            axes(handles.results_axes);
             
             % Plot leaf map
             plot(handles.dailyqa.leaf_map)
             
             % Set plot options
             axis tight
-            axis 'auto y'
             xlabel('MLC Leaf')
             ylabel('Channel')
+            grid on
+            zoom on
+        else
+            % Log why plot was not displayed
+            Event(['MLC leaf to MVCT channel map not displayed ', ...
+                'as no data exists']);
         end
         
     % MVCT calibtation (open field response versus expected) plot
     case 4
+        % Log plot selection
+        Event('MVCT sensitivity calibration plot selected');
+        
         % If the channel_cal vector is not empty
-        if size(handles.channel_cal, 1) > 0
+        if isfield(handles, 'dailyqa') && ...
+                isfield(handles.dailyqa, 'channel_cal')&& ...
+                size(handles.dailyqa.channel_cal, 1) > 0
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
-            
-            % Set focus on plot handle
-            axes(handles.results_axes);
             
             % Plot channel calibration
             plot(handles.dailyqa.channel_cal)
             
             % Set plot options
             axis tight
-            axis 'auto y'
             xlabel('Channel')
             ylabel('Normalized Signal')
+            grid on
+            zoom on
+        else
+            % Log why plot was not displayed
+            Event(['MVCT sensitivity calibration not displayed ', ...
+                'as no data exists']);
         end
         
     % Normalized leaf spread function plot
     case 5
+        % Log plot selection
+        Event('Normalized leaf spread function plot selected');
+        
         % If the leaf_spread vector is not empty
-        if size(handles.leaf_spread,1) > 0
+        if isfield(handles, 'dailyqa') && ...
+                isfield(handles.dailyqa, 'leaf_spread')&& ...
+                size(handles.dailyqa.leaf_spread,1) > 0
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
-            
-            % Set focus on plot handle
-            axes(handles.results_axes);
             
             % Plot leaf spread function
             plot(handles.dailyqa.leaf_spread)
@@ -158,20 +181,26 @@ switch get(handles.results_display, 'Value')
             axis tight
             xlabel('MLC Leaf')
             ylabel('Normalized Signal')
+            grid on
+            zoom on
+        else
+            % Log why plot was not displayed
+            Event(['Normalized leaf spread function not displayed ', ...
+                'as no data exists']);
         end
         
     % Planned sinogram leaf open time histogram
     case 6
+        % Log plot selection
+        Event('Planned sinogram leaf open time plot selected');
+        
         % If the sinogram array is not empty
-        if size(handles.sinogram,1) > 0
+        if isfield(handles, 'sinogram') && size(handles.sinogram,1) > 0
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
-            
-            % Set focus on plot handle
-            axes(handles.results_axes);
-            
+
             % Create vector from sinogram
             open_times = reshape(handles.sinogram,1,[])';
             
@@ -183,39 +212,52 @@ switch get(handles.results_display, 'Value')
             
             % Set plot options
             xlabel('Open Time (%)')
+            grid on
+            zoom on
+        else
+            % Log why plot was not displayed
+            Event(['Planned sinogram leaf open time not displayed ', ...
+                'as no data exists']);
         end
         
     % Planned vs. Measured sinogram error histogram
     case 7
+        % Log plot selection
+        Event('Sinogram error histogram plot selected');
+        
         % If the errors vector is not empty
-        if size(handles.errors,1) > 0
+        if isfield(handles, 'errors') && size(handles.errors,1) > 0
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
-            
-            % Set focus on plot handle
-            axes(handles.results_axes);
-            
+
             % Plot error histogram with 100 bins
             hist(handles.errors*100, 100)
             
             % Set plot options
             xlabel('LOT Error (%)')
+            grid on
+            zoom on
+        else
+            % Log why plot was not displayed
+            Event(['Sinogram error histogram not displayed ', ...
+                'as no data exists']);
         end
         
     % Sinogram error versus planned LOT scatter plot
     case 8
+        % Log plot selection
+        Event('Sinogram error versus planned LOT plot selected');
+        
         % If the difference plot is not empty
-        if size(handles.diff,1) > 0 && size(handles.sinogram,1) > 0
+        if isfield(handles, 'diff') && isfield(handles, 'sinogram') && ...
+                size(handles.diff,1) > 0 && size(handles.sinogram,1) > 0
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
-            
-            % Set focus on plot handle
-            axes(handles.results_axes);
-            
+
             % Plot scatter of difference vs. LOT
             scatter(reshape(handles.sinogram, 1, []) * 100, ...
                 reshape(handles.diff, 1, []) * 100)
@@ -226,20 +268,26 @@ switch get(handles.results_display, 'Value')
             box on
             xlabel('Leaf Open Time (%)')
             ylabel('LOT Error (%)')
+            grid on
+            zoom on
+        else
+            % Log why plot was not displayed
+            Event(['Sinogram error versus planned LOT not displayed ', ...
+                'as no data exists']);
         end
         
     % 3D Gamma histogram
     case 9
+        % Log plot selection
+        Event('Gamma histogram plot selected');
+        
         % If the gamma 3D array is not empty
-        if size(handles.gamma,1) > 0
+        if isfield(handles, 'gamma') && size(handles.gamma,1) > 0
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
             
-            % Set focus on plot handle
-            axes(handles.results_axes);
-
             % Initialize the gammahist temporary variable to compute the 
             % gamma pass rate, by reshaping gamma to a 1D vector
             gammahist = reshape(handles.gamma,1,[]);
@@ -253,6 +301,12 @@ switch get(handles.results_display, 'Value')
             
             % Set plot options
             xlabel('Gamma Index')
+            grid on
+            zoom on
+        else
+            % Log why plot was not displayed
+            Event(['Gamma histogram not displayed ', ...
+                'as no data exists']);
         end
 end
 

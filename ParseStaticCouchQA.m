@@ -1,8 +1,8 @@
-function [plan_uid, raw_data] = ParseStaticCouchQA(name, path)
+function [plan_uid, raw_data] = ParseStaticCouchQA(name, path, left_trim, dailyqa)
 % ParseStaticCouchQA is called by ExitDetector.m and searches a TomoTherapy
 % machine archive (given by the name and path input variables) for static 
 % couch QA procedures. If more than one is found, it prompts the user to 
-% select one to load (using menu call) and reads the exit detector data
+% select one to load (using listdlg call) and reads the exit detector data
 % into the return variable raw_data. The parent plan UID is returned in the
 % variable plan_uid.
 %
@@ -35,10 +35,10 @@ import javax.xml.xpath.*
 doc = xmlread(fullfile(path, name));
 
 % Initialize a new xpath instance to the variable factory
-factory = xpathFactory.newInstance;
+factory = XPathFactory.newInstance;
 
 % Initialize a new xpath to the variable xpath
-xpath = factory.newxpath;
+xpath = factory.newXPath;
 
 % Start a progress bar at 10%, indicating that now the XML
 % is going to be parsed for Static Couch DQA return data
@@ -49,7 +49,7 @@ expression = ...
     xpath.compile('//fullProcedureDataArray/fullProcedureDataArray');
 
 % Retrieve the results
-nodeList = expression.evaluate(doc, xpath.Constants.NODESET);
+nodeList = expression.evaluate(doc, XPathConstants.NODESET);
 
 % Preallocate cell arrays
 returnDQAData = cell(1, nodeList.getLength);
@@ -59,7 +59,7 @@ returnDQADataList = cell(1, nodeList.getLength);
 for i = 1:nodeList.getLength
 
     % Update the progress bar based on the number of results
-    waitbar(0.1 + 0.7 * i / nodeList.getLength,progress);
+    waitbar(0.1 + 0.5 * i / nodeList.getLength,progress);
 
     % Set a handle to the result
     node = nodeList.item(i-1);
@@ -69,7 +69,7 @@ for i = 1:nodeList.getLength
         xpath.compile('procedure/briefProcedure/procedureDescription');
 
     % Retrieve the results
-    subnodeList = subexpression.evaluate(node, xpath.Constants.NODESET);
+    subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
 
     % If no description was found, skip ahead to the next result
     if subnodeList.getLength == 0
@@ -91,7 +91,7 @@ for i = 1:nodeList.getLength
         xpath.compile('procedure/briefProcedure/currentProcedureStatus');
 
     % Retrieve the results
-    subnodeList2 = subexpression.evaluate(node, xpath.Constants.NODESET);
+    subnodeList2 = subexpression.evaluate(node, XPathConstants.NODESET);
 
     % Retrieve the procedure status result
     subnode2 = subnodeList2.item(0);
@@ -111,7 +111,7 @@ for i = 1:nodeList.getLength
         'deliveryFinishDateTime/date']);
 
     % Retrieve the results
-    subnodeList = subexpression.evaluate(node, xpath.Constants.NODESET);
+    subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
     subnode = subnodeList.item(0);
 
     % Store the returndata date
@@ -122,23 +122,23 @@ for i = 1:nodeList.getLength
         'deliveryFinishDateTime/time']);
 
     % Retrieve the results
-    subnodeList = subexpression.evaluate(node, xpath.Constants.NODESET);
+    subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
     subnode = subnodeList.item(0);
 
     % Store the returndata time
     returnDQAData{i}.time = char(subnode.getFirstChild.getNodeValue);
 
     % Add an entry to the returnDQADataList using the format
-    % "Description (date-time)"
-    returnDQADataList{i} = strcat(returnDQAData{i}.description,' (',...
-        returnDQAData{i}.date,'-',returnDQAData{i}.time,')');
+    % "date-time | description"
+    returnDQADataList{i} = sprintf('%s-%s   |   %s', returnDQAData{i}.date, ...
+        returnDQAData{i}.time, returnDQAData{i}.description);
 
     % Search for delivery plan XML object uid
     subexpression = ...
         xpath.compile('procedure/briefProcedure/dbInfo/databaseUID');
 
     % Retrieve the results
-    subnodeList = subexpression.evaluate(node, xpath.Constants.NODESET);
+    subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
     subnode = subnodeList.item(0);
 
     % Store the return data uid
@@ -149,7 +149,7 @@ for i = 1:nodeList.getLength
         xpath.compile('procedure/briefProcedure/dbInfo/databaseParent');
 
     % Retrieve the results
-    subnodeList = subexpression.evaluate(node, xpath.Constants.NODESET);
+    subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
     subnode = subnodeList.item(0);
 
     % Store the return data parent uid
@@ -161,12 +161,12 @@ for i = 1:nodeList.getLength
         'arrayHeader/sinogramDataFile']);
 
     % Retrieve the results
-    subnodeList = subexpression.evaluate(node, xpath.Constants.NODESET);
+    subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
     subnode = subnodeList.item(0);
 
     % Store a path to the return binary data
     returnDQAData{i}.sinogram = ...
-        strcat(xml_path, char(subnode.getFirstChild.getNodeValue));
+        fullfile(path, char(subnode.getFirstChild.getNodeValue));
 
     % Search for delivery plan XML object sinogram dimensions
     subexpression = xpath.compile(['fullProcedureReturnData/', ...
@@ -174,7 +174,7 @@ for i = 1:nodeList.getLength
         'arrayHeader/dimensions/dimensions']);
 
     % Retrieve the results
-    subnodeList = subexpression.evaluate(node, xpath.Constants.NODESET);
+    subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
 
     % Store the dimensions of the binary data as a 2 element vector
     subnode = subnodeList.item(0);
@@ -185,6 +185,7 @@ for i = 1:nodeList.getLength
         str2double(subnode.getFirstChild.getNodeValue);
 end 
 
+%% Select static couch run to process (if multiple exist)
 % Remove empty result cells (due to results that were skipped
 % because they were not Static Couch DQA plans or performed)
 returnDQAData = returnDQAData(~cellfun('isempty', returnDQAData));
@@ -192,77 +193,149 @@ returnDQADataList = ...
     returnDQADataList(~cellfun('isempty', returnDQADataList));
 
 % Update the status bar
-waitbar(0.9, progress, 'Reading DQA return data array...');
+waitbar(0.7, progress, 'Reading DQA return data array...');
 
 % Prompt user to select return data
 if size(returnDQAData,2) == 0
     % If no results were found, throw an error
     error('No Static-Couch DQA delivery plans found in XML file.');
     
-elseif size(returnDQAData,2) == 1
-    % If only one result was found, assume the user will pick it
-    plan = 1; 
+    % Prompt user for Transit DICOM
+    %
+    %
+    %
+    %
+    % ADD CODE HERE
+    %
+    %
+    %
+    %
     
+    % Set plan UID to UNKNOWN, indicating that the tool must auto-select
+    plan_uid = 'UNKNOWN';
 else
-    % Otherwise open a menu to prompt the user to select the
-    % procedure, using returnDQADataList
-    plan = menu(['Multiple Static-Couch DQA procedure return data was ', ...
-        'found.  Choose one (Date-Time):'], returnDQADataList);
+    % If only one result was found, assume the user will pick it
+    if size(returnDQAData,2) == 1
+        % Set the plan index to 1
+        plan = 1; 
+    else
+        % Otherwise open a menu to prompt the user to select the
+        % procedure, using returnDQADataList
+        [plan, ok] = listdlg('Name', 'Select Static-Couch DQA', ...
+            'PromptString', ['Multiple Static-Couch DQA ', ...
+            'data was found.  Choose one:'],...
+                'SelectionMode', 'single', 'ListSize', [500 300], ...
+                'ListString', returnDQADataList);
 
-    if plan == 0
-        % If the user did not select a plan, throw an error
-        error('No delivery plan was chosen.');
+        % If the user selected cancel, throw an error
+        if ok == 0
+            error('No delivery plan was chosen.');
+        end
+        
+        % Clear temporary variables
+        clear ok;
     end
+    
+    %% Load parent plan information
+    % Update the status bar
+    waitbar(0.8, progress, 'Loading parent plan information...');
+
+    % Initialize an xpath expression to find all plan data arrays
+    expression = xpath.compile(['//fullPlanDataArray/fullPlanDataArray/', ...
+        'plan/briefPlan/dbInfo']);
+
+    % Retrieve the results
+    nodeList = expression.evaluate(doc, XPathConstants.NODESET);
+
+    % Loop through results, looking for Static-Couch descriptions
+    for i = 1:nodeList.getLength
+        % Set a handle to the result
+        node = nodeList.item(i-1);
+
+        % Search for plan databaseUID
+        subexpression = xpath.compile('databaseUID');
+
+        % Retrieve the results
+        subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
+
+        % If no description was found, skip ahead to the next result
+        if subnodeList.getLength == 0
+            continue
+        end
+
+        % Otherwise retrieve the results
+        subnode = subnodeList.item(0);
+
+        % If the database UID does not match the selected static couch QA plan,
+        % skip ahead to the next result
+        if strcmp(char(subnode.getFirstChild.getNodeValue), ...
+                returnDQAData{plan}.parentuid) == 0
+            continue
+        end
+
+        % Search for the parent ID
+        subexpression = xpath.compile('databaseParent');
+
+        % Retrieve the results
+        subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
+        subnode = subnodeList.item(0);
+
+        % Return the parent plan uid
+        plan_uid = char(subnode.getFirstChild.getNodeValue);
+
+        % Stop as the plan was found
+        break;
+    end
+
+    %% Load raw_data
+    % Update the status bar
+    waitbar(0.9, progress, 'Reading exit detector raw data...');
+
+    % right_trim should be set to the channel in the exit detector data
+    % that corresponds to the last channel in the Daily QA data, and is
+    % easily calculated form left_trim using the size of channel_cal
+    right_trim = size(dailyqa.channel_cal, 2) + left_trim - 1; 
+
+    % Open read handle to sinogram file
+    fid = fopen(returnDQAData{plan}.sinogram, 'r', 'b');
+
+    % Set rows to the number of detector channels included in the DICOM file
+    % For gen4 (TomoDetectors), this should be 643
+    rows = returnDQAData{plan}.dimensions(1);
+
+    % Set the variables start_trim to 1.  The raw_data will be longer 
+    % than the sinogram but will be auto-aligned based on the StopTrim 
+    % value set above
+    start_trim = 1;
+
+    % Set the variable stop_strim tag to the number of projections
+    % (note, this assumes the procedure was stopped after the last
+    % active projection)
+    stop_trim = returnDQAData{plan}.dimensions(2);
+
+    % Read the data as single data into a temporary array, reshaping
+    % into the number of rows by the number of projections
+    arr = reshape(fread(fid, rows * returnDQAData{plan}.dimensions(2), ...
+        'single'), rows, returnDQAData{plan}.dimensions(2));
+
+    % Set raw_data by trimming the temporary array by left_trim and 
+    % right_trim channels (to match the QA data and leaf_map) and 
+    % start_trim and stop_trim projections (to match the sinogram)
+    raw_data = arr(left_trim:right_trim, start_trim:stop_trim);
+
+    % Divide each projection by channel_cal to account for relative channel
+    % sensitivity effects (see calculation of channel_cal above)
+    raw_data = raw_data ./ (dailyqa.channel_cal' * ones(1, size(raw_data, 2)));
+
+    % Close the file handle
+    fclose(fid);
+
+    % Update the progress bar, indicating that the process is complete
+    waitbar(1.0, progress, 'Done.');
+
+    % Clear all temporary variables
+    clear fid arr left_trim right_trim start_trim stop_trim rows plan;
 end
-
-%% Load return data
-% Set plan_uid return variable
-plan_uid = returnDQAData{plan}.uid;
-
-% right_trim should be set to the channel in the exit detector data
-% that corresponds to the last channel in the Daily QA data, and is
-% easily calculated form left_trim using the size of channel_cal
-right_trim = size(channel_cal, 2) + left_trim - 1; 
-
-% Open read handle to sinogram file
-fid = fopen(returnDQAData{plan}.sinogram, 'r', 'b');
-
-% Set rows to the number of detector channels included in the DICOM file
-% For gen4 (TomoDetectors), this should be 643
-rows = returnDQAData{plan}.dimensions(1);
-
-% Set the variables start_trim to 1.  The raw_data will be longer 
-% than the sinogram but will be auto-aligned based on the StopTrim 
-% value set above
-start_trim = 1;
-
-% Set the variable stop_strim tag to the number of projections
-% (note, this assumes the procedure was stopped after the last
-% active projection)
-stop_trim = returnDQAData{plan}.dimensions(2);
-
-% Read the data as single data into a temporary array, reshaping
-% into the number of rows by the number of projections
-arr = reshape(fread(fid, rows * returnDQAData{plan}.dimensions(2), ...
-    'single'), rows, returnDQAData{plan}.dimensions(2));
-
-% Set raw_data by trimming the temporary array by left_trim and 
-% right_trim channels (to match the QA data and leaf_map) and 
-% start_trim and stop_trim projections (to match the sinogram)
-raw_data = arr(left_trim:right_trim, start_trim:stop_trim);
-
-% Divide each projection by channel_cal to account for relative channel
-% sensitivity effects (see calculation of channel_cal above)
-raw_data = raw_data ./ (channel_cal' * ones(1, size(raw_data, 2)));
-
-% Close the file handle
-fclose(fid);
-
-% Update the progress bar, indicating that the process is complete
-waitbar(1.0, progress, 'Done.');
-
-% Clear all temporary variables
-clear fid arr left_trim right_trim start_trim stop_trim rows plan;
 
 % Close the h.progress indicator
 close(progress);
