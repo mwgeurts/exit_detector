@@ -188,6 +188,15 @@ catch err
     handles.calc_dose = 0;
 end
 
+%% Complete initialization
+% Attempt to load the atlas
+handles.atlas = LoadAtlas('atlas.xml');
+
+% Report initilization status
+Event(['Initialization completed successfully. Start by selecting a ', ...
+    'patient archive or exit detector DICOM export containing the ', ...
+    'Daily QA calibration.']);
+
 % Update handles structure
 guidata(hObject, handles);
 
@@ -250,7 +259,7 @@ if ~isequal(name, 0);
     
     % If ParseFileQA was successful
     if isfield(handles.dailyqa, 'channel_cal')
-        % If patient data exists, recalculate patient data
+        % If patient data exists, clear it before continuing
         %
         %
         % ADD CODE HERE
@@ -328,8 +337,11 @@ if ~isequal(name, 0);
     
     % If ParseStaticCouchQA was successful
     if ~strcmp(handles.plan_uid, '')
+        
+        %% Auto-select delivery plan
         % If the plan_uid is not known
         if strcmp(handles.plan_uid, 'UNKNOWN')
+            
             % If auto-select is enabled, auto-select matching delivery plan
             if get(handles.autoselect_box, 'Value') == 1
                 %
@@ -347,14 +359,22 @@ if ~isequal(name, 0);
                 %
             end
         end
-
-        % Calculate sinogram difference
+        
+        %% Load structures
         %
         %
         % ADD CODE HERE
         %
         %
 
+        %% Calculate sinogram difference
+        %
+        %
+        % ADD CODE HERE
+        %
+        %
+
+        %% Update results
         % Update results display
         %
         %
@@ -369,7 +389,7 @@ if ~isequal(name, 0);
         %
         %
 
-        % Calculate dose
+        %% Calculate dose
         if handles.calc_dose == 1
             % Ask user if they want to calculate dose
             choice = questdlg('Continue to Calculate Dose?', ...
