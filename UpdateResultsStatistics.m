@@ -20,3 +20,85 @@ function handles = UpdateResultsStatistics(handles)
 % 
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
+
+% Run in try-catch to log error via Event.m
+try
+    
+% Log start
+Event('Updating results table statistics');
+tic;
+
+% Load table data cell array
+table = get(handles.stats_table, 'Data');
+
+% Initialize row counter
+c = 0;
+
+% Gamma parameters
+c = c + 1;
+table{c,1} = 'Gamma criteria';
+table{c,2} = sprintf('%0.1f%%/%0.1f mm', [handles.abs, handles.dta]);
+
+% Mean LOT
+c = c + 1;
+table{c,1} = 'Mean Leaf Open Time (LOT)';
+if isfield(handles, 'planData') && isfield(handles.planData, 'sinogram')
+  
+    % Reshape the sinogram into a 1D vector
+    open_times = reshape(handles.planData.sinogram, 1, []); 
+    
+    % Remove zero values
+    open_times = open_times(open_times > 0) * 100;
+            
+    % Store the mean leaf open time from the 1D sinogram              
+    table{c,2} = sprintf('%0.2f%%', mean(open_times));
+    
+    % Clear temporary variables
+    clear open_times;
+else
+    table{c,2} = '';
+end
+
+% Mean LOT error
+c = c + 1;
+table{c,1} = 'Mean Leaf Open Time Error';
+if isfield(handles, 'errors')
+    table{c,2} = sprintf('%0.2f%%', mean(handles.errors)); 
+else
+    table{c,2} = '';
+end
+
+% St Dev LOT error
+c = c + 1;
+table{c,1} = 'St Dev Leaf Open Time Error';
+if isfield(handles, 'diff')
+    % Store the st dev errors            
+    table{c,2} = sprintf('%0.2f%%', std(handles.errors));
+else
+    table{c,2} = '';
+end
+
+% 5% LOT error pass rate
+c = c + 1;
+table{c,1} = '5% LOT Error Pass Rate';
+if isfield(handles, 'errors')          
+    table{c,2} = sprintf('%0.2f%%', ...
+        length(handles.errors(abs(handles.errors) <= 0.05)) / ...
+        length(handles.errors) * 100);
+else
+    table{c,2} = '';
+end
+
+% Set table data
+set(handles.stats_table, 'Data', table);
+
+% Clear temporary variables
+clear table;
+
+% Log completion
+Event(sprintf('Statistics table updated successfully in %0.3f seconds', toc));
+
+% Catch errors, log, and rethrow
+catch err
+    Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'ERROR');
+end

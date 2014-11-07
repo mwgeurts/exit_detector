@@ -7,8 +7,8 @@ function [plan_uid, sinogram, maxcorr] = MatchDeliveryPlan(varargin)
 % the plan_uid and sinogram for the selected plan is returned.
 %
 % The following variables are required for proper execution:
-%   name: name of the patient archive XML
 %   path: path to the patient archive XML
+%   name: name of the patient archive XML
 %   hide_fluence (optional): 0 or 1, setting whether fluence delivery plan
 %       types should be hidden from the results
 %   hide_machspecific (optional): 0 or 1, setting whether machine specific 
@@ -50,24 +50,24 @@ function [plan_uid, sinogram, maxcorr] = MatchDeliveryPlan(varargin)
 
 % If two arguments are passed, assume they are name/path
 if nargin == 2
-    name = varargin{1};
-    path = varargin{2};
+    path = varargin{1};
+    name = varargin{2};
     hide_fluence = 0;
     hide_machspecific = 0;
     auto_select = 0;
     
 % If four arguments are passed, assume they are name/path and filter flags
 elseif nargin == 4
-    name = varargin{1};
-    path = varargin{2};
+    path = varargin{1};
+    name = varargin{2};
     hide_fluence = varargin{3};
     hide_machspecific = varargin{4};
     auto_select = 0;  
     
 % Otherwise, assume all values are passed
 elseif nargin == 9
-    name = varargin{1};
-    path = varargin{2};
+    path = varargin{1};
+    name = varargin{2};
     hide_fluence = varargin{3};
     hide_machspecific = varargin{4};
     auto_select = varargin{5};
@@ -84,10 +84,7 @@ end
 
 % Execute in try/catch statement
 try  
-    
-% Start a new progress bar to indicate XML parse status to the user
-progress = waitbar(0.1, 'Searching for delivery plans...');
-
+   
 % The patient XML is parsed using xpath class
 import javax.xml.xpath.*
 
@@ -114,8 +111,6 @@ deliveryPlanList = cell(1, nodeList.getLength);
 
 % Loop through the results
 for i = 1:nodeList.getLength
-    % Update the progress bar based on the number of returned results
-    waitbar(0.1 + 0.5 * i / nodeList.getLength, progress);
 
     % Set a handle to the current result
     node = nodeList.item(i-1);
@@ -326,9 +321,6 @@ if auto_select == 0
     % Clear temporary variables
     clear ok;
     
-    % Update the status bar
-    waitbar(0.9, progress, 'Loading sinogram data...');
-
     % Open read file handle to delivery plan, using binary mode
     fid = fopen(deliveryPlans{plan}.dplan, 'r', 'b');
 
@@ -403,16 +395,10 @@ if auto_select == 0
     clear arr start_trim stop_trim;
 
 % Otherwise, automatically determine optimal plan
-else
-    % Update the progress bar
-    waitbar(0.6, progress, ['Loading sinogram data and selecting', ...
-        ' optimal plan...']);
-    
+else  
     % Loop through the deliveryPlan cell array
     for plan = 1:size(deliveryPlans, 2)
-        % Update the progress bar
-        waitbar(0.6 + 0.35 * plan/size(deliveryPlans, 2), progress);
-        
+    
         % Open read file handle to delivery plan, using binary mode
         fid = fopen(deliveryPlans{plan}.dplan, 'r', 'b');
 
@@ -556,20 +542,11 @@ else
     end
 end
     
-% Update the progress bar, indicating that the process is complete
-waitbar(1.0, progress, 'Done.');
-    
-% Close the progress indicator
-close(progress);
-
 % Clear temporary variables
 clear plan doc factory xpath;
     
 % Catch errors, log, and rethrow
-catch err
-    % Delete progress handle if it exists
-    if exist('progress','var') && ishandle(progress), delete(progress); end
-    
+catch err  
     % Log error via Event.m
     Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'ERROR');
 end

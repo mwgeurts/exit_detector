@@ -2,7 +2,7 @@ function atlas = LoadAtlas(filename)
 % LoadAtlas reads in a provided XML filename (typically atlas.xml) and 
 % parses it into an atlas structure object. See LoadReferenceStructures for 
 % an example of how the atlas object is used. The following XML format is 
-% required, where the exclude, dx, penalty, and category elements are
+% required, where the exclude, dx, and category elements are
 % optional. Also, as shown below, multiple category elements may exist.
 %
 %  <digrtATLAS version="1.0">
@@ -12,22 +12,21 @@ function atlas = LoadAtlas(filename)
 %       <exclude></exclude>
 %       <load></load>
 %       <dx></dx>
-%       <penalty></penalty>
 %       <category></category>
 %       <category></category>
 %    </structure>
 %  </digrtATLAS>
 %
 % LoadAtlas will parse the name, include, and exclude elements as char 
-% arrays, the load element will be parsed as a logical, the dx and penalty 
-% elements as doubles, and the category elements as a string cell array.
+% arrays, the load element will be parsed as a logical, the dx element as 
+% double, and the category elements as a string cell array.
 %
 % The following variables are required for proper execution: 
 %   filename: relative path/file name of atlas XML file
 %
 % The following variables are returned upon succesful completion:
 %   atlas: cell array of atlas structures with the following fields: name,
-%       include, exclude, load, dx, penalty, and category
+%       include, exclude, load, dx, and category
 %
 % Copyright (C) 2014 University of Wisconsin Board of Regents
 %
@@ -119,19 +118,6 @@ try
             
             % Parse and store as a double
             atlas{i}.dx = str2double(subnode.getFirstChild.getData);
-        end
-        
-        %% Retrieve penalty value
-        % Search for penalty element
-        subnodeList = node.getElementsByTagName('penalty');
-        
-        % If an element was found
-        if subnodeList.getLength > 0
-            % Store the first returned value
-            subnode = subnodeList.item(0);
-            
-            % Parse and store as a double
-            atlas{i}.penalty = str2double(subnode.getFirstChild.getData);
         end
         
         %% Retrieve category tag(s)

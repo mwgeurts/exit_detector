@@ -30,7 +30,7 @@ function varargout = ExitDetector(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Last Modified by GUIDE v2.5 03-Nov-2014 22:43:20
+% Last Modified by GUIDE v2.5 07-Nov-2014 13:13:12
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -107,9 +107,10 @@ set(handles.sino2_axes, 'visible', 'off');
 set(allchild(handles.sino3_axes), 'visible', 'off'); 
 set(handles.sino3_axes, 'visible', 'off');
 
-% Hide dose slider/TCS
+% Hide dose slider/TCS/alpha
 set(handles.dose_slider, 'visible', 'off');
 set(handles.tcs_button, 'visible', 'off');
+set(handles.alpha, 'visible', 'off');
 
 % Set plot options
 options = UpdateDoseDisplay();
@@ -196,6 +197,15 @@ Event(sprintf('Dose threshold set to %0.1f%% of maximum dose', ...
 % to KEEP_OPEN_FIELD_CHANNELS for the Daily QA XML)
 handles.left_trim = 27;
 Event(sprintf('Left trim channel set to %i', handles.left_trim));
+
+% Set the initial image view orientation to Transverse (T)
+handles.tcsview = 'T';
+Event('Default dose view set to Transverse');
+
+% Set the default transparency
+set(handles.alpha, 'String', '40%');
+Event(['Default dose view transparency set to ', ...
+    get(handles.alpha, 'String')]);
 
 %% Load SSH/SCP Scripts
 % A try/catch statement is used in case Ganymed-SSH2 is not available
@@ -302,10 +312,10 @@ if ~isequal(name, 0)
     set(handles.daily_file, 'String', fullfile(path, name));
     
     % Extract file contents
-    handles.dailyqa = ParseFileQA(name, path, handles.dailyqa_projections, ...
+    handles.dailyqa = LoadDailyQA(path, name, handles.dailyqa_projections, ...
         handles.open_rows, handles.mvct_rows);
     
-    % If ParseFileQA was successful
+    % If LoadDailyQA was successful
     if isfield(handles.dailyqa, 'channel_cal')
         % If patient data exists, clear it before continuing
         %
@@ -318,7 +328,7 @@ if ~isequal(name, 0)
         set(handles.archive_file, 'Enable', 'on');
         set(handles.archive_browse, 'Enable', 'on');
 
-        % Update plot display
+        % Update results display
         set(handles.results_display, 'Value', 2);
         handles = UpdateResultsDisplay(handles);
 
@@ -379,20 +389,26 @@ if ~isequal(name, 0);
     % Update archive_file text box
     set(handles.archive_file, 'String', fullfile(path, name));
     
+    % Initialize progress bar
+    progress = waitbar(0.1, 'Loading static couch QA data...');
+    
     % Search archive for static couch QA procedures
     [handles.plan_uid, handles.raw_data] = ...
-        ParseStaticCouchQA(name, path, handles.left_trim, ...
+        LoadStaticCouchQA(path, name, handles.left_trim, ...
         handles.dailyqa.channel_cal, handles.detector_rows);
     
-    % If ParseStaticCouchQA was successful
+    % If LoadStaticCouchQA was successful
     if ~strcmp(handles.plan_uid, '')
         
-        %% Auto-select delivery plan
         % If the plan_uid is not known
-        handles.plan_uid = 'UNKNOWN';
-        if strcmp(handles.plan_uid, 'UNKNOWN')        
-            [handles.plan_uid, handles.sinogram, handles.maxcorr] = ...
-                MatchDeliveryPlan(name, path, handles.hide_fluence, ...
+        if strcmp(handles.plan_uid, 'UNKNOWN')
+            
+            % Update progress bar
+            waitbar(0.15, progress, 'Matching to delivery plan...');
+            
+            % Run MatchDeliveryPlan to find the matching delivery plan
+            [handles.plan_uid, ~, handles.maxcorr] = ...
+                MatchDeliveryPlan(path, name, handles.hide_fluence, ...
                 handles.hide_machspecific, ...
                 get(handles.autoselect_box, 'Value'), ...
                 get(handles.autoshift_box, 'Value'), ...
@@ -400,43 +416,65 @@ if ~isequal(name, 0);
                 handles.raw_data);
         end
         
-        %% Load structures
-        %
-        %
-        % ADD CODE HERE
-        %
-        %
+        % Update progress bar
+        waitbar(0.2, progress, 'Loading delivery plan data...');
+            
+        % Load delivery plan
+        handles.planData = LoadPlan(path, name, handles.plan_uid);
+        
+        % Update progress bar
+        waitbar(0.3, progress, 'Loading reference CT...');
+        
+        % Load reference image
+        handles.referenceImage = ...
+            LoadReferenceImage(path, name, handles.plan_uid);
 
-        %% Calculate sinogram difference
-        %
-        %
-        % ADD CODE HERE
-        %
-        %
+        % Update progress bar
+        waitbar(0.4, progress, 'Loading reference dose...');
+        
+        % Load reference image
+        handles.referenceDose = ...
+            LoadReferenceDose(path, name, handles.plan_uid);
+        
+        % Update progress bar
+        waitbar(0.5, progress, 'Loading structure set...');
+        
+        % Load structures
+        handles.referenceImage.structures = LoadReferenceStructures(...
+            path, name, handles.referenceImage, handles.atlas);
 
-        %% Update results
-        % Update results display
-        %
-        %
-        % ADD CODE HERE
-        %
-        %
+        % Initialize statistics table
+        set(handles.dvh_table, 'Data', InitializeStatistics(...
+            handles.referenceImage, handles.atlas));
+        
+        % Update progress bar
+        waitbar(0.6, progress, 'Calculating delivery error...');
+        
+        % Calculate sinogram difference
+        [handles.exit_data, handles.diff, handles.errors] = ...
+            CalcSinogramDiff(handles.dailyqa.background, ...
+            handles.dailyqa.leaf_spread, handles.dailyqa.leaf_map, ...
+            handles.raw_data, handles.planData.sinogram, ...
+            get(handles.autoshift_box, 'Value'), ...
+            get(handles.dynamicjaw_box, 'Value'));
 
-        % Update results statistics
-        %
-        %
-        % ADD CODE HERE
-        %
-        %
-
+        % Store temporary dqa dose flag
+        dqa = 0;
+        
         %% Calculate dose
         if handles.calc_dose == 1
+            
             % Ask user if they want to calculate dose
             choice = questdlg('Continue to Calculate Dose?', ...
                 'Calculate Dose', 'Yes', 'No', 'Yes');
 
             % If the user chose yes
             if strcmp(choice, 'Yes')
+                % Update flag
+                dqa = 1;
+                
+                % Update progress bar
+                waitbar(0.7, progress, 'Calculating dose...');
                 %
                 %
                 % ADD CODE HERE
@@ -450,6 +488,10 @@ if ~isequal(name, 0);
 
             % If the user chose yes
             if strcmp(choice, 'Yes')
+                
+                % Update progress bar
+                waitbar(0.8, progress, 'Calculating gamma...');
+                
                 %
                 %
                 % ADD CODE HERE
@@ -459,36 +501,82 @@ if ~isequal(name, 0);
 
             % Clear temporary variables
             clear choice;
-
-            % Update dose plot
-            %
-            %
-            % ADD CODE HERE
-            %
-            %
-
-            % Update dose statistics table
-            %
-            %
-            % ADD CODE HERE
-            %
-            %
-
-            % Update results plot to show gamma histogram
-            %
-            %
-            % ADD CODE HERE
-            %
-            %
-
-            % Update results statistics with dose/gamma results
-            %
-            %
-            % ADD CODE HERE
-            %
-            %
+        end
+        
+        % Update progress bar
+        waitbar(0.9, progress, 'Updating results...');
+        
+        % Update results display
+        set(handles.results_display, 'Value', 7);
+        handles = UpdateResultsDisplay(handles);
+        
+        % Update results statistics
+        handles = UpdateResultsStatistics(handles);
+        
+        % Update dose plot
+        set(handles.dose_display, 'Value', 2);
+        handles = UpdateDoseDisplay(handles);
+    
+        % Update DVH plot
+        if dqa == 1
+            [handles.referenceDVH, handles.dqaDVH] = ...
+                UpdateDVH(handles.dvh_axes, get(handles.dvh_table, 'Data'), ...
+                handles.referenceImage, handles.referenceDose, ...
+                handles.referenceImage, handles.dqaDose);
+        else
+            [handles.referenceDVH] = ...
+                UpdateDVH(handles.dvh_axes, get(handles.dvh_table, 'Data'), ...
+                handles.referenceImage, handles.referenceDose);
+        end
+        
+        % Update Dx/Vx statistics
+        % handles = UpdateDoseStatistics(handles);
+        
+        % Update sinogram plot
+        if isfield(handles, 'planData') && ...
+                isfield(handles.planData, 'sinogram') && ...
+                size(handles.planData.sinogram,1) > 0
+            set(allchild(handles.sino1_axes),'visible','on'); 
+            set(handles.sino1_axes,'visible','on');
+            axes(handles.sino1_axes);
+            imagesc(handles.planData.sinogram*100)
+            set(gca,'YTickLabel',[])
+            set(gca,'XTickLabel',[])
+            title('Planned Fluence (%)')
+            colorbar
+        end
+        
+        % Update exit data plot
+        if isfield(handles, 'exit_data') && size(handles.exit_data,1) > 0
+            set(allchild(handles.sino2_axes),'visible','on'); 
+            set(handles.sino2_axes,'visible','on');
+            axes(handles.sino2_axes);
+            imagesc(handles.exit_data*100)
+            set(gca,'YTickLabel',[])
+            set(gca,'XTickLabel',[])
+            title('Deconvolved Measured Fluence (%)')
+            colorbar
+        end
+        
+        % Update difference plot
+        if isfield(handles, 'diff') && size(handles.diff,1) > 0
+            set(allchild(handles.sino3_axes),'visible','on'); 
+            set(handles.sino3_axes,'visible','on');
+            axes(handles.sino3_axes);  
+            imagesc(handles.diff*100)
+            set(gca,'YTickLabel',[])
+            title('Difference (%)')
+            xlabel('Projection')
+            colorbar
         end
     end
+
+    % Update progress bar
+    waitbar(1.0, progress, 'Done!');
+                
+    % Close progress bar
+    close(progress);
+    
 % Otherwise the user did not select a file
 else
     Event('No patient archive was selected');
@@ -531,8 +619,15 @@ function dose_slider_Callback(hObject, ~, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'Value') returns position of slider
-%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
+% Round the current value to an integer value
+set(hObject, 'Value', round(get(hObject, 'Value')));
+
+% Log event
+Event(sprintf('Dose viewer slice set to %i', get(hObject,'Value')));
+
+% Update viewer with current slice and transparency value
+UpdateViewer(get(hObject,'Value'), ...
+    sscanf(get(handles.alpha, 'String'), '%f%%')/100);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function dose_slider_CreateFcn(hObject, ~, ~)
@@ -547,11 +642,101 @@ if isequal(get(hObject,'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function alpha_Callback(hObject, ~, handles)
+% hObject    handle to alpha (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% If the string contains a '%', parse the value
+if ~isempty(strfind(get(hObject, 'String'), '%'))
+    value = sscanf(get(hObject, 'String'), '%f%%');
+    
+% Otherwise, attempt to parse the response as a number
+else
+    value = str2double(get(hObject, 'String'));
+end
+
+% Bound value to [0 100]
+value = max(0, min(100, value));
+
+% Log event
+Event(sprintf('Dose transparency set to %0.0f%%', value));
+
+% Update string with formatted value
+set(hObject, 'String', sprintf('%0.0f%%', value));
+
+% Update viewer with current slice and transparency value
+UpdateViewer(get(handles.dose_slider,'Value'), value/100);
+
+% Clear temporary variable
+clear value;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function alpha_CreateFcn(hObject, ~, ~)
+% hObject    handle to alpha (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+if ispc && isequal(get(hObject, 'BackgroundColor'), ...
+        get(0, 'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor', 'white');
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function tcs_button_Callback(hObject, ~, handles)
 % hObject    handle to tcs_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+% Based on current tcsview handle value
+switch handles.tcsview
+    
+    % If current view is transverse
+    case 'T'
+        handles.tcsview = 'C';
+        Event('Updating viewer to Coronal');
+        
+    % If current view is coronal
+    case 'C'
+        handles.tcsview = 'S';
+        Event('Updating viewer to Sagittal');
+        
+    % If current view is sagittal
+    case 'S'
+        handles.tcsview = 'T';
+        Event('Updating viewer to Transverse');
+end
+
+% Re-initialize image viewer with new T/C/S value
+handles = UpdateDoseDisplay(handles);
+
+% Update handles structure
+guidata(hObject, handles);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function dvh_table_CellEditCallback(hObject, eventdata, handles)
+% hObject    handle to dvh_table (see GCBO)
+% eventdata  structure with the following fields (see MATLAB.UI.CONTROL.TABLE)
+%	Indices: row and column indices of the cell(s) edited
+%	PreviousData: previous data for the cell(s) edited
+%	EditData: string(s) entered by the user
+%	NewData: EditData or its converted form set on the Data property. Empty if Data was not changed
+%	Error: error string when failed to convert EditData to appropriate value for Data
+% handles    structure with handles and user data (see GUIDATA)
+
+% Update Dx/Vx statistics
+% handles = UpdateDoseStatistics(handles);
+
+% Update dose plot 
+if get(handles.dose_display, 'Value') > 1
+    UpdateViewer(get(handles.dose_slider,'Value'), ...
+        sscanf(get(handles.alpha, 'String'), '%f%%')/100, ...
+        get(hObject, 'Data'));
+end
+
+% Update DVH plot
+% handles = UpdateDVH(handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function print_button_Callback(hObject, ~, handles)
@@ -595,10 +780,9 @@ function results_display_CreateFcn(hObject, ~, ~)
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), ...
-        get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
+if ispc && isequal(get(hObject, 'BackgroundColor'), ...
+        get(0, 'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor', 'white');
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

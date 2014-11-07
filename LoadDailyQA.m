@@ -1,6 +1,6 @@
-function dailyqa = ParseFileQA(name, path, numprojections, open_rows, ...
+function dailyqa = LoadDailyQA(path, name, numprojections, open_rows, ...
     mvct_rows)
-% ParseFileQA is called from ExitDetector.m and parses a TomoTherapy
+% LoadDailyQA is called from ExitDetector.m and parses a TomoTherapy
 % Transit Dose DICOM RT object or Patient Archive XML file for procedure 
 % return data, depending on the value of the h.transit_qa flag.
 % This function sets a number of key variables for later use during
@@ -238,9 +238,6 @@ else
     % be enabled only for testing purposes.
     show_all = 0;
 
-    % Initialize a progress bar to indicate the status to the user
-    progress = waitbar(0.1, 'Searching for exit detector data...');
-
     % The patient XML is parsed using xpath class
     import javax.xml.xpath.*
 
@@ -268,9 +265,6 @@ else
 
     % Loop through the results
     for i = 1:nodeList.getLength
-
-        % Update the progress bar based on the number of results
-        waitbar(0.1 + 0.7 * i / nodeList.getLength, progress);
 
         % Retrieve a handle to the next result
         node = nodeList.item(i-1);
@@ -410,9 +404,6 @@ else
     end
 
     %% Load return data
-    % Update the status bar
-    waitbar(0.9, progress, 'Reading exit detector raw data...');
-    
     % Open read handle to sinogram file
     fid = fopen(dailyqa.returnQAData{plan}.sinogram, 'r', 'b');
 
@@ -453,12 +444,6 @@ else
     clear fid arr;  
     clear plan;
     
-    % Update the progress bar, indicating the the process finished
-    waitbar(1.0, progress, 'Done.');
-
-    % Close progress bar graphic
-    close(progress);
-
     % Clear xpath temporary variables
     clear doc factory xpath;
 end
@@ -578,9 +563,7 @@ clear i peaks;
 
 % Catch errors, log, and rethrow
 catch err
-    % Delete progress handle if it exists
-    if exist('progress','var') && ishandle(progress), delete(progress); end
-    
+
     % Log error via Event.m
     Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'ERROR');
 end

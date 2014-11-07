@@ -1,6 +1,6 @@
-function [plan_uid, raw_data] = ParseStaticCouchQA(name, path, left_trim, ...
+function [plan_uid, raw_data] = LoadStaticCouchQA(path, name, left_trim, ...
     channel_cal, detector_rows)
-% ParseStaticCouchQA is called by ExitDetector.m and searches a TomoTherapy
+% LoadStaticCouchQA is called by ExitDetector.m and searches a TomoTherapy
 % machine archive (given by the name and path input variables) for static 
 % couch QA procedures. If more than one is found, it prompts the user to 
 % select one to load (using listdlg call) and reads the exit detector data
@@ -14,7 +14,7 @@ function [plan_uid, raw_data] = ParseStaticCouchQA(name, path, left_trim, ...
 %       the first channel in the channel_calibration array
 %   channel_cal: array containing the relative response of each
 %       detector channel in an open field given KEEP_OPEN_FIELD_CHANNELS,
-%       created by ParseFileQA.m
+%       created by LoadFileQA.m
 %   detector_rows: number of detector channels included in the DICOM file
 %
 % The following variables are returned upon succesful completion:
@@ -43,9 +43,6 @@ function [plan_uid, raw_data] = ParseStaticCouchQA(name, path, left_trim, ...
 % Execute in try/catch statement
 try  
 
-% Start a new h.progress bar to indicate XML parse status to the user
-progress = waitbar(0.05, 'Loading XML tree...');
-
 % The patient XML is parsed using xpath class
 import javax.xml.xpath.*
 
@@ -57,10 +54,6 @@ factory = XPathFactory.newInstance;
 
 % Initialize a new xpath to the variable xpath
 xpath = factory.newXPath;
-
-% Start a progress bar at 10%, indicating that now the XML
-% is going to be parsed for Static Couch DQA return data
-waitbar(0.1, progress, 'Searching for Static-Couch DQA procedures...');
 
 % Initialize an xpath expression to find all procedurereturndata
 expression = ...
@@ -75,10 +68,7 @@ returnDQADataList = cell(1, nodeList.getLength);
 
 % Loop through results, looking for Static-Couch descriptions
 for i = 1:nodeList.getLength
-
-    % Update the progress bar based on the number of results
-    waitbar(0.1 + 0.5 * i / nodeList.getLength, progress);
-
+    
     % Set a handle to the result
     node = nodeList.item(i-1);
 
@@ -210,9 +200,6 @@ returnDQAData = returnDQAData(~cellfun('isempty', returnDQAData));
 returnDQADataList = ...
     returnDQADataList(~cellfun('isempty', returnDQADataList));
 
-% Update the status bar
-waitbar(0.7, progress, 'Reading DQA return data array...');
-
 % Prompt user to select return data
 if size(returnDQAData,2) == 0
     % Request the user to select the DQA exit detector DICOM
@@ -300,7 +287,7 @@ if size(returnDQAData,2) == 0
         raw_data = arr(left_trim:right_trim, start_trim:stop_trim);
         
         % Divide each projection by channel_cal to account for relative 
-        % channel sensitivity effects (see ParseFileQA.m for more info)
+        % channel sensitivity effects (see LoadFileQA.m for more info)
         raw_data = raw_data ./ (channel_cal' * ones(1, size(raw_data,2)));
         
         % Close the file handle
@@ -342,9 +329,6 @@ else
     end
     
     %% Load parent plan information
-    % Update the status bar
-    waitbar(0.8, progress, 'Loading parent plan information...');
-
     % Initialize an xpath expression to find all plan data arrays
     expression = xpath.compile(['//fullPlanDataArray/fullPlanDataArray/', ...
         'plan/briefPlan/dbInfo']);
@@ -393,9 +377,6 @@ else
     end
 
     %% Load raw_data
-    % Update the progress bar
-    waitbar(0.9, progress, 'Reading exit detector raw data...');
-
     % right_trim should be set to the channel in the exit detector data
     % that corresponds to the last channel in the Daily QA data, and is
     % easily calculated form left_trim using the size of channel_cal
@@ -435,24 +416,15 @@ else
     % Close the file handle
     fclose(fid);
 
-    % Update the progress bar, indicating that the process is complete
-    waitbar(1.0, progress, 'Done.');
-
     % Clear all temporary variables
     clear fid arr right_trim start_trim stop_trim rows plan;
 end
-
-% Close the progress indicator
-close(progress);
 
 % Clear xpath temporary variables
 clear doc factory xpath;
 
 % Catch errors, log, and rethrow
 catch err
-    % Delete progress handle if it exists
-    if exist('progress','var') && ishandle(progress), delete(progress); end
-    
     % Log error via Event.m
     Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'ERROR');
 end

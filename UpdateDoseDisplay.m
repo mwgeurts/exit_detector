@@ -67,11 +67,50 @@ Event('Current plot set to handles.dose_axes');
 set(allchild(handles.dose_axes), 'visible', 'off'); 
 set(handles.dose_axes, 'visible', 'off');
 
+% Hide dose slider/TCS/alpha
+set(handles.dose_slider, 'visible', 'off');
+set(handles.tcs_button, 'visible', 'off');
+set(handles.alpha, 'visible', 'off');
+
 % Execute code block based on display GUI item value
 switch get(handles.dose_display, 'Value')
+    % Planned dose display
     case 2
-        
+        % Check if the planned dose and image are loaded
+        if isfield(handles, 'referenceImage') && ...
+                isfield(handles.referenceImage, 'data') ...
+                && isfield(handles, 'referenceDose') && ...
+                isfield(handles.referenceDose, 'data')
+                
+            % Enable Image Viewer UI components
+            set(allchild(handles.dose_axes), 'visible', 'on'); 
+            set(handles.dose_axes, 'visible', 'on');
+            set(handles.dose_slider, 'visible', 'on');
+            set(handles.tcs_button, 'visible', 'on'); 
+            set(handles.alpha, 'visible', 'on');
+            
+            % Set references to currently displayed data
+            image1.data = handles.referenceImage.data;
+            image1.width = handles.referenceImage.width;
+            image1.start = handles.referenceImage.start;
+            image1.structures = handles.referenceImage.structures;
+            image1.stats = get(handles.dvh_table, 'Data');
+            image2.data = handles.referenceDose.data;
+            image2.width = handles.referenceDose.width;
+            image2.start = handles.referenceDose.start;
+            image2.registration = [];
+            
+            % Initialize image viewer
+            InitializeViewer(handles.dose_axes, handles.tcsview, ...
+                handles.dose_slider, ...
+                sscanf(get(handles.alpha, 'String'), '%f%%')/100, ...
+                image1, image2);
+            
+        end
 end
+
+% Clear temporary variables
+clear image image2;
 
 % Log completion
 Event(sprintf('Plot updated successfully in %0.3f seconds', toc));

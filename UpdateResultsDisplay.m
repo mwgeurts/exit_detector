@@ -195,17 +195,19 @@ switch get(handles.results_display, 'Value')
         Event('Planned sinogram leaf open time plot selected');
         
         % If the sinogram array is not empty
-        if isfield(handles, 'sinogram') && size(handles.sinogram,1) > 0
+        if isfield(handles, 'planData') && ...
+                isfield(handles.planData, 'sinogram') && ...
+                size(handles.planData.sinogram,1) > 0
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
 
             % Create vector from sinogram
-            open_times = reshape(handles.sinogram,1,[])';
+            open_times = reshape(handles.planData.sinogram, 1, [])';
             
             % Remove zero values
-            open_times = open_times(open_times>0)*100;
+            open_times = open_times(open_times > 0) * 100;
             
             % Plot open time histogram with 100 bins
             hist(open_times, 100)
@@ -251,21 +253,21 @@ switch get(handles.results_display, 'Value')
         Event('Sinogram error versus planned LOT plot selected');
         
         % If the difference plot is not empty
-        if isfield(handles, 'diff') && isfield(handles, 'sinogram') && ...
-                size(handles.diff,1) > 0 && size(handles.sinogram,1) > 0
+        if isfield(handles, 'diff') && ...
+                isfield(handles.planData, 'sinogram') && ...
+                size(handles.diff,1) > 0 && ...
+                size(handles.planData.sinogram,1) > 0
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
 
             % Plot scatter of difference vs. LOT
-            scatter(reshape(handles.sinogram, 1, []) * 100, ...
+            scatter(reshape(handles.planData.sinogram, 1, []) * 100, ...
                 reshape(handles.diff, 1, []) * 100)
             
             % Set plot options
             axis tight
-            axis 'auto y'
-            box on
             xlabel('Leaf Open Time (%)')
             ylabel('LOT Error (%)')
             grid on

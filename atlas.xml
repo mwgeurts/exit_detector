@@ -6,7 +6,6 @@
       <exclude>planning|-|+|ptv|itv</exclude>
       <load>1</load>
       <dx>90</dx>
-      <penalty>10</penalty>
    </structure>
    <structure>
       <name>PTV/ITV</name>
@@ -14,7 +13,6 @@
       <exclude>planning|-|+</exclude>
       <load>1</load>
       <dx>90</dx>
-      <penalty>0</penalty>
    </structure>
    <structure>
       <name>Cord</name>
@@ -22,7 +20,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>Brain</category>
       <category>HeadNeck</category>
       <category>Thorax</category>
@@ -34,7 +31,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>HeadNeck</category>
    </structure>
    <structure>
@@ -43,7 +39,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>Brain</category>
       <category>HeadNeck</category>
    </structure>
@@ -53,7 +48,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>Brain</category>
       <category>HeadNeck</category>
    </structure>
@@ -63,7 +57,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>Brain</category>
    </structure>
    <structure>
@@ -72,7 +65,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>HeadNeck</category>
       <category>Thorax</category>
    </structure>
@@ -82,7 +74,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>Brain</category>
       <category>HeadNeck</category>
    </structure>
@@ -92,7 +83,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>Brain</category>
       <category>HeadNeck</category>
    </structure>
@@ -102,7 +92,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>HeadNeck</category>
    </structure>
    <structure>
@@ -111,7 +100,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>Brain</category>
       <category>HeadNeck</category>
    </structure>
@@ -121,7 +109,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>HeadNeck</category>
    </structure>
    <structure>
@@ -130,7 +117,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>Pelvis</category>
    </structure>
    <structure>
@@ -139,7 +125,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>Pelvis</category>
    </structure>
    <structure>
@@ -148,7 +133,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>Pelvis</category>
    </structure>
    <structure>
@@ -157,7 +141,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>Abdomen</category>
       <category>Pelvis</category>
    </structure>
@@ -167,7 +150,6 @@
       <exclude>resid|exp|-|+|total|composite|combined</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>HeadNeck</category>
       <category>Thorax</category>
       <category>Abdomen</category>
@@ -178,7 +160,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>Thorax</category>
    </structure>
    <structure>
@@ -187,7 +168,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>Thorax</category>
    </structure>
    <structure>
@@ -196,7 +176,6 @@
       <exclude>resid|exp|-|+|total|composite|combined</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>Abdomen</category>
       <category>Pelvis</category>
    </structure>
@@ -206,7 +185,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>Abdomen</category>
       <category>Pelvis</category>
    </structure>
@@ -216,7 +194,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>Thorax</category>
       <category>Abdomen</category>
    </structure>
@@ -226,7 +203,6 @@
       <exclude>resid|exp|-|+</exclude>
       <load>1</load>
       <dx>50</dx>
-      <penalty>1</penalty>
       <category>Thorax</category>
       <category>Abdomen</category>
    </structure>
@@ -247,7 +223,7 @@
    </structure>
    <structure>
       <name>Planning Structure</name>
-      <include>planning|ring|otv|+|-|avoid|block|res|exp|normal|override|scatter|contrast</include>
+      <include>planning|ring|otv|+|-|avoid|block|blk|res|exp|normal|override|scatter|contrast|crosstalk|limit</include>
       <load>0</load>
    </structure>
 </digrtATLAS>
