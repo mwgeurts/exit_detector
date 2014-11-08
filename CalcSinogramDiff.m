@@ -1,5 +1,5 @@
-function [exit_data, diff, errors] = CalcSinogramDiff(background, ...
-    leaf_spread, leaf_map, raw_data, sinogram, auto_shift, dynamic_jaw, ...
+function [exitData, diff, errors] = CalcSinogramDiff(background, ...
+    leafSpread, leafMap, rawData, sinogram, autoShift, dynamicJaw, ...
     planData)
 % CalcSinogramDiff calculates a measured exit detector sinogram
 %   CalcSinogramDiff reads in a raw MVCT detector signal and computes a
@@ -16,17 +16,17 @@ function [exit_data, diff, errors] = CalcSinogramDiff(background, ...
 % required for proper execution:
 %   background: a double representing the mean background signal on the 
 %       MVCT detector when the MLC leaves are closed
-%   leaf_spread: array of relative response for an MVCT channel for an open
-%       leaf (according to leaf_map) to neighboring MLC leaves
-%   leaf_map: an array of MVCT detector channel to MLC leaf mappings.  Each
+%   leafSpread: array of relative response for an MVCT channel for an open
+%       leaf (according to leafMap) to neighboring MLC leaves
+%   leafMap: an array of MVCT detector channel to MLC leaf mappings.  Each
 %       channel represents the maximum signal for that leaf
-%   raw_data: a two dimensional array containing the Static Couch DQA 
+%   rawData: a two dimensional array containing the Static Couch DQA 
 %       procedure MVCT detector channel data for each projection
 %   sinogram: the planned/expected sinogram
-%   auto_shift: a boolean determining whether the measured sinogram
+%   autoShift: a boolean determining whether the measured sinogram
 %       should be auto-shifted relative to the planned sinogram when
 %       computing the difference
-%   dynamic_jaw: boolean determining whether the measured sinogram should
+%   dynamicJaw: boolean determining whether the measured sinogram should
 %       be corrected for MVCT response changes due to dynamic jaw motion
 %   planData: delivery plan data including scale, tau, lower leaf index,
 %       number of projections, number of leaves, sync/unsync actions, 
@@ -34,10 +34,10 @@ function [exit_data, diff, errors] = CalcSinogramDiff(background, ...
 %
 %
 % The following handles are returned upon succesful completion:
-%   exit_data: a 2D sinogram representing the de-convolved, extracted 
-%       MVCT data from raw_data
+%   exitData: a 2D sinogram representing the de-convolved, extracted 
+%       MVCT data from rawData
 %   diff: contains an array of the difference between sinogram and
-%       exit_data
+%       exitData
 %   errors: contains a vector of diff, with non-meaningful differences 
 %       removed 
 %
@@ -62,45 +62,45 @@ try
     % This if statement verifies that the inputs are all present.  If not,
     % this function's contents are skipped and the function is returned
     % gracefully
-    if size(sinogram,1) > 0 && size(leaf_spread,1) > 0 && ...
-            size(leaf_map,1) > 0 && size(raw_data,1) > 0 && background > 0
+    if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
+            size(leafMap,1) > 0 && size(rawData,1) > 0 && background > 0
 
-        % If the size of the raw_data input is less than size(sinogram,2),
+        % If the size of the rawData input is less than size(sinogram,2),
         % throw an error and stop.  The user will need to select a long
         % enough delivery plan for this function to compute correctly
-        if size(sinogram,2) > size(raw_data,2)
+        if size(sinogram,2) > size(rawData,2)
             error('The selected delivery plan is shorter than the return data.  Select a different delivery plan.');
         end
         
-        % Trim raw_data to size of DQA data using size(sinogram,2), 
+        % Trim rawData to size of DQA data using size(sinogram,2), 
         % assuming the last projections are aligned
-        exit_data = raw_data(leaf_map(1:64), size(raw_data,2) - ...
-            size(sinogram,2) + 1:size(raw_data, 2)) - background;  
+        exitData = rawData(leafMap(1:64), size(rawData,2) - ...
+            size(sinogram,2) + 1:size(rawData, 2)) - background;  
 
         % Compute the Forier Transform of the leaf spread function.  The
         % leaf spread function padded by zeros to be 64 elements long + the  
-        % size of the leaf spread function (the exit_data is padded to the 
-        % same size).  The leaf_spread function is also mirrored, as it is 
+        % size of the leaf spread function (the exitData is padded to the 
+        % same size).  The leafSpread function is also mirrored, as it is 
         % stored as only a right-sided function.  
-        filter = fft([fliplr(leaf_spread(2:size(leaf_spread,2))) ...
-            leaf_spread], 64 + size(leaf_spread,2))';
+        filter = fft([fliplr(leafSpread(2:size(leafSpread,2))) ...
+            leafSpread], 64 + size(leafSpread,2))';
         
-        % Loop through the number of projections in the exit_data
-        for i = 1:size(exit_data,2)
-            % Deconvolve leaf spread function from the exit_data by
-            % computing the Fourier Transform the current exit_data
+        % Loop through the number of projections in the exitData
+        for i = 1:size(exitData,2)
+            % Deconvolve leaf spread function from the exitData by
+            % computing the Fourier Transform the current exitData
             % projection (padded to be the same size as filter), then
             % divided by the Fourier Transform of the leaf spread function,
             % and computing the inverse Fourier Transform.
-            arr = ifft(fft(exit_data(:,i),64+size(leaf_spread,2))./filter);
+            arr = ifft(fft(exitData(:,i),64+size(leafSpread,2))./filter);
             
             % The new, deconvolved exit data is saved back to the input
             % variable (trimming the padded values).  The trim starts from
             % the size of the original leaf spread function to account for
             % the fact that the filter was not centered, causing a
             % translational shift in the deconvolution.
-            exit_data(:, i) = arr(size(leaf_spread, 2):63 + ...
-                size(leaf_spread, 2));
+            exitData(:, i) = arr(size(leafSpread, 2):63 + ...
+                size(leafSpread, 2));
         end
         
         % Clear temporary variables used during deconvolution
@@ -110,16 +110,16 @@ try
         % identical to the maximum planned sinogram value (typically 1).
         % This is necessary in lieu of determining an absolute calibration
         % factor for the MVCT exit detector
-        exit_data = exit_data / max(max(exit_data)) * max(max(sinogram));
+        exitData = exitData / max(max(exitData)) * max(max(sinogram));
         
         % Clip values less than 1% of the maximum leaf open time to zero.
         % As the MLC is not capable of opening this short, values less than
         % 1% are the result of noise and deconvolution error, so can be
         % safely disregarded
-        exit_data = exit_data .* ceil(exit_data - 0.01);
+        exitData = exitData .* ceil(exitData - 0.01);
 
-        % If auto_shift is enabled
-        if auto_shift == 1
+        % If autoShift is enabled
+        if autoShift == 1
             % Initialize a temporary maximum correlation variable
             maxcorr = 0;
             
@@ -127,11 +127,11 @@ try
             % results in the maximum correlation
             shift = 0;
             
-            % Shift the exit_data +/- 1 projection relative the sinogram
+            % Shift the exitData +/- 1 projection relative the sinogram
             for i = -1:1
                 % Compute the 2D correlation of the sinogram and shifted
-                % exit_data (in the projection dimension)
-                j = corr2(sinogram, circshift(exit_data, [0 i]));
+                % exitData (in the projection dimension)
+                j = corr2(sinogram, circshift(exitData, [0 i]));
                 
                 % If the current shift yields the highest correlation
                 if j > maxcorr
@@ -148,25 +148,25 @@ try
             shift = 0;
         end
 
-        % Shift the exit_data by the optimal shift value.  Circshift is
+        % Shift the exitData by the optimal shift value.  Circshift is
         % used to shift while preserving the array size.
-        exit_data = circshift(exit_data, [0 shift]);
+        exitData = circshift(exitData, [0 shift]);
         
         % If the shift is non-zero, there are projections where no
-        % exit_data was measured (or just not correctly stored by the DAS).
+        % exitData was measured (or just not correctly stored by the DAS).
         % In these cases, replace the missing data (formerly the
         % circshifted data) by the sinogram data to yield a zero difference
         % for these projections.
         if shift > 0
             
             % If the shift is > 0, replace the first projections
-            exit_data(:,1:shift) = sinogram(:,1:shift);
+            exitData(:,1:shift) = sinogram(:,1:shift);
             
         elseif shift < 0
             
             % Otherwise if the shift is < 0, replace the last projections
-            exit_data(:,size(exit_data,2)+shift+1:size(exit_data,2)) ...
-                = sinogram(:,size(exit_data,2)+shift+1:size(exit_data,2));
+            exitData(:,size(exitData,2)+shift+1:size(exitData,2)) ...
+                = sinogram(:,size(exitData,2)+shift+1:size(exitData,2));
         end
         
         % Clear the temporary variables used for shifting
@@ -176,10 +176,10 @@ try
         % "absolute" (relative leaf open time) units; during CalcDose this
         % difference map is used to scale the planned fluence sinogram by
         % the measured difference to approximate the "actual" sinogram.
-        diff = exit_data - sinogram;
+        diff = exitData - sinogram;
         
         % If dynamic jaw compensation is enabled
-        if dynamic_jaw == 1 && isfield(planData, 'events')
+        if dynamicJaw == 1 && isfield(planData, 'events')
             
             % Compute jaw widths
             widths = CalcFieldWidth(planData);
@@ -207,7 +207,7 @@ try
         
         % Only store the non-zero values.  This restricts the vector to
         % only the leaves/projections where an error was measured (leaves
-        % where both the sinogram and 1% clipped exit_data are the only
+        % where both the sinogram and 1% clipped exitData are the only
         % voxels where the difference will be exactly zero)
         errors = errors(errors ~= 0); 
     end

@@ -1,4 +1,4 @@
-function referenceImage = LoadReferenceImage(path, name, plan_uid)
+function referenceImage = LoadReferenceImage(path, name, planUID)
 % LoadReferenceImage loads the reference CT and associated IVDT
 % information from a specified TomoTherapy patient archive and plan UID.
 % This function has currently been validated for version 4.X and 5.X 
@@ -7,7 +7,7 @@ function referenceImage = LoadReferenceImage(path, name, plan_uid)
 % The following variables are required for proper execution: 
 %   path: path to the patient archive XML file
 %   name: name of patient XML file in path
-%   plan_uid: UID of plan to extract reference image from
+%   planUID: UID of plan to extract reference image from
 %
 % The following variables are returned upon succesful completion:
 %   referenceImage: structure containing the image data, dimensions, width,
@@ -33,7 +33,7 @@ try
     
 % Log start of image load and start timer
 Event(sprintf('Extracting reference image from %s for plan UID %s', ...
-    name, plan_uid));
+    name, planUID));
 tic;
 
 % The patient XML is parsed using xpath class
@@ -72,7 +72,7 @@ for i = 1:nodeList.getLength
 
     % If the plan data array does not match the provided UID, continue to
     % next result
-    if ~strcmp(char(subnode.getFirstChild.getNodeValue), plan_uid)
+    if ~strcmp(char(subnode.getFirstChild.getNodeValue), planUID)
         continue
         
     % Otherwise, begin loading plan data
@@ -154,7 +154,7 @@ for i = 1:nodeList.getLength
             
             % Inform user that image data was found
             Event(sprintf('Image data identified for plan UID %s', ...
-                plan_uid));
+                planUID));
 
             %% Load CT filename
             % Search for path to ct image

@@ -1,4 +1,4 @@
-function referenceDose = LoadReferenceDose(path, name, plan_uid)
+function referenceDose = LoadReferenceDose(path, name, planUID)
 % LoadReferenceDose loads the optimized dose after EOP (ie, Final Dose) for
 % a given reference plan UID and TomoTherapy patient XML.  The dose is 
 % returned as a structure. This function has currently been validated for 
@@ -7,7 +7,7 @@ function referenceDose = LoadReferenceDose(path, name, plan_uid)
 % The following variables are required for proper execution: 
 %   path: path to the patient archive XML file
 %   name: name of patient XML file in path
-%   plan_uid: UID of plan to extract dose image
+%   planUID: UID of plan to extract dose image
 %
 % The following variables are returned upon succesful completion:
 %   referenceDose: structure containing the associated plan dose (After
@@ -34,7 +34,7 @@ try
     
 % Log start of plan loading and start timer
 Event(sprintf('Extracting reference dose from %s for plan UID %s', ...
-    name, plan_uid));
+    name, planUID));
 tic;
 
 % Initialize return variable
@@ -91,13 +91,13 @@ for i = 1:nodeList.getLength
     subnode = subnodeList.item(0);
 
     % If this parentUID does not equal the plan UID, continue
-    if strcmp(char(subnode.getFirstChild.getNodeValue), plan_uid) == 0
+    if strcmp(char(subnode.getFirstChild.getNodeValue), planUID) == 0
         continue
     end
 
     % Inform user that the dose image was found
     Event(sprintf('Opt_Dose_After_EOP data identified for plan UID %s', ...
-        plan_uid));
+        planUID));
     
     %% Load FoR
     % Search for frame of reference UID
@@ -255,11 +255,11 @@ end
 if ~isfield(referenceDose, 'filename')
     % If not, throw a warning as a matching reference dose was not found
     Event(sprintf('Reference dose was not found for plan UID %s', ...
-        plan_uid), 'INFO');
+        planUID), 'INFO');
     
     % This time, search for plan trials
     Event(sprintf('Searching for plan trials in %s associated with %s', ...
-        name, plan_uid));
+        name, planUID));
     
     % Search forimages associated with the plan UID
     expression = ...
@@ -286,7 +286,7 @@ if ~isfield(referenceDose, 'filename')
         subnode = subnodeList.item(0);
 
         % If this parentUID does not equal the plan UID, continue
-        if strcmp(char(subnode.getFirstChild.getNodeValue), plan_uid) == 0
+        if strcmp(char(subnode.getFirstChild.getNodeValue), planUID) == 0
             continue
         end
         
@@ -305,7 +305,7 @@ if ~isfield(referenceDose, 'filename')
         
         % Inform user that the plan trial was found
         Event(sprintf('Plan trial %s identified for plan UID %s', ...
-            planTrialUID, plan_uid));
+            planTrialUID, planUID));
     
         % Since a matching plan trial was found, exit for loop
         break;
@@ -315,7 +315,7 @@ if ~isfield(referenceDose, 'filename')
     if strcmp(planTrialUID, '')
         % Throw an error and stop execution
         Event(sprintf(['A matching plan trial was not found for ', ...
-            'plan UID %s'], plan_uid), 'ERROR');
+            'plan UID %s'], planUID), 'ERROR');
     end
     
     % Otherwise, search for doseVolumeList associated with the plan trial
@@ -364,7 +364,7 @@ if ~isfield(referenceDose, 'filename')
 
         % Inform user that the dose image was found
         Event(sprintf('Opt_Dose_After_EOP data identified for plan trial %s', ...
-            plan_uid));
+            planUID));
 
         %% Load FoR
         % Search for frame of reference UID
@@ -523,7 +523,7 @@ end
 if ~isfield(referenceDose, 'filename')
     % If not, throw an error as a matching reference dose was not found
     Event(sprintf(['Reference dose was not found for plan UID %s ', ...
-        'or plan trial UID %s'], plan_uid, planTrialUID), 'ERROR');
+        'or plan trial UID %s'], planUID, planTrialUID), 'ERROR');
 end
 
 %% Load reference dose image

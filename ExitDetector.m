@@ -30,7 +30,7 @@ function varargout = ExitDetector(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Last Modified by GUIDE v2.5 07-Nov-2014 13:13:12
+% Last Modified by GUIDE v2.5 08-Nov-2014 08:57:16
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -93,25 +93,6 @@ Event(string, 'INIT');
 % Set version UI text
 set(handles.version_text, 'String', sprintf('Version %s', handles.version));
 
-% Hide plots
-set(allchild(handles.dose_axes), 'visible', 'off'); 
-set(handles.dose_axes, 'visible', 'off');
-set(allchild(handles.dvh_axes), 'visible', 'off'); 
-set(handles.dvh_axes, 'visible', 'off');
-set(allchild(handles.results_axes), 'visible', 'off'); 
-set(handles.results_axes, 'visible', 'off');
-set(allchild(handles.sino1_axes), 'visible', 'off'); 
-set(handles.sino1_axes, 'visible', 'off');
-set(allchild(handles.sino2_axes), 'visible', 'off'); 
-set(handles.sino2_axes, 'visible', 'off');
-set(allchild(handles.sino3_axes), 'visible', 'off'); 
-set(handles.sino3_axes, 'visible', 'off');
-
-% Hide dose slider/TCS/alpha
-set(handles.dose_slider, 'visible', 'off');
-set(handles.tcs_button, 'visible', 'off');
-set(handles.alpha, 'visible', 'off');
-
 % Set plot options
 options = UpdateDoseDisplay();
 set(handles.dose_display, 'String', options);
@@ -122,6 +103,12 @@ clear options;
 % Disable archive_browse (Daily QA must be loaded first)
 set(handles.archive_file, 'Enable', 'off');
 set(handles.archive_browse, 'Enable', 'off');
+
+% Disable raw data button (Daily QA or patient data must be loaded first)
+set(handles.rawdata_button, 'Enable', 'off');
+
+% Disable print button (Patient data must be loaded first)
+set(handles.print_button, 'Enable', 'off');
 
 % Set checkbox defaults
 set(handles.autoselect_box, 'Enable', 'on');
@@ -136,10 +123,6 @@ set(handles.dynamicjaw_box, 'Enable', 'on');
 set(handles.dynamicjaw_box, 'Value', 1);
 Event('Dynamic jaw compensation enabled by default');
 
-% Initialize tables
-set(handles.dvh_table, 'Data', cell(8,5));
-set(handles.stats_table, 'Data', cell(8,2));
-
 %% Initialize global variables
 % Default folder path when selecting input files
 handles.path = userpath;
@@ -147,37 +130,37 @@ Event(['Default file path set to ', handles.path]);
 
 % Flags used by MatchDeliveryPlan.  Set to 1 to hide machine specific and 
 % fluence delivery plans from delivery plan selection
-handles.hide_machspecific = 1;
+handles.hideMachSpecific = 1;
 Event(sprintf('Hide machine specific delivery plan flag set to %i', ...
-    handles.hide_machspecific));
-handles.hide_fluence = 1;
+    handles.hideMachSpecific));
+handles.hideFluence = 1;
 Event(sprintf('Hide fluence delivery plan flag set to %i', ...
-    handles.hide_fluence));
+    handles.hideFluence));
 
 % The daily QA is 9000 projections long.  If the sinogram data is
 % different, the data will be manipulated below to fit
-handles.dailyqa_projections = 9000;
+handles.dailyqaProjections = 9000;
 Event(sprintf('Daily QA expected projections set to %i', ...
-    handles.dailyqa_projections));
+    handles.dailyqaProjections));
 
 % Set the number of detector channels included in the DICOM file. For gen4 
 % (TomoDetectors), this should be 643
-handles.detector_rows = 643;
+handles.detectorRows = 643;
 Event(sprintf('Number of expected exit detector channels set to %i', ...
-    handles.detector_rows));
+    handles.detectorRows));
 
 % Set the number of detector channels included in the DICOM file. For gen4 
 % (TomoDetectors), this should be 531 (detectorChanSelection is set to 
 % KEEP_OPEN_FIELD_CHANNELS for the Daily QA XML)
-handles.open_rows = 531;
+handles.openRows = 531;
 Event(sprintf('Number of KEEP_OPEN_FIELD_CHANNELS set to %i', ...
-    handles.open_rows));
+    handles.openRows));
 
 % Set the number of active MVCT data channels. Typically the last three 
 % channels are monitor chamber data
-handles.mvct_rows = 528;
+handles.mvctRows = 528;
 Event(sprintf('Number of active MVCT channels set to %i', ...
-    handles.mvct_rows));
+    handles.mvctRows));
 
 % GLOBAL Gamma criteria
 handles.abs = 3.0; % percent
@@ -187,16 +170,16 @@ Event(sprintf('Gamma criteria set to %0.1f%%/%0.1f mm global', ...
 
 % Scalar representing the threshold (dose relative to the maximum dose)
 % below which the Gamma index will not be reported. 
-handles.dose_threshold = 0.2;
+handles.doseThreshold = 0.2;
 Event(sprintf('Dose threshold set to %0.1f%% of maximum dose', ...
-    handles.dose_threshold * 100));
+    handles.doseThreshold * 100));
 
 % This should be set to the channel in the exit detector data that 
-% corresponds to the first channel in the channel_calibration array. For  
+% corresponds to the first channel in the channel calibration array. For  
 % gen4 (TomoDetectors), this should be 27, as detectorChanSelection is set
 % to KEEP_OPEN_FIELD_CHANNELS for the Daily QA XML)
-handles.left_trim = 27;
-Event(sprintf('Left trim channel set to %i', handles.left_trim));
+handles.doseThreshold = 27;
+Event(sprintf('Left trim channel set to %i', handles.doseThreshold));
 
 % Set the initial image view orientation to Transverse (T)
 handles.tcsview = 'T';
@@ -211,9 +194,9 @@ Event(['Default dose view transparency set to ', ...
 % A try/catch statement is used in case Ganymed-SSH2 is not available
 try
     
-    % Start with the handles.calc_dose flag set to 1 (dose calculation
+    % Start with the handles.calcDose flag set to 1 (dose calculation
     % enabled)
-    handles.calc_dose = 1;
+    handles.calcDose = 1;
     
     % Load Ganymed-SSH2 javalib
     Event('Adding Ganymed-SSH2 javalib');
@@ -225,23 +208,33 @@ try
     % computation server, user name, and password with SSH/SCP and
     % read/write access, respectively.  See the README for more infomation
     Event('Connecting to tomo-research via SSH2');
-    handles.ssh2_conn = ssh2_config('tomo-research', 'tomo', 'hi-art');
+    handles.ssh2 = ssh2_config('tomo-research', 'tomo', 'hi-art');
     
     % Test the SSH2 connection.  If this fails, catch the error below.
-    [handles.ssh2_conn, ~] = ssh2_command(handles.ssh2_conn, 'ls');
+    [handles.ssh2, ~] = ssh2_command(handles.ssh2, 'ls');
     Event('SSH2 connection successfully established');
-    
+
+% addpath, ssh2_config, or ssh2_command may all fail if ganymed is not
+% available or if the remote server is not responding
 catch err
     
     % Log failure
     Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'WARN');
     
     % If either the addpath or ssh2_command calls fails, set 
-    % handles.calc_dose flag to zero (dose calculation will be disabled) 
+    % handles.calcDose flag to zero (dose calculation will be disabled) 
     Event('Dose calculation will be disabled', 'WARN');
-    handles.calc_dose = 0;
+    handles.calcDose = 0;
     
 end
+
+%% Initialize data handles
+% dailyqa stores all dailyqa data as a structure. See LoadDailyQA.m
+Event('Initializing daily qa variables');
+handles.dailyqa = [];
+
+% Initialize all patient data variables
+handles = clearPatientData(handles);
 
 %% Complete initialization
 % Attempt to load the atlas
@@ -309,18 +302,17 @@ if ~isequal(name, 0)
     % Update daily_file text box
     set(handles.daily_file, 'String', fullfile(path, name));
     
+    % If patient data exists, clear it before continuing
+    handles = clearPatientData(handles);
+        
     % Extract file contents
-    handles.dailyqa = LoadDailyQA(path, name, handles.dailyqa_projections, ...
-        handles.open_rows, handles.mvct_rows);
+    handles.dailyqa = LoadDailyQA(path, name, handles.dailyqaProjections, ...
+        handles.openRows, handles.mvctRows);  
     
     % If LoadDailyQA was successful
-    if isfield(handles.dailyqa, 'channel_cal')
-        % If patient data exists, clear it before continuing
-        %
-        %
-        % ADD CODE HERE
-        %
-        %
+    if isfield(handles.dailyqa, 'channelCal')
+        % Enable raw data
+        set(handles.rawdata_button, 'Enable', 'on');
 
         % Enable archive_browse
         set(handles.archive_file, 'Enable', 'on');
@@ -329,10 +321,8 @@ if ~isequal(name, 0)
         % Update results display
         set(handles.results_display, 'Value', 2);
         handles = UpdateResultsDisplay(handles);
-
-        % Update statistics
-        handles = UpdateResultsStatistics(handles);
     end
+    
 % Otherwise the user did not select a file
 else
     Event('No Daily QA file was selected');
@@ -387,52 +377,55 @@ if ~isequal(name, 0);
     % Update archive_file text box
     set(handles.archive_file, 'String', fullfile(path, name));
     
+    % If patient data exists, clear it before continuing
+    handles = clearPatientData(handles);
+    
     % Initialize progress bar
     progress = waitbar(0.1, 'Loading static couch QA data...');
     
     % Search archive for static couch QA procedures
-    [handles.plan_uid, handles.raw_data] = ...
-        LoadStaticCouchQA(path, name, handles.left_trim, ...
-        handles.dailyqa.channel_cal, handles.detector_rows);
+    [handles.planUID, handles.rawData] = ...
+        LoadStaticCouchQA(path, name, handles.doseThreshold, ...
+        handles.dailyqa.channelCal, handles.detectorRows);
     
     % If LoadStaticCouchQA was successful
-    if ~strcmp(handles.plan_uid, '')
+    if ~strcmp(handles.planUID, '')
         
-        % If the plan_uid is not known
-        if strcmp(handles.plan_uid, 'UNKNOWN')
+        % If the planUID is not known
+        if strcmp(handles.planUID, 'UNKNOWN')
             
             % Update progress bar
             waitbar(0.15, progress, 'Matching to delivery plan...');
             
             % Run MatchDeliveryPlan to find the matching delivery plan
-            [handles.plan_uid, ~, handles.maxcorr] = ...
-                MatchDeliveryPlan(path, name, handles.hide_fluence, ...
-                handles.hide_machspecific, ...
+            [handles.planUID, ~, handles.maxcorr] = ...
+                MatchDeliveryPlan(path, name, handles.hideFluence, ...
+                handles.hideMachSpecific, ...
                 get(handles.autoselect_box, 'Value'), ...
                 get(handles.autoshift_box, 'Value'), ...
-                handles.dailyqa.background, handles.dailyqa.leaf_map, ...
-                handles.raw_data);
+                handles.dailyqa.background, handles.dailyqa.leafMap, ...
+                handles.rawData);
         end
         
         % Update progress bar
         waitbar(0.2, progress, 'Loading delivery plan data...');
             
         % Load delivery plan
-        handles.planData = LoadPlan(path, name, handles.plan_uid);
+        handles.planData = LoadPlan(path, name, handles.planUID);
         
         % Update progress bar
         waitbar(0.3, progress, 'Loading reference CT...');
         
         % Load reference image
         handles.referenceImage = ...
-            LoadReferenceImage(path, name, handles.plan_uid);
+            LoadReferenceImage(path, name, handles.planUID);
 
         % Update progress bar
         waitbar(0.4, progress, 'Loading reference dose...');
         
         % Load reference image
         handles.referenceDose = ...
-            LoadReferenceDose(path, name, handles.plan_uid);
+            LoadReferenceDose(path, name, handles.planUID);
         
         % Update progress bar
         waitbar(0.5, progress, 'Loading structure set...');
@@ -449,18 +442,18 @@ if ~isequal(name, 0);
         waitbar(0.6, progress, 'Calculating delivery error...');
         
         % Calculate sinogram difference
-        [handles.exit_data, handles.diff, handles.errors] = ...
+        [handles.exitData, handles.diff, handles.errors] = ...
             CalcSinogramDiff(handles.dailyqa.background, ...
-            handles.dailyqa.leaf_spread, handles.dailyqa.leaf_map, ...
-            handles.raw_data, handles.planData.sinogram, ...
+            handles.dailyqa.leafSpread, handles.dailyqa.leafMap, ...
+            handles.rawData, handles.planData.sinogram, ...
             get(handles.autoshift_box, 'Value'), ...
             get(handles.dynamicjaw_box, 'Value'), handles.planData);
-
+        
         % Store temporary dqa dose flag
         dqa = 0;
         
         %% Calculate dose
-        if handles.calc_dose == 1
+        if handles.calcDose == 1
             
             % Ask user if they want to calculate dose
             choice = questdlg('Continue to Calculate DQA Dose?', ...
@@ -478,11 +471,12 @@ if ~isequal(name, 0);
                 handles.dqaPlanData = handles.planData;
                 handles.dqaPlanData.sinogram(:,...
                     handles.dqaPlanData.startTrim:...
-                    handles.dqaPlanData.stopTrim) = h.sino_calc(:,...
+                    handles.dqaPlanData.stopTrim) = ...
+                    handles.dqaPlanData.sinogram(:,...
                     handles.dqaPlanData.startTrim:...
                     handles.dqaPlanData.stopTrim) + handles.diff;
                 
-                % Trim any sino_mod projection values outside of [0 1]
+                % Trim any sinogram projection values outside of [0 1]
                 handles.dqaPlanData.sinogram = ...
                     max(0, handles.dqaPlanData.sinogram);
                 handles.dqaPlanData.sinogram = ...
@@ -490,7 +484,7 @@ if ~isequal(name, 0);
                 
                 % Execute CalcDose
                 handles.dqaDose = CalcDose(handles.referenceImage, ...
-                    handles.dqaPlanData, [0 0 0 0 0 0], handles.ssh2_conn);
+                    handles.dqaPlanData, [0 0 0 0 0 0], handles.ssh2);
             end
 
             % Ask user if they want to calculate dose
@@ -518,7 +512,7 @@ if ~isequal(name, 0);
         waitbar(0.9, progress, 'Updating results...');
         
         % Update results display
-        set(handles.results_display, 'Value', 7);
+        set(handles.results_display, 'Value', 9);
         handles = UpdateResultsDisplay(handles);
         
         % Update results statistics
@@ -532,15 +526,15 @@ if ~isequal(name, 0);
             handles = UpdateDoseDisplay(handles);
         
             % Update DVH plot
-            [handles.referenceDVH, handles.dqaDVH] = ...
+            [handles.referenceDose.dvh, handles.dqaDose.dvh] = ...
                 UpdateDVH(handles.dvh_axes, get(handles.dvh_table, 'Data'), ...
                 handles.referenceImage, handles.referenceDose, ...
                 handles.referenceImage, handles.dqaDose);
             
             % Update Dx/Vx statistics
             set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
-                get(handles.dvh_table, 'Data'), handles.referenceDVH, ...
-                handles.dqaDVH));
+                get(handles.dvh_table, 'Data'), handles.referenceDose.dvh, ...
+                handles.dqaDose.dvh));
         
         % Otherwise, only reference dose exists
         else
@@ -550,14 +544,17 @@ if ~isequal(name, 0);
             handles = UpdateDoseDisplay(handles);
             
             % Update DVH plot
-            [handles.referenceDVH] = ...
+            [handles.referenceDose.dvh] = ...
                 UpdateDVH(handles.dvh_axes, get(handles.dvh_table, 'Data'), ...
                 handles.referenceImage, handles.referenceDose);
             
             % Update Dx/Vx statistics
             set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
-                get(handles.dvh_table, 'Data'), handles.referenceDVH));
+                get(handles.dvh_table, 'Data'), handles.referenceDose.dvh));
         end
+        
+        % Clear temporary variables
+        clear dvh;
 
         % Update sinogram plot
         if isfield(handles, 'planData') && ...
@@ -575,11 +572,11 @@ if ~isequal(name, 0);
         end
         
         % Update exit data plot
-        if isfield(handles, 'exit_data') && size(handles.exit_data,1) > 0
+        if isfield(handles, 'exitData') && size(handles.exitData,1) > 0
             set(allchild(handles.sino2_axes),'visible','on'); 
             set(handles.sino2_axes,'visible','on');
             axes(handles.sino2_axes);
-            imagesc(handles.exit_data*100)
+            imagesc(handles.exitData*100)
             set(gca,'YTickLabel',[])
             set(gca,'XTickLabel',[])
             title('Deconvolved Measured Fluence (%)')
@@ -606,6 +603,9 @@ if ~isequal(name, 0);
                 
     % Close progress bar
     close(progress);
+    
+    % Enable print button
+    % set(handles.print_button, 'Enable', 'on');
     
 % Otherwise the user did not select a file
 else
@@ -745,7 +745,7 @@ handles = UpdateDoseDisplay(handles);
 guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dvh_table_CellEditCallback(hObject, eventdata, handles)
+function dvh_table_CellEditCallback(hObject, ~, handles)
 % hObject    handle to dvh_table (see GCBO)
 % eventdata  structure with the following fields (see MATLAB.UI.CONTROL.TABLE)
 %	Indices: row and column indices of the cell(s) edited
@@ -787,6 +787,77 @@ function print_button_Callback(hObject, ~, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function rawdata_button_Callback(~, ~, handles)
+% hObject    handle to rawdata_button (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Log event
+Event('Raw data button selected');
+
+% If daily qa raw data exists
+if isfield(handles, 'dailyqa') && isfield(handles.dailyqa, 'rawData') && ...
+        size(handles.dailyqa.rawData,2) > 0
+    
+    % Log event
+    Event('Opening figure for daily QA raw data');
+    
+    % Open a new figure to plot raw data
+    fig = figure;
+    
+    % Plot raw data
+    imagesc(handles.dailyqa.rawData);
+    
+    % Set plot options
+    colorbar;
+    title('Daily QA Exit Detector Data')
+    xlabel('Projection')
+    ylabel('Detector Channel')
+    colormap(fig, 'default')
+end
+
+% If patient raw data exists
+if isfield(handles, 'rawData') && size(handles.rawData,2) > 0
+    
+    % Log event
+    Event('Opening figure for patient QA raw data');
+    
+    % Open a new figure to plot raw data
+    fig = figure;
+    
+    % Plot raw data
+    imagesc(handles.rawData);
+    
+    % Set plot options
+    colorbar;
+    title('Patient Static Couch QA Exit Detector Data')
+    xlabel('Projection')
+    ylabel('Detector Channel')
+    colormap(fig, 'default')
+end
+
+% Clear temporary variables
+clear fig;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function autoselect_box_Callback(hObject, ~, handles)
+% hObject    handle to autoselect_box (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Log value change
+if get(hObject,'Value') == 1
+    Event('Delivery plan auto-selection enabled');
+else
+    Event('Delivery plan auto-selection disabled');
+end
+
+% If patient data exists, clear it
+handles = clearPatientData(handles);
+
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function autoshift_box_Callback(hObject, ~, handles)
@@ -794,7 +865,18 @@ function autoshift_box_Callback(hObject, ~, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hint: get(hObject,'Value') returns toggle state of autoshift_box
+% Log value change
+if get(hObject,'Value') == 1
+    Event('Delivery plan auto-alignment enabled');
+else
+    Event('Delivery plan auto-alignment disabled');
+end
+
+% If patient data exists, clear it
+handles = clearPatientData(handles);
+
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function dynamicjaw_box_Callback(hObject, ~, handles)
@@ -802,7 +884,18 @@ function dynamicjaw_box_Callback(hObject, ~, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hint: get(hObject,'Value') returns toggle state of dynamicjaw_box
+% Log value change
+if get(hObject,'Value') == 1
+    Event('Dynamic jaw compensation enabled');
+else
+    Event('Dynamic jaw compensation disabled');
+end
+
+% If patient data exists, clear it
+handles = clearPatientData(handles);
+
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function results_display_Callback(hObject, ~, handles)
@@ -827,14 +920,6 @@ if ispc && isequal(get(hObject, 'BackgroundColor'), ...
         get(0, 'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor', 'white');
 end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function autoselect_box_Callback(hObject, ~, handles)
-% hObject    handle to autoselect_box (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of autoselect_box
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function figure1_SizeChangedFcn(hObject, ~, handles)
@@ -866,3 +951,84 @@ set(handles.stats_table, 'ColumnWidth', ...
 
 % Clear temporary variables
 clear pos;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function handles = clearPatientData(handles)
+% clearPatientData clears/initializes all patient related data handles
+% stored in guidata
+
+% Log action
+if isfield(handles, 'planUID')
+    Event('Clearing patient plan variables from memory');
+else
+    Event('Initializing patient plan variables');
+end
+
+% planUID stores the UID of the analyzed patient plan as a string
+handles.planUID = [];
+
+% planData stores the delivery plan info as a structure. See LoadPlan.m
+handles.planData = [];
+
+% referenceImage stores the planning CT and structure set as a structure.
+% See LoadReferenceImage.m and LoadReferenceStructures.m
+handles.referenceImage = [];
+
+% referenceDose stores the optimized plan dose as a structure. See
+% LoadReferenceDose.m and UpdateDVH.m
+handles.referenceDose = [];
+
+% dqaDose stores the recomputed dose (using the measured sinogram) as a
+% structure. See CalcDose.m and UpdateDVH.m
+handles.dqaDose = [];
+
+% rawData is a 643 x n array of compressed exit detector data.  See
+% LoadStaticCouchQA.m
+handles.rawData = [];
+
+% exitData is a 64 x n array of measured de-convolved exit detector
+% response for the patient plan. See CalcSinogramDiff.m
+handles.exitData = [];
+
+% diff is a 64 x n array of differences between the planned and measured
+% sinogram data. See CalcSinogramDiff.m
+handles.diff = [];
+
+% errors is a vector of sinogram errors for all active leaves, used to
+% compute statistics. See CalcSinogramDiff.m
+handles.errors = [];
+
+% Clear patient file string
+set(handles.archive_file, 'String', '');
+
+% Disable print button while patient data is unloaded
+set(handles.print_button, 'Enable', 'off');
+
+% Hide plots
+set(handles.dose_display, 'Value', 1);
+set(handles.results_display, 'Value', 1);
+set(allchild(handles.dose_axes), 'visible', 'off'); 
+set(handles.dose_axes, 'visible', 'off');
+colorbar(handles.dose_axes,'off');
+set(allchild(handles.dvh_axes), 'visible', 'off'); 
+set(handles.dvh_axes, 'visible', 'off');
+set(allchild(handles.results_axes), 'visible', 'off'); 
+set(handles.results_axes, 'visible', 'off');
+set(allchild(handles.sino1_axes), 'visible', 'off'); 
+set(handles.sino1_axes, 'visible', 'off');
+colorbar(handles.sino1_axes,'off');
+set(allchild(handles.sino2_axes), 'visible', 'off'); 
+set(handles.sino2_axes, 'visible', 'off');
+colorbar(handles.sino2_axes,'off');
+set(allchild(handles.sino3_axes), 'visible', 'off'); 
+set(handles.sino3_axes, 'visible', 'off');
+colorbar(handles.sino3_axes,'off');
+
+% Hide dose slider/TCS/alpha
+set(handles.dose_slider, 'visible', 'off');
+set(handles.tcs_button, 'visible', 'off');
+set(handles.alpha, 'visible', 'off');
+
+% Clear tables
+set(handles.dvh_table, 'Data', cell(16,5));
+set(handles.stats_table, 'Data', cell(14,2));

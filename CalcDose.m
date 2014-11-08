@@ -236,7 +236,7 @@ if nargin >= 2
         % Loop through the number of projections for this leaf
         for j = 1:size(plan.sinogram,2)
             
-            % Write "open" and "close" events based on the sino_calc leaf
+            % Write "open" and "close" events based on the sinogram leaf
             % open time. 0.5 is subtracted to remove the one based indexing
             % and center the open time on the projection.
             fwrite(fid,j - 0.5 - plan.sinogram(i,j)/2,'double');

@@ -31,7 +31,9 @@ plotoptions = {
     'Leaf Map'
     'Channel Calibration'
     'Leaf Spread Function'
-    'Leaf Open Time Histogram'
+    'Plan Leaf Open Time Histogram'
+    'Plan Jaw Profiles'
+    'Plan Field Width'
     'LOT Error Histogram'
     'Error versus LOT'
     'Gamma Index Histogram'
@@ -77,19 +79,19 @@ switch get(handles.results_display, 'Value')
         % Log plot selection
         Event('Leaf offsets plot selected');
         
-        % If the even_leaves and odd_leaves vectors are not empty
+        % If the evenLeaves and oddLeaves vectors are not empty
         if isfield(handles, 'dailyqa') && ...
-                isfield(handles.dailyqa, 'even_leaves') && ...
-                isfield(handles.dailyqa, 'odd_leaves') && ...
-                size(handles.dailyqa.even_leaves, 1) > 0 && ...
-                size(handles.dailyqa.odd_leaves, 1) > 0
+                isfield(handles.dailyqa, 'evenLeaves') && ...
+                isfield(handles.dailyqa, 'oddLeaves') && ...
+                size(handles.dailyqa.evenLeaves, 1) > 0 && ...
+                size(handles.dailyqa.oddLeaves, 1) > 0
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes, 'visible', 'on');
             
             % Plot even and odd leaves
-            plot([handles.dailyqa.even_leaves handles.dailyqa.odd_leaves])
+            plot([handles.dailyqa.evenLeaves handles.dailyqa.oddLeaves])
             
             % Set plot options
             colormap(handles.results_axes, 'default')
@@ -108,17 +110,17 @@ switch get(handles.results_display, 'Value')
         % Log plot selection
         Event('MLC leaf to MVCT channel map plot selected');
         
-        % If the leaf_map array is not empty
+        % If the leafMap array is not empty
         if isfield(handles, 'dailyqa') && ...
-                isfield(handles.dailyqa, 'leaf_map')&& ...
-                size(handles.dailyqa.leaf_map, 1) > 0
+                isfield(handles.dailyqa, 'leafMap')&& ...
+                size(handles.dailyqa.leafMap, 1) > 0
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
             
             % Plot leaf map
-            plot(handles.dailyqa.leaf_map)
+            plot(handles.dailyqa.leafMap)
             
             % Set plot options
             colormap(handles.results_axes, 'default')
@@ -138,17 +140,17 @@ switch get(handles.results_display, 'Value')
         % Log plot selection
         Event('MVCT sensitivity calibration plot selected');
         
-        % If the channel_cal vector is not empty
+        % If the channelCal vector is not empty
         if isfield(handles, 'dailyqa') && ...
-                isfield(handles.dailyqa, 'channel_cal')&& ...
-                size(handles.dailyqa.channel_cal, 1) > 0
+                isfield(handles.dailyqa, 'channelCal')&& ...
+                size(handles.dailyqa.channelCal, 1) > 0
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
             
             % Plot channel calibration
-            plot(handles.dailyqa.channel_cal)
+            plot(handles.dailyqa.channelCal)
             
             % Set plot options
             colormap(handles.results_axes, 'default')
@@ -168,10 +170,10 @@ switch get(handles.results_display, 'Value')
         % Log plot selection
         Event('Normalized leaf spread function plot selected');
         
-        % If the leaf_spread vector is not empty
+        % If the leafSpread vector is not empty
         if isfield(handles, 'dailyqa') && ...
-                isfield(handles.dailyqa, 'leaf_spread')&& ...
-                size(handles.dailyqa.leaf_spread,1) > 0
+                isfield(handles.dailyqa, 'leafSpread')&& ...
+                size(handles.dailyqa.leafSpread,1) > 0
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
@@ -226,9 +228,79 @@ switch get(handles.results_display, 'Value')
             Event(['Planned sinogram leaf open time not displayed ', ...
                 'as no data exists']);
         end
+    
+    % Jaw profiles
+    case 7
+        % Log plot selection
+        Event('Planned dynamic jaw profile plot selected');
+        
+        % If the sinogram array is not empty
+        if isfield(handles, 'planData') && ...
+                isfield(handles.planData, 'events') && ...
+                size(handles.planData.events,1) > 0
+            
+            % Compute jaw widths
+            widths = CalcFieldWidth(handles.planData);
+            
+            % Turn on plot handle
+            set(allchild(handles.results_axes), 'visible', 'on'); 
+            set(handles.results_axes,'visible', 'on');
+
+            % Plot jaw positions
+            plot(widths(1, handles.planData.startTrim:...
+                handles.planData.stopTrim));
+            hold on;
+            plot(widths(2, handles.planData.startTrim:...
+                handles.planData.stopTrim));
+            hold off;
+            
+            % Set plot options
+            colormap(handles.results_axes, 'default')
+            xlim([0 handles.planData.stopTrim-handles.planData.startTrim])
+            xlabel('Projection')
+            ylabel('Jaw Position (cm)')
+            grid on
+            zoom on
+            
+            % Clear temporary variables
+            clear widths;
+        end
+        
+    % Field width profile
+    case 8
+        % Log plot selection
+        Event('Planned dynamic jaw profile plot selected');
+        
+        % If the sinogram array is not empty
+        if isfield(handles, 'planData') && ...
+                isfield(handles.planData, 'events') && ...
+                size(handles.planData.events,1) > 0
+            
+            % Compute jaw widths
+            widths = CalcFieldWidth(handles.planData);
+            
+            % Turn on plot handle
+            set(allchild(handles.results_axes), 'visible', 'on'); 
+            set(handles.results_axes,'visible', 'on');
+
+            % Plot jaw widths
+            plot(widths(3, handles.planData.startTrim:...
+                handles.planData.stopTrim));
+            
+            % Set plot options
+            colormap(handles.results_axes, 'default')
+            xlim([0 handles.planData.stopTrim-handles.planData.startTrim])
+            xlabel('Projection')
+            ylabel('Field Width (cm)')
+            grid on
+            zoom on
+            
+            % Clear temporary variables
+            clear widths;
+        end
         
     % Planned vs. Measured sinogram error histogram
-    case 7
+    case 9
         % Log plot selection
         Event('Sinogram error histogram plot selected');
         
@@ -254,7 +326,7 @@ switch get(handles.results_display, 'Value')
         end
         
     % Sinogram error versus planned LOT scatter plot
-    case 8
+    case 10
         % Log plot selection
         Event('Sinogram error versus planned LOT plot selected');
         
@@ -286,7 +358,7 @@ switch get(handles.results_display, 'Value')
         end
         
     % 3D Gamma histogram
-    case 9
+    case 11
         % Log plot selection
         Event('Gamma histogram plot selected');
         

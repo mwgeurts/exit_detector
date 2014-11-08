@@ -45,16 +45,16 @@ table{c,1} = 'Mean Leaf Open Time (LOT)';
 if isfield(handles, 'planData') && isfield(handles.planData, 'sinogram')
   
     % Reshape the sinogram into a 1D vector
-    open_times = reshape(handles.planData.sinogram, 1, []); 
+    openTimes = reshape(handles.planData.sinogram, 1, []); 
     
     % Remove zero values
-    open_times = open_times(open_times > 0);
+    openTimes = openTimes(openTimes > 0);
             
     % Store the mean leaf open time from the 1D sinogram              
-    table{c,2} = sprintf('%0.2f%%', mean(open_times) * 100);
+    table{c,2} = sprintf('%0.2f%%', mean(openTimes) * 100);
     
     % Clear temporary variables
-    clear open_times;
+    clear openTimes;
 else
     table{c,2} = '';
 end

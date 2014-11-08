@@ -1,26 +1,26 @@
-function [plan_uid, raw_data] = LoadStaticCouchQA(path, name, left_trim, ...
-    channel_cal, detector_rows)
+function [planUID, rawData] = LoadStaticCouchQA(path, name, leftTrim, ...
+    channelCal, detectorRows)
 % LoadStaticCouchQA is called by ExitDetector.m and searches a TomoTherapy
 % machine archive (given by the name and path input variables) for static 
 % couch QA procedures. If more than one is found, it prompts the user to 
 % select one to load (using listdlg call) and reads the exit detector data
-% into the return variable raw_data. The parent plan UID is returned in the
-% variable plan_uid.
+% into the return variable rawData. The parent plan UID is returned in the
+% variable planUID.
 %
 % The following variables are required for proper execution:
 %   name: name of the DICOM RT file or patient archive XML file
 %   path: path to the DICOM RT file or patient archive XML file
-%   left_trim: the channel in the exit detector data that corresponds to 
-%       the first channel in the channel_calibration array
-%   channel_cal: array containing the relative response of each
+%   leftTrim: the channel in the exit detector data that corresponds to 
+%       the first channel in the channelCalibration array
+%   channelCal: array containing the relative response of each
 %       detector channel in an open field given KEEP_OPEN_FIELD_CHANNELS,
 %       created by LoadFileQA.m
-%   detector_rows: number of detector channels included in the DICOM file
+%   detectorRows: number of detector channels included in the DICOM file
 %
 % The following variables are returned upon succesful completion:
-%   plan_uid: UID of the plan if parsed from the patient XML, otherwise
+%   planUID: UID of the plan if parsed from the patient XML, otherwise
 %       'UNKNOWN' if parsed from a transit dose DICOM file
-%   raw_data: n x detector_rows of uncorrected exit detector data for a 
+%   rawData: n x detectorRows of uncorrected exit detector data for a 
 %       delivered static couch DQA plan, where n is the number of 
 %       projections in the plan
 %
@@ -210,13 +210,13 @@ if size(returnDQAData,2) == 0
 
     % If the user selected a file
     if ~isequal(name, 0)
-        % right_trim should be set to the channel in the exit detector data
+        % rightTrim should be set to the channel in the exit detector data
         % that corresponds to the last channel in the Daily QA data, and is
-        % easily calculated form left_trim using the size of channel_cal
-        right_trim = size(channel_cal, 2) + left_trim - 1; 
+        % easily calculated form leftTrim using the size of channelCal
+        rightTrim = size(channelCal, 2) + leftTrim - 1; 
  
-        % Read the DICOM header information for the DQA plan into exit_info
-        exit_info = dicominfo(fullfile(path, name));
+        % Read the DICOM header information for the DQA plan into exitInfo
+        exitInfo = dicominfo(fullfile(path, name));
 
         % Open read handle to DICOM file (dicomread can't handle RT 
         % RECORDS) 
@@ -228,7 +228,7 @@ if size(returnDQAData,2) == 0
         % the user to enter the total number of projections delivered.  
         % StartTrim accounts for the fact that for treatment procedures, 10 
         % seconds of closed MLC projections are added for linac warmup
-        if isfield(exit_info,'Private_300d_2026') == 0
+        if isfield(exitInfo,'Private_300d_2026') == 0
             
             % Prompt user for the number of projections in the procedure
             x = inputdlg(['Trim Values not found.  Enter the total ', ...
@@ -237,67 +237,67 @@ if size(returnDQAData,2) == 0
             % Set Private_300d_2026 StopTrim tag to the number of 
             % projections (note, this assumes the procedure was stopped 
             % after the last active projection)
-            exit_info.Private_300d_2026.Item_1.StopTrim = str2double(x);
+            exitInfo.Private_300d_2026.Item_1.StopTrim = str2double(x);
             
             % Clear temporary variables
             clear x;
             
             % Set the Private_300d_2026 StartTrim tag to 0.  The
-            % raw_data will be longer than the sinogram but will be
+            % rawData will be longer than the sinogram but will be
             % auto-aligned based on the StopTrim value set above
-            exit_info.Private_300d_2026.Item_1.StartTrim = 0;
+            exitInfo.Private_300d_2026.Item_1.StartTrim = 0;
         end
         
-        % Set the variables start_trim and stop_trim to the values in the 
-        % DICOM tag Private_300d_2026.  Start_trim is increased by 1 as the 
+        % Set the variables startTrim and stopTrim to the values in the 
+        % DICOM tag Private_300d_2026.  startTrim is increased by 1 as the 
         % sinogram array (set above) is indexed starting at 1
-        start_trim = exit_info.Private_300d_2026.Item_1.StartTrim + 1;
-        stop_trim = exit_info.Private_300d_2026.Item_1.StopTrim;
+        startTrim = exitInfo.Private_300d_2026.Item_1.StartTrim + 1;
+        stopTrim = exitInfo.Private_300d_2026.Item_1.StopTrim;
         
         % For most DICOM RT Records, the tag PixelDataGroupLength is 
         % provided, which provides the length of the binary data.  However, 
         % if the DICOM object is anonymized or otherwise processed, this 
         % tag can be removed, requiring the length to be determined 
         % empirically
-        if isfield(exit_info, 'PixelDataGroupLength') == 0
+        if isfield(exitInfo, 'PixelDataGroupLength') == 0
             
             % Set the DICOM PixelDataGroupLength tag based on the length of 
             % the procedure (StopTrim) multiplied by the number of detector
             % rows and 4 (each data point is 32-bit, or 4 bytes).  Two 
             % extra bytes are added to account for the "end of DICOM 
             % header" identifier
-            exit_info.PixelDataGroupLength = ...
-                (exit_info.Private_300d_2026.Item_1.StopTrim * ...
-                detector_rows * 4) + 8;
+            exitInfo.PixelDataGroupLength = ...
+                (exitInfo.Private_300d_2026.Item_1.StopTrim * ...
+                detectorRows * 4) + 8;
         end
         
         % Move the file pointer to the beginning of the detector data,
         % determined from the PixelDataGroupLength tag relative to the end 
         % of the file
-        fseek(fid,-(int32(exit_info.PixelDataGroupLength) - 8), 'eof');
+        fseek(fid,-(int32(exitInfo.PixelDataGroupLength) - 8), 'eof');
         
         % Read the data as unsigned integers into a temporary array, 
         % reshaping into the number of rows by the number of projections
-        arr = reshape(fread(fid, (int32(exit_info.PixelDataGroupLength) ...
-            - 8) / 4, 'uint32'), detector_rows, []);
+        arr = reshape(fread(fid, (int32(exitInfo.PixelDataGroupLength) ...
+            - 8) / 4, 'uint32'), detectorRows, []);
         
-        % Set raw_data by trimming the temporary array by left_trim and 
-        % right_trim channels (to match the QA data and leaf_map) and 
-        % start_trim and stop_trim projections (to match the sinogram)
-        raw_data = arr(left_trim:right_trim, start_trim:stop_trim);
+        % Set rawData by trimming the temporary array by leftTrim and 
+        % rightTrim channels (to match the QA data and leafMap) and 
+        % startTrim and stopTrim projections (to match the sinogram)
+        rawData = arr(leftTrim:rightTrim, startTrim:stopTrim);
         
-        % Divide each projection by channel_cal to account for relative 
+        % Divide each projection by channelCal to account for relative 
         % channel sensitivity effects (see LoadFileQA.m for more info)
-        raw_data = raw_data ./ (channel_cal' * ones(1, size(raw_data,2)));
+        rawData = rawData ./ (channelCal' * ones(1, size(rawData,2)));
         
         % Close the file handle
         fclose(fid);
         
         % Clear all temporary variables
-        clear fid arr right_trim start_trim stop_trim exit_info;
+        clear fid arr rightTrim startTrim stopTrim exitInfo;
     
         % Set plan UID to UNKNOWN, informing the tool must auto-select
-        plan_uid = 'UNKNOWN';
+        planUID = 'UNKNOWN';
 
     % Otherwise the user did not select a file
     else
@@ -370,17 +370,17 @@ else
         subnode = subnodeList.item(0);
 
         % Return the parent plan uid
-        plan_uid = char(subnode.getFirstChild.getNodeValue);
+        planUID = char(subnode.getFirstChild.getNodeValue);
 
         % Stop as the plan was found
         break;
     end
 
-    %% Load raw_data
-    % right_trim should be set to the channel in the exit detector data
+    %% Load rawData
+    % rightTrim should be set to the channel in the exit detector data
     % that corresponds to the last channel in the Daily QA data, and is
-    % easily calculated form left_trim using the size of channel_cal
-    right_trim = size(channel_cal, 2) + left_trim - 1; 
+    % easily calculated form leftTrim using the size of channelCal
+    rightTrim = size(channelCal, 2) + leftTrim - 1; 
 
     % Open read handle to sinogram file
     fid = fopen(returnDQAData{plan}.sinogram, 'r', 'b');
@@ -389,35 +389,35 @@ else
     % file. For gen4 (TomoDetectors), this should be 643
     rows = returnDQAData{plan}.dimensions(1);
 
-    % Set the variables start_trim to 1.  The raw_data will be longer 
+    % Set the variables startTrim to 1.  The rawData will be longer 
     % than the sinogram but will be auto-aligned based on the StopTrim 
     % value set above
-    start_trim = 1;
+    startTrim = 1;
 
-    % Set the variable stop_strim tag to the number of projections
+    % Set the variable stopTrim tag to the number of projections
     % (note, this assumes the procedure was stopped after the last
     % active projection)
-    stop_trim = returnDQAData{plan}.dimensions(2);
+    stopTrim = returnDQAData{plan}.dimensions(2);
 
     % Read the data as single data into a temporary array, reshaping
     % into the number of rows by the number of projections
     arr = reshape(fread(fid, rows * returnDQAData{plan}.dimensions(2), ...
         'single'), rows, returnDQAData{plan}.dimensions(2));
 
-    % Set raw_data by trimming the temporary array by left_trim and 
-    % right_trim channels (to match the QA data and leaf_map) and 
-    % start_trim and stop_trim projections (to match the sinogram)
-    raw_data = arr(left_trim:right_trim, start_trim:stop_trim);
+    % Set rawData by trimming the temporary array by leftTrim and 
+    % rightTrim channels (to match the QA data and leafMap) and 
+    % startTrim and stopTrim projections (to match the sinogram)
+    rawData = arr(leftTrim:rightTrim, startTrim:stopTrim);
 
-    % Divide each projection by channel_cal to account for relative channel
-    % sensitivity effects (see calculation of channel_cal above)
-    raw_data = raw_data ./ (channel_cal' * ones(1, size(raw_data, 2)));
+    % Divide each projection by channelCal to account for relative channel
+    % sensitivity effects (see calculation of channelCal above)
+    rawData = rawData ./ (channelCal' * ones(1, size(rawData, 2)));
 
     % Close the file handle
     fclose(fid);
 
     % Clear all temporary variables
-    clear fid arr right_trim start_trim stop_trim rows plan;
+    clear fid arr rightTrim startTrim stopTrim rows plan;
 end
 
 % Clear xpath temporary variables

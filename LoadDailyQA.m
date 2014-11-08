@@ -1,35 +1,35 @@
-function dailyqa = LoadDailyQA(path, name, numprojections, open_rows, ...
-    mvct_rows)
+function dailyqa = LoadDailyQA(path, name, numProjections, openRows, ...
+    mvctRows)
 % LoadDailyQA is called from ExitDetector.m and parses a TomoTherapy
 % Transit Dose DICOM RT object or Patient Archive XML file for procedure 
-% return data, depending on the value of the h.transit_qa flag.
-% This function sets a number of key variables for later use during
-% PaseFileXML, AutoSelectDeliveryPlan, CalcSinogramDiff, CalcDose, and 
+% return data, This function sets a number of key variables for later use 
+% during PaseFileXML, MatchDeliveryPlan, CalcSinogramDiff, CalcDose, and 
 % CalcGamma.
 %
 % The following variables are required for proper execution:
 %   name: name of the DICOM RT file or patient archive XML file
 %   path: path to the DICOM RT file or patient archive XML file
-%   numprojections: number of projections in the daily QA procedure
-%   open_rows: number of detector channels included in the DICOM file
-%   mvct_rows: the number of active MVCT data channels
+%   numProjections: number of projections in the daily QA procedure
+%   openRows: number of detector channels included in the DICOM file
+%   mvctRows: the number of active MVCT data channels
 %
 % The following variables are returned upon succesful completion:
+%   dailyqa.rawData: an array of raw MVCT detector channel data
 %   dailyqa.background: a double representing the mean background signal on
 %       the MVCT detector when the MLC leaves are closed
-%   dailyqa.leaf_map: an array of MVCT detector channel to MLC leaf 
+%   dailyqa.leafMap: an array of MVCT detector channel to MLC leaf 
 %       mappings.  Each channel represents the maximum signal for that leaf
-%   dailyqa.leaf_spread: array of relative response for an MVCT channel for 
-%       an open leaf (according to leaf_map) to neighboring MLC leaves
-%   dailyqa.channel_gold: array of the "expected" MLC response given the
+%   dailyqa.leafSpread: array of relative response for an MVCT channel for 
+%       an open leaf (according to leafMap) to neighboring MLC leaves
+%   dailyqa.channelGold: array of the "expected" MLC response given the
 %       TomoTherapy treatment system gold standard beam model
-%   dailyqa.channel_cal: array containing the relative response of each
+%   dailyqa.channelCal: array containing the relative response of each
 %       detector channel in an open field given KEEP_OPEN_FIELD_CHANNELS
-%   dailyqa.even_leaves: array containing the MVCT detector response when 
-%       all even MLC leaves are open, used to generate leaf_map
-%   dailyqa.odd_leaves: array containing the MVCT detector response when 
-%       all odd MLC leaves are open, used to generate leaf_map
-%   dailyqa.returnQAData: substructure of Daily QA procedure return
+%   dailyqa.evenLeaves: array containing the MVCT detector response when 
+%       all even MLC leaves are open, used to generate leafMap
+%   dailyqa.oddLeaves: array containing the MVCT detector response when 
+%       all odd MLC leaves are open, used to generate leafMap
+%   dailyqa.returnQAData: substructure of daily QA procedure return
 %       data parsed by this function, with details on each procedure
 %   dailyqa.returnQADataList: a string cell array for formatted return
 %       data (for populating a menu() call)
@@ -50,12 +50,12 @@ function dailyqa = LoadDailyQA(path, name, numprojections, open_rows, ...
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/. 
 
-% Initialize the channel_gold, which stores the "expected" MVCT 
+% Initialize the channelGold, which stores the "expected" MVCT 
 % detector channel response for an open beam.  This data was derived
 % from the TP+1 beam model 5 cm (J42) gold standard transverse beam
-% profile.  channel_gold must be the same dimension as the number of
+% profile.  channelGold must be the same dimension as the number of
 % MVCT detector channels defined above in the variable rows
-dailyqa.channel_gold = [45.8720005199238,47.8498858353154,49.3011672921640,...
+dailyqa.channelGold = [45.8720005199238,47.8498858353154,49.3011672921640,...
     50.3242948531514,51.0175530883297,51.4790615222934,51.8067749804769,...
     52.0983353861669,52.4185240086528,52.7584859210780,53.0997677536684,...
     53.4304198381329,53.7435450940641,54.0342411845526,54.3051241174067,...
@@ -211,7 +211,7 @@ if isempty(s)
     % Set rows to the number of detector channels included in the DICOM file
     % For gen4 (TomoDetectors), this should be 531 (detectorChanSelection
     % is set to KEEP_OPEN_FIELD_CHANNELS for the Daily QA XML)
-    rows = open_rows;
+    rows = openRows;
     
     % Read daily QA data into temporary array
     arr = reshape(fread(fid, (int32(info.PixelDataGroupLength) - 8) / 4, ...
@@ -219,11 +219,11 @@ if isempty(s)
 
     % Now set rows to the number of active MVCT data channels.  Typically
     % the last three channels are monitor chamber data
-    rows = mvct_rows;
+    rows = mvctRows;
     
-    % Read from the temporary array into qa_data, which should be just
-    % MVCT channel data
-    qa_data = arr(1:rows, 1:numprojections);
+    % Read from the temporary array into dailyqa.rawData, which should be
+    % just MVCT channel data
+    dailyqa.rawData = arr(1:rows, 1:numProjections);
 
     % Close file handle
     fclose(fid);
@@ -233,10 +233,10 @@ if isempty(s)
 
 % Else .xml was found, so use patient archive to load daily QA result
 else 
-    % show_all is a local flag.  When set to 1, all procedure return
+    % showAll is a local flag.  When set to 1, all procedure return
     % data found in the XML will be displayed to the user.  This should
     % be enabled only for testing purposes.
-    show_all = 0;
+    showAll = 0;
 
     % The patient XML is parsed using xpath class
     import javax.xml.xpath.*
@@ -277,10 +277,10 @@ else
         subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
         subnode = subnodeList.item(0);
 
-        % If show_all == 0, only include this returndata if the
+        % If showAll == 0, only include this returndata if the
         % pulseCount for the procedure equals 90000 (the size of a TQA
         % Daily QA procedure).  Otherwise, continue to the next result
-        if show_all == 0 && ...
+        if showAll == 0 && ...
                 str2double(subnode.getFirstChild.getNodeValue) ~= 90000
             continue
         end
@@ -365,7 +365,7 @@ else
     end
 
     % Remove empty cells due to hidden delivery plans
-    if show_all == 0
+    if showAll == 0
         dailyqa.returnQAData = ...
             dailyqa.returnQAData(~cellfun('isempty', ...
             dailyqa.returnQAData));
@@ -422,20 +422,20 @@ else
     % If the number of projections is greater than 9000, it is likely
     % that the compression factor was set to 1.  The below analysis 
     % requires the data to be downsampled by a factor of 10
-    if size(arr,2) > numprojections
+    if size(arr,2) > numProjections
         arr = imresize(arr,[dailyqa.returnQAData{plan}.dimensions(1) ...
             floor(dailyqa.returnQAData{plan}.dimensions(2)/10)]);
     end
 
     % Otherwise, if the number of projections is less than 9000, pad
     % the data to total 9000
-    if size(arr,2) < numprojections
-        arr = padarray(arr,[0 numprojections-size(arr,2)],'post');
+    if size(arr,2) < numProjections
+        arr = padarray(arr,[0 numProjections-size(arr,2)],'post');
     end
 
-    % Read from the temporary array into qa_data, which should be just
-    % MVCT channel data
-    qa_data = arr(1:rows,1:numprojections);
+    % Read from the temporary array into dailyqa.rawData, which should be
+    % just MVCT channel data
+    dailyqa.rawData = arr(1:rows,1:numProjections);
 
     % Close file handle
     fclose(fid);
@@ -454,32 +454,32 @@ clear s;
 %% Parse leaf map, and background from Daily QA data
 % The odd leaves are measured in projections 5401-5699; note that 
 % averaging determines the mean MLC channel over gantry rotation
-dailyqa.odd_leaves = mean(qa_data(:, 5401:5699), 2);
+dailyqa.oddLeaves = mean(dailyqa.rawData(:, 5401:5699), 2);
 
 % The even leaves are measured in projections 5701-5999
-dailyqa.even_leaves = mean(qa_data(:, 5701:5999), 2);
+dailyqa.evenLeaves = mean(dailyqa.rawData(:, 5701:5999), 2);
 
 % Read background from center channels (200-300), over projections
 % 6001-6099; background is intended to be measured under closed leaves
-dailyqa.background = mean2(qa_data(200:300,6001:6099));
+dailyqa.background = mean2(dailyqa.rawData(200:300,6001:6099));
 
-% Initialize leaf_map vector.  leaf_map correlates the center MVCT
+% Initialize leafMap vector.  leafMap correlates the center MVCT
 % channel for each leaf (1-64)
-dailyqa.leaf_map = zeros(64,1);
+dailyqa.leafMap = zeros(64,1);
 
 % Find peaks in the odd leaves detector data
-peaks = find(dailyqa.odd_leaves(2:end-1) >= ...
-    dailyqa.odd_leaves(1:end-2) & dailyqa.odd_leaves(2:end-1) >= ...
-    dailyqa.odd_leaves(3:end)) + 1;
+peaks = find(dailyqa.oddLeaves(2:end-1) >= ...
+    dailyqa.oddLeaves(1:end-2) & dailyqa.oddLeaves(2:end-1) >= ...
+    dailyqa.oddLeaves(3:end)) + 1;
 
 % Clear peaks less than 1/3
-peaks(dailyqa.odd_leaves(peaks) <= max(dailyqa.odd_leaves)/3) = [];
+peaks(dailyqa.oddLeaves(peaks) <= max(dailyqa.oddLeaves)/3) = [];
 
 % Start infinite loop
 while 1
     del = diff(peaks) < round(rows/64);
     if ~any(del), break; end
-    pks = dailyqa.odd_leaves(peaks);
+    pks = dailyqa.oddLeaves(peaks);
     [~,mins] = min([pks(del) ; pks([false del])]); 
     deln = find(del);
     deln = [deln(mins == 1) deln(mins == 2) + 1];
@@ -496,20 +496,20 @@ if size(peaks,1) == 31
 end
 
 % Store the peak channels in descending order for leaves 1, 3, ... 63
-dailyqa.leaf_map(1:2:64) = sort(peaks, 'descend');
+dailyqa.leafMap(1:2:64) = sort(peaks, 'descend');
 
 % Find peaks in the even leaves detector data
-peaks = find(dailyqa.even_leaves(2:end-1) >= dailyqa.even_leaves(1:end-2) ...
-    & dailyqa.even_leaves(2:end-1) >= dailyqa.even_leaves(3:end)) + 1;
+peaks = find(dailyqa.evenLeaves(2:end-1) >= dailyqa.evenLeaves(1:end-2) ...
+    & dailyqa.evenLeaves(2:end-1) >= dailyqa.evenLeaves(3:end)) + 1;
 
 % Clear peaks less than 1/3
-peaks(dailyqa.even_leaves(peaks) <= max(dailyqa.even_leaves)/3) = [];
+peaks(dailyqa.evenLeaves(peaks) <= max(dailyqa.evenLeaves)/3) = [];
 
 % Start infinite loop
 while 1
     del = diff(peaks) < round(rows/64);
     if ~any(del), break; end
-    pks = dailyqa.even_leaves(peaks);
+    pks = dailyqa.evenLeaves(peaks);
     [~,mins] = min([pks(del) ; pks([false del])]); 
     deln = find(del);
     deln = [deln(mins == 1) deln(mins == 2) + 1];
@@ -526,44 +526,45 @@ if size(peaks,1) == 31
 end
 
 % Store the peak channels in descending order for leaves 2, 4, ... 64
-dailyqa.leaf_map(2:2:64) = sort(peaks, 'descend');
+dailyqa.leafMap(2:2:64) = sort(peaks, 'descend');
 
-%% Calculate channel calibration vector channel_cal
-% Calculate the effective channel response function channel_cal,
+%% Calculate channel calibration vector channelCal
+% Calculate the effective channel response function channelCal,
 % defined as the "actual" response in a 5cm (J42) open field divided by
 % the "expected" response, derived from the beam model (see above).
 % The average response of each channel over projections 1000-2000 is
 % used
-dailyqa.channel_cal = mean(qa_data(:,1000:2000),2)'./dailyqa.channel_gold;
+dailyqa.channelCal = mean(dailyqa.rawData(:,1000:2000),2)'./...
+    dailyqa.channelGold;
 
-% Normalize the channel_cal to its mean value
-dailyqa.channel_cal = dailyqa.channel_cal/mean(dailyqa.channel_cal);
+% Normalize the channelCal to its mean value
+dailyqa.channelCal = dailyqa.channelCal/mean(dailyqa.channelCal);
 
 %% Calculate leaf spread function
-% Initialize the leaf spread function vector leaf_spread.  The leaf
+% Initialize the leaf spread function vector leafSpread.  The leaf
 % spread array stores the relative MVCT response for an open leaf
 % relative to 15 nearby closed leaves.  15 is arbitrarily chosen.
-dailyqa.leaf_spread = zeros(1,16);
+dailyqa.leafSpread = zeros(1,16);
 
 % Loop through leaves 33-18
-for i = 1:size(dailyqa.leaf_spread,2)
+for i = 1:size(dailyqa.leafSpread,2)
 
     % Read the MVCT signal for leaves 33 - 18 over projections 6225-6230  
     % At this projection, leaf 33 is open, while leaves 32-18 are closed
-    % Note leaf_spread accounts for channel calibration
-    dailyqa.leaf_spread(i) = mean(qa_data(dailyqa.leaf_map(34-i),6225:6230)) ...
-        /dailyqa.channel_cal(dailyqa.leaf_map(34-i))-dailyqa.background;
+    % Note leafSpread accounts for channel calibration
+    dailyqa.leafSpread(i) = mean(dailyqa.rawData(dailyqa.leafMap(34-i),...
+        6225:6230)) / dailyqa.channelCal(dailyqa.leafMap(34-i)) - ...
+        dailyqa.background;
 end
 
-% Normalize the leaf_spread vector to the maximum value (open leaf)
-dailyqa.leaf_spread = dailyqa.leaf_spread/max(dailyqa.leaf_spread);
+% Normalize the leafSpread vector to the maximum value (open leaf)
+dailyqa.leafSpread = dailyqa.leafSpread/max(dailyqa.leafSpread);
 
 % Clear temporary variables
 clear i peaks;
 
 % Catch errors, log, and rethrow
 catch err
-
     % Log error via Event.m
     Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'ERROR');
 end

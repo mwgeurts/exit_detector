@@ -1,4 +1,4 @@
-function planData = LoadPlan(path, name, plan_uid)
+function planData = LoadPlan(path, name, planUID)
 % LoadPlan loads the delivery plan from a specified TomoTherapy patient 
 % archive and plan trial UID.  This data can be used to perform dose 
 % calculation via CalcDose.m. This function has currently been validated 
@@ -7,7 +7,7 @@ function planData = LoadPlan(path, name, plan_uid)
 % The following variables are required for proper execution: 
 %   path: path to the patient archive XML file
 %   name: name of patient XML file in path
-%   plan_uid: UID of the plan
+%   planUID: UID of the plan
 %
 % The following variables are returned upon succesful completion:
 %   planData: delivery plan data including scale, tau, lower leaf index,
@@ -34,13 +34,13 @@ try
     
 % Log start of plan load and start timer
 Event(sprintf(['Extracting delivery plan from %s for plan ', ...
-    'UID %s'], name, plan_uid));
+    'UID %s'], name, planUID));
 tic;
 
 % Return input variables in the return variable planData
 planData.xmlPath = path;
 planData.xmlName = name;
-planData.planUID = plan_uid;
+planData.planUID = planUID;
 
 % The patient XML is parsed using xpath class
 import javax.xml.xpath.*
@@ -112,7 +112,7 @@ end
 % If not plan trial UID was found, stop
 if ~isfield(planData, 'planTrialUID')
     Event(sprintf(['An approved plan trial UID for plan UID %s was not', ...
-        ' found in %s'], plan_uid, name), 'ERROR');
+        ' found in %s'], planUID, name), 'ERROR');
 end
 
 %% Load Fluence Delivery Plan
@@ -700,7 +700,7 @@ for i = 1:planData.numprojections
 
        % Store the difference between the "open" and "close" tau values
        % as the fractional leaf open time (remember one tau = one
-       % projection) in the sino_calc sinogram array under the correct
+       % projection) in the sinogram array under the correct
        % leaf (numbered 1:64)
        sinogram(planData.lowerLeafIndex+(j+1)/2, index) = ...
            leaves(j+1) - leaves(j);
@@ -718,7 +718,7 @@ for i = 1:size(sinogram, 2)
     % the projection is active
     if max(sinogram(:,i)) > 0.01
 
-        % Set start_trim to the current projection
+        % Set startTrim to the current projection
         planData.startTrim = i;
 
         % Stop looking for the first active projection
@@ -733,7 +733,7 @@ for i = size(sinogram,2):-1:1
     % the projection is active
     if max(sinogram(:,i)) > 0.01
 
-        % Set stop_trim to the current projection
+        % Set stopTrim to the current projection
         planData.stopTrim = i;
 
         % Stop looking for the last active projection
@@ -741,7 +741,7 @@ for i = size(sinogram,2):-1:1
     end
 end
 
-% Set the sinogram return variable to the start_ and stop_trimmed
+% Set the sinogram return variable to the start and stop trimmed
 % binary array
 planData.sinogram = sinogram(:, planData.startTrim:planData.stopTrim);
 

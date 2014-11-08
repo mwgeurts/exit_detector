@@ -1,36 +1,36 @@
-function [plan_uid, sinogram, maxcorr] = MatchDeliveryPlan(varargin)
+function [planUID, sinogram, maxcorr] = MatchDeliveryPlan(varargin)
 % MatchDeliveryPlan searches through a patient XML specified by name, path
 % and finds all delivery plans (see below for filter flags).  If auto
 % selection is enabled, the delivery plan that matches closest to an input
 % sinogram (as computed using the correlation coefficient) is determined.
 % If not, the user is prompted to select a delivery plan via listdlg, and
-% the plan_uid and sinogram for the selected plan is returned.
+% the planUID and sinogram for the selected plan is returned.
 %
 % The following variables are required for proper execution:
 %   path: path to the patient archive XML
 %   name: name of the patient archive XML
-%   hide_fluence (optional): 0 or 1, setting whether fluence delivery plan
+%   hideFluence (optional): 0 or 1, setting whether fluence delivery plan
 %       types should be hidden from the results
-%   hide_machspecific (optional): 0 or 1, setting whether machine specific 
+%   hideMachSpecific (optional): 0 or 1, setting whether machine specific 
 %       delivery plan types should be hidden from the results
-%   auto_select (optional): 0 or 1, setting whether MatchDeliveryPlan.m
+%   autoSelect (optional): 0 or 1, setting whether MatchDeliveryPlan.m
 %       should automatically select the closest matching sinogram.  If set 
 %       to 1, all remaining input variables must be provided
-%   auto_shift: 0 or 1, setting whether the sinograms are auto-aligned
+%   autoShift: 0 or 1, setting whether the sinograms are auto-aligned
 %       prior to correlation computation
 %   background: double representing the mean background signal on the MVCT 
 %       detector when the MLC leaves are closed (see ParseFileQA.m)
-%   leaf_map: array of MVCT detector channel to MLC leaf 
+%   leafMap: array of MVCT detector channel to MLC leaf 
 %       mappings.  Each channel represents the maximum signal for that
 %       leaf (see ParseFileQA.m)
-%   raw_data: n x detector_rows of uncorrected exit detector data for a 
+%   rawData: n x detector rows of uncorrected exit detector data for a 
 %       delivered static couch DQA plan, where n is the number of 
 %       projections in the plan (see ParseFileQA.m)
 %
 % The following variables are returned upon succesful completion:
-%   plan_uid: UID of the plan selected or optimally determined
+%   planUID: UID of the plan selected or optimally determined
 %   sinogram: 64 x n leaf open time sinogram of the selected delivery plan
-%   maxcorr: if auto_select is set to 1, the maximum correlation determined
+%   maxcorr: if autoSelect is set to 1, the maximum correlation determined
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
 % Copyright (C) 2014 University of Wisconsin Board of Regents
@@ -52,29 +52,29 @@ function [plan_uid, sinogram, maxcorr] = MatchDeliveryPlan(varargin)
 if nargin == 2
     path = varargin{1};
     name = varargin{2};
-    hide_fluence = 0;
-    hide_machspecific = 0;
-    auto_select = 0;
+    hideFluence = 0;
+    hideMachSpecific = 0;
+    autoSelect = 0;
     
 % If four arguments are passed, assume they are name/path and filter flags
 elseif nargin == 4
     path = varargin{1};
     name = varargin{2};
-    hide_fluence = varargin{3};
-    hide_machspecific = varargin{4};
-    auto_select = 0;  
+    hideFluence = varargin{3};
+    hideMachSpecific = varargin{4};
+    autoSelect = 0;  
     
 % Otherwise, assume all values are passed
 elseif nargin == 9
     path = varargin{1};
     name = varargin{2};
-    hide_fluence = varargin{3};
-    hide_machspecific = varargin{4};
-    auto_select = varargin{5};
-    auto_shift = varargin{6};
+    hideFluence = varargin{3};
+    hideMachSpecific = varargin{4};
+    autoSelect = varargin{5};
+    autoShift = varargin{6};
     background = varargin{7};
-    leaf_map = varargin{8}; 
-    raw_data = varargin{9};
+    leafMap = varargin{8}; 
+    rawData = varargin{9};
     
 % If an incorrect number of arguments was passed, throw an error
 else
@@ -123,11 +123,11 @@ for i = 1:nodeList.getLength
     subnode = subnodeList.item(0);
 
     % If the purpose is not machine agnostic, or if machine specific
-    % and hide_machspecific is set to 0, or if 
+    % and hideMachSpecific is set to 0, or if 
     if strcmp(char(subnode.getFirstChild.getNodeValue), ...
-            'Machine_Agnostic') || (hide_fluence == 0 && ...
+            'Machine_Agnostic') || (hideFluence == 0 && ...
             strcmp(char(subnode.getFirstChild.getNodeValue), ...
-            'Fluence'))  || (hide_machspecific == 0 && ...
+            'Fluence'))  || (hideMachSpecific == 0 && ...
             strcmp(char(subnode.getFirstChild.getNodeValue), ...
             'Machine_Specific'))
 
@@ -305,7 +305,7 @@ if size(deliveryPlans, 2) == 0
 end
 
 % If delivery plan auto-selection is disabled
-if auto_select == 0
+if autoSelect == 0
     % Open a menu to prompt the user to select the delivery plan using 
     % deliveryPlanList
     [plan, ok] = listdlg('Name', 'Select Delivery Plan', ...
@@ -358,8 +358,8 @@ if auto_select == 0
         % the projection is active
         if max(arr(:,i)) > 0.01
 
-            % Set start_trim to the current projection
-            start_trim = i;
+            % Set startTrim to the current projection
+            startTrim = i;
 
             % Stop looking for the first active projection
             break;
@@ -373,26 +373,26 @@ if auto_select == 0
         % the projection is active
         if max(arr(:,i)) > 0.01
 
-            % Set stop_trim to the current projection
-            stop_trim = i;
+            % Set stopTrim to the current projection
+            stopTrim = i;
 
             % Stop looking for the last active projection
             break;
         end
     end
 
-    % Set the plan_uid return variable
-    plan_uid = deliveryPlans{plan}.parentuid;
+    % Set the planUID return variable
+    planUID = deliveryPlans{plan}.parentuid;
     
-    % Set the sinogram return variable to the start_ and stop_trimmed
+    % Set the sinogram return variable to the start and stop trimmed
     % binary array
-    sinogram = arr(:, start_trim:stop_trim);
+    sinogram = arr(:, startTrim:stopTrim);
 
     % Set maxcorr to -1
     maxcorr = -1;
     
     % Clear temporary variables
-    clear arr start_trim stop_trim;
+    clear arr startTrim stopTrim;
 
 % Otherwise, automatically determine optimal plan
 else  
@@ -436,8 +436,8 @@ else
             % assume the projection is active
             if max(arr(:,i)) > 0.01
 
-                % Set start_trim to the current projection
-                start_trim = i;
+                % Set startTrim to the current projection
+                startTrim = i;
 
                 % Stop looking for the first active projection
                 break;
@@ -452,8 +452,8 @@ else
             % assume the projection is active
             if max(arr(:,i)) > 0.01
 
-                % Set stop_trim to the current projection
-                stop_trim = i;
+                % Set stopTrim to the current projection
+                stopTrim = i;
 
                 % Stop looking for the last active projection
                 break;
@@ -461,27 +461,27 @@ else
         end
 
         % Update the delivery plan numprojections field based on
-        % the start_ and stop_trim values
+        % the start and stop trim values
         deliveryPlans{plan}.numprojections = ...
-            stop_trim - start_trim + 1;
+            stopTrim - startTrim + 1;
 
-        % Set the sinogram field to the start_ and stop_trimmed
+        % Set the sinogram field to the start and stop trimmed
         % binary array
-        deliveryPlans{plan}.sinogram = arr(:, start_trim:stop_trim);
+        deliveryPlans{plan}.sinogram = arr(:, startTrim:stopTrim);
 
-        if deliveryPlans{plan}.numprojections > size(raw_data,2)
+        if deliveryPlans{plan}.numprojections > size(rawData,2)
            continue 
         end
 
-        % Create temporary exit_data variable (for correlation
-        % computation).  Note, this exit_data is not stored into
+        % Create temporary exitData variable (for correlation
+        % computation).  Note, this exitData is not stored into
         % the global variable.
-        exit_data = raw_data(leaf_map(1:64), size(raw_data,2) - ...
+        exitData = rawData(leafMap(1:64), size(rawData,2) - ...
             deliveryPlans{plan}.numprojections + 1:...
-            size(raw_data,2)) - background;  
+            size(rawData,2)) - background;  
 
         % Check if auto-shift is enabled
-        if auto_shift == 1
+        if autoShift == 1
 
             % If so, initialize the maximum correlation value to 0
             deliveryPlans{plan}.maxcorr = 0;
@@ -497,7 +497,7 @@ else
                 % anyway, so this approximation is only used to determine
                 % the best sinogram to compare to.
                 j = corr2(deliveryPlans{plan}.sinogram, ...
-                    circshift(exit_data,[0 i]));
+                    circshift(exitData,[0 i]));
 
                 % If the maximum correlation is less than the current 
                 % correlation, update the maximum correlation parameter
@@ -512,11 +512,11 @@ else
             % Set the maximum correlation for this sinogram to the
             % unshifted 2D correlation
             deliveryPlans{plan}.maxcorr = ...
-                corr2(deliveryPlans{plan}.sinogram, exit_data);
+                corr2(deliveryPlans{plan}.sinogram, exitData);
         end
 
         % Clear temporary variables
-        clear i j arr start_trim stop_trim;
+        clear i j arr startTrim stopTrim;
     end
 
     % Initialize the maximum correlation return variable
@@ -536,8 +536,8 @@ else
             % Set sinogram variable to this delivery plan's sinogram
             sinogram = deliveryPlans{plan}.sinogram; 
 
-            % Set the plan_uid return variable to this delivery plan
-            plan_uid = deliveryPlans{plan}.parentuid; 
+            % Set the planUID return variable to this delivery plan
+            planUID = deliveryPlans{plan}.parentuid; 
         end
     end
 end
