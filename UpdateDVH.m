@@ -71,8 +71,16 @@ tic;
 % based on new stats array
 if nargin == 1
     stats = varargin{1};
-    referenceDVH = storedReferenceDVH;
-    dqaDVH = storeddqaDVH;
+    
+    % If stored reference data exists
+    if ~isempty(storedReferenceDVH)
+        referenceDVH = storedReferenceDVH;
+    end
+    
+    % If stored DQA data exosts
+    if ~isempty(storeddqaDVH)
+        dqaDVH = storeddqaDVH;
+    end
     
 % Otherwise, if four arguments are provided, compute just refernce data
 elseif nargin == 4
@@ -167,12 +175,12 @@ if nargin >= 4
         maxdose = max(max(max(referenceDose.data)));
     
         % Initialize array for reference DVH values with 1001 bins
-        referenceDVH = zeros(1001, size(referenceImage.structures, 2)+1);
+        referenceDVH = zeros(1001, size(referenceImage.structures, 2) + 1);
         
         % Defined the last column to be the x-axis, ranging from 0 to the
         % maximum dose
-        referenceDVH(:, size(referenceImage.structures, 2)+1) = ...
-            0:maxdose/1000:maxdose;
+        referenceDVH(:, size(referenceImage.structures, 2) + 1) = ...
+            0:maxdose / 1000:maxdose;
 
         % Loop through each reference structure
         for i = 1:size(referenceImage.structures, 2)
@@ -299,7 +307,7 @@ if nargin >= 6
         for i = 1:size(dqaImage.structures, 2) 
             
             % If valid DQA dose data was passed
-            if isfield(dqaDose,'data') && size(dqaDose.data,1) > 0
+            if isfield(dqaDose, 'data') && size(dqaDose.data, 1) > 0
                 
                 % Multiply the dose by the structure mask and reshape into
                 % a vector (adding 1e-6 is necessary to retain zero dose

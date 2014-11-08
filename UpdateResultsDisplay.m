@@ -92,6 +92,7 @@ switch get(handles.results_display, 'Value')
             plot([handles.dailyqa.even_leaves handles.dailyqa.odd_leaves])
             
             % Set plot options
+            colormap(handles.results_axes, 'default')
             axis tight
             xlabel('Channel')
             ylabel('Signal')
@@ -120,6 +121,7 @@ switch get(handles.results_display, 'Value')
             plot(handles.dailyqa.leaf_map)
             
             % Set plot options
+            colormap(handles.results_axes, 'default')
             axis tight
             xlabel('MLC Leaf')
             ylabel('Channel')
@@ -149,6 +151,7 @@ switch get(handles.results_display, 'Value')
             plot(handles.dailyqa.channel_cal)
             
             % Set plot options
+            colormap(handles.results_axes, 'default')
             axis tight
             xlabel('Channel')
             ylabel('Normalized Signal')
@@ -178,6 +181,7 @@ switch get(handles.results_display, 'Value')
             plot(handles.dailyqa.leaf_spread)
             
             % Set plot options
+            colormap(handles.results_axes, 'default')
             axis tight
             xlabel('MLC Leaf')
             ylabel('Normalized Signal')
@@ -213,6 +217,7 @@ switch get(handles.results_display, 'Value')
             hist(open_times, 100)
             
             % Set plot options
+            colormap(handles.results_axes, 'default')
             xlabel('Open Time (%)')
             grid on
             zoom on
@@ -238,6 +243,7 @@ switch get(handles.results_display, 'Value')
             hist(handles.errors*100, 100)
             
             % Set plot options
+            colormap(handles.results_axes, 'default')
             xlabel('LOT Error (%)')
             grid on
             zoom on
@@ -267,6 +273,7 @@ switch get(handles.results_display, 'Value')
                 reshape(handles.diff, 1, []) * 100)
             
             % Set plot options
+            colormap(handles.results_axes, 'default')
             axis tight
             xlabel('Leaf Open Time (%)')
             ylabel('LOT Error (%)')
@@ -302,6 +309,7 @@ switch get(handles.results_display, 'Value')
             hist(gammahist, 100)
             
             % Set plot options
+            colormap(handles.results_axes, 'default')
             xlabel('Gamma Index')
             grid on
             zoom on

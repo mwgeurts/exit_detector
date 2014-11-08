@@ -48,10 +48,10 @@ if isfield(handles, 'planData') && isfield(handles.planData, 'sinogram')
     open_times = reshape(handles.planData.sinogram, 1, []); 
     
     % Remove zero values
-    open_times = open_times(open_times > 0) * 100;
+    open_times = open_times(open_times > 0);
             
     % Store the mean leaf open time from the 1D sinogram              
-    table{c,2} = sprintf('%0.2f%%', mean(open_times));
+    table{c,2} = sprintf('%0.2f%%', mean(open_times) * 100);
     
     % Clear temporary variables
     clear open_times;
@@ -63,7 +63,7 @@ end
 c = c + 1;
 table{c,1} = 'Mean Leaf Open Time Error';
 if isfield(handles, 'errors')
-    table{c,2} = sprintf('%0.2f%%', mean(handles.errors)); 
+    table{c,2} = sprintf('%0.2f%%', mean(handles.errors) * 100); 
 else
     table{c,2} = '';
 end
@@ -73,7 +73,7 @@ c = c + 1;
 table{c,1} = 'St Dev Leaf Open Time Error';
 if isfield(handles, 'diff')
     % Store the st dev errors            
-    table{c,2} = sprintf('%0.2f%%', std(handles.errors));
+    table{c,2} = sprintf('%0.2f%%', std(handles.errors) * 100);
 else
     table{c,2} = '';
 end

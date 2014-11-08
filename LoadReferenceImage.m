@@ -334,9 +334,6 @@ Event(sprintf(['Reference binary image loaded successfully in %0.3f ', ...
 
 % Catch errors, log, and rethrow
 catch err
-    % Delete progress handle if it exists
-    if exist('progress','var') && ishandle(progress), delete(progress); end
-    
     % Log error via Event.m
     Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'ERROR');
 end

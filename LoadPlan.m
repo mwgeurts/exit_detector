@@ -719,7 +719,7 @@ for i = 1:size(sinogram, 2)
     if max(sinogram(:,i)) > 0.01
 
         % Set start_trim to the current projection
-        start_trim = i;
+        planData.startTrim = i;
 
         % Stop looking for the first active projection
         break;
@@ -734,7 +734,7 @@ for i = size(sinogram,2):-1:1
     if max(sinogram(:,i)) > 0.01
 
         % Set stop_trim to the current projection
-        stop_trim = i;
+        planData.stopTrim = i;
 
         % Stop looking for the last active projection
         break;
@@ -743,7 +743,7 @@ end
 
 % Set the sinogram return variable to the start_ and stop_trimmed
 % binary array
-planData.sinogram = sinogram(:, start_trim:stop_trim);
+planData.sinogram = sinogram(:, planData.startTrim:planData.stopTrim);
 
 % Report success
 Event(sprintf(['Plan data loaded successfully with %i events and %i', ...

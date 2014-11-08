@@ -132,9 +132,9 @@ set(handles.autoshift_box, 'Enable', 'on');
 set(handles.autoshift_box, 'Value', 1);
 Event('Delivery plan auto-alignment enabled by default');
 
-set(handles.dynamicjaw_box, 'Enable', 'off');
-set(handles.dynamicjaw_box, 'Value', 0);
-Event('Dynamic jaw compensation is not currently available');
+set(handles.dynamicjaw_box, 'Enable', 'on');
+set(handles.dynamicjaw_box, 'Value', 1);
+Event('Dynamic jaw compensation enabled by default');
 
 % Initialize tables
 set(handles.dvh_table, 'Data', cell(8,5));
@@ -210,6 +210,7 @@ Event(['Default dose view transparency set to ', ...
 %% Load SSH/SCP Scripts
 % A try/catch statement is used in case Ganymed-SSH2 is not available
 try
+    
     % Start with the handles.calc_dose flag set to 1 (dose calculation
     % enabled)
     handles.calc_dose = 1;
@@ -230,12 +231,8 @@ try
     [handles.ssh2_conn, ~] = ssh2_command(handles.ssh2_conn, 'ls');
     Event('SSH2 connection successfully established');
     
-    % handles.pdut_path represents the local directory that contains the
-    % beam model files required during dose calculation.  See CalcDose or 
-    % the README for more information.
-    handles.pdut_path = 'GPU/';
-    
 catch err
+    
     % Log failure
     Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'WARN');
     
@@ -243,6 +240,7 @@ catch err
     % handles.calc_dose flag to zero (dose calculation will be disabled) 
     Event('Dose calculation will be disabled', 'WARN');
     handles.calc_dose = 0;
+    
 end
 
 %% Complete initialization
@@ -456,7 +454,7 @@ if ~isequal(name, 0);
             handles.dailyqa.leaf_spread, handles.dailyqa.leaf_map, ...
             handles.raw_data, handles.planData.sinogram, ...
             get(handles.autoshift_box, 'Value'), ...
-            get(handles.dynamicjaw_box, 'Value'));
+            get(handles.dynamicjaw_box, 'Value'), handles.planData);
 
         % Store temporary dqa dose flag
         dqa = 0;
@@ -465,7 +463,7 @@ if ~isequal(name, 0);
         if handles.calc_dose == 1
             
             % Ask user if they want to calculate dose
-            choice = questdlg('Continue to Calculate Dose?', ...
+            choice = questdlg('Continue to Calculate DQA Dose?', ...
                 'Calculate Dose', 'Yes', 'No', 'Yes');
 
             % If the user chose yes
@@ -475,11 +473,24 @@ if ~isequal(name, 0);
                 
                 % Update progress bar
                 waitbar(0.7, progress, 'Calculating dose...');
-                %
-                %
-                % ADD CODE HERE
-                %
-                %
+                
+                % Adjust delivery plan sinogram by measured differences
+                handles.dqaPlanData = handles.planData;
+                handles.dqaPlanData.sinogram(:,...
+                    handles.dqaPlanData.startTrim:...
+                    handles.dqaPlanData.stopTrim) = h.sino_calc(:,...
+                    handles.dqaPlanData.startTrim:...
+                    handles.dqaPlanData.stopTrim) + handles.diff;
+                
+                % Trim any sino_mod projection values outside of [0 1]
+                handles.dqaPlanData.sinogram = ...
+                    max(0, handles.dqaPlanData.sinogram);
+                handles.dqaPlanData.sinogram = ...
+                    min(1, handles.dqaPlanData.sinogram);
+                
+                % Execute CalcDose
+                handles.dqaDose = CalcDose(handles.referenceImage, ...
+                    handles.dqaPlanData, [0 0 0 0 0 0], handles.ssh2_conn);
             end
 
             % Ask user if they want to calculate dose
@@ -513,25 +524,41 @@ if ~isequal(name, 0);
         % Update results statistics
         handles = UpdateResultsStatistics(handles);
         
-        % Update dose plot
-        set(handles.dose_display, 'Value', 2);
-        handles = UpdateDoseDisplay(handles);
-    
-        % Update DVH plot
+        % If DQA dose was calculated
         if dqa == 1
+            
+            % Update dose plot with dose difference
+            set(handles.dose_display, 'Value', 4);
+            handles = UpdateDoseDisplay(handles);
+        
+            % Update DVH plot
             [handles.referenceDVH, handles.dqaDVH] = ...
                 UpdateDVH(handles.dvh_axes, get(handles.dvh_table, 'Data'), ...
                 handles.referenceImage, handles.referenceDose, ...
                 handles.referenceImage, handles.dqaDose);
+            
+            % Update Dx/Vx statistics
+            set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
+                get(handles.dvh_table, 'Data'), handles.referenceDVH, ...
+                handles.dqaDVH));
+        
+        % Otherwise, only reference dose exists
         else
+            
+            % Update dose plot with planned dose
+            set(handles.dose_display, 'Value', 2);
+            handles = UpdateDoseDisplay(handles);
+            
+            % Update DVH plot
             [handles.referenceDVH] = ...
                 UpdateDVH(handles.dvh_axes, get(handles.dvh_table, 'Data'), ...
                 handles.referenceImage, handles.referenceDose);
+            
+            % Update Dx/Vx statistics
+            set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
+                get(handles.dvh_table, 'Data'), handles.referenceDVH));
         end
-        
-        % Update Dx/Vx statistics
-        % handles = UpdateDoseStatistics(handles);
-        
+
         % Update sinogram plot
         if isfield(handles, 'planData') && ...
                 isfield(handles.planData, 'sinogram') && ...
@@ -543,6 +570,7 @@ if ~isequal(name, 0);
             set(gca,'YTickLabel',[])
             set(gca,'XTickLabel',[])
             title('Planned Fluence (%)')
+            colormap(handles.sino1_axes, 'default')
             colorbar
         end
         
@@ -555,6 +583,7 @@ if ~isequal(name, 0);
             set(gca,'YTickLabel',[])
             set(gca,'XTickLabel',[])
             title('Deconvolved Measured Fluence (%)')
+            colormap(handles.sino2_axes, 'default')
             colorbar
         end
         
@@ -567,6 +596,7 @@ if ~isequal(name, 0);
             set(gca,'YTickLabel',[])
             title('Difference (%)')
             xlabel('Projection')
+            colormap(handles.sino3_axes, 'default')
             colorbar
         end
     end
@@ -725,18 +755,31 @@ function dvh_table_CellEditCallback(hObject, eventdata, handles)
 %	Error: error string when failed to convert EditData to appropriate value for Data
 % handles    structure with handles and user data (see GUIDATA)
 
-% Update Dx/Vx statistics
-% handles = UpdateDoseStatistics(handles);
+% Get current data
+stats = get(hObject, 'Data');
 
-% Update dose plot 
-if get(handles.dose_display, 'Value') > 1
+% Update Dx/Vx statistics
+stats = UpdateDoseStatistics(stats);
+
+% Update dose plot if it is displayed
+if get(handles.dose_display, 'Value') > 1 && ...
+        strcmp(get(handles.dose_slider, 'visible'), 'on')
+    
     UpdateViewer(get(handles.dose_slider,'Value'), ...
-        sscanf(get(handles.alpha, 'String'), '%f%%')/100, ...
-        get(hObject, 'Data'));
+        sscanf(get(handles.alpha, 'String'), '%f%%')/100, stats);
 end
 
 % Update DVH plot
-% handles = UpdateDVH(handles);
+UpdateDVH(stats);
+
+% Set new table data
+set(hObject, 'Data', stats);
+
+% Clear temporary variable
+clear stats;
+
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function print_button_Callback(hObject, ~, handles)

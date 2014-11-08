@@ -1,5 +1,6 @@
 function [exit_data, diff, errors] = CalcSinogramDiff(background, ...
-    leaf_spread, leaf_map, raw_data, sinogram, auto_shift, dynamic_jaw)
+    leaf_spread, leaf_map, raw_data, sinogram, auto_shift, dynamic_jaw, ...
+    planData)
 % CalcSinogramDiff calculates a measured exit detector sinogram
 %   CalcSinogramDiff reads in a raw MVCT detector signal and computes a
 %   "measured" fluence sinogram given a channel to MLC leaf map, leaf
@@ -27,6 +28,10 @@ function [exit_data, diff, errors] = CalcSinogramDiff(background, ...
 %       computing the difference
 %   dynamic_jaw: boolean determining whether the measured sinogram should
 %       be corrected for MVCT response changes due to dynamic jaw motion
+%   planData: delivery plan data including scale, tau, lower leaf index,
+%       number of projections, number of leaves, sync/unsync actions, 
+%       leaf sinogram, and planTrialUID. See LoadPlan.m for more detail.
+%
 %
 % The following handles are returned upon succesful completion:
 %   exit_data: a 2D sinogram representing the de-convolved, extracted 
@@ -174,10 +179,27 @@ try
         diff = exit_data - sinogram;
         
         % If dynamic jaw compensation is enabled
-        if dynamic_jaw == 1
-
-            % Reserved for future development
-
+        if dynamic_jaw == 1 && isfield(planData, 'events')
+            
+            % Compute jaw widths
+            widths = CalcFieldWidth(planData);
+            
+            % Model relationship between sinogram difference vs. field
+            % width in dynamic jaw areas
+            p = polyfit(widths(3, planData.startTrim:...
+                planData.stopTrim), min(diff), 2);
+            
+            % Adjust all dynamic jaw projections
+            for i = 1:size(diff,2)
+                if widths(3, planData.startTrim+i) < max(widths(3,:) * 0.9)
+                    diff(:,i) = min(diff(:,i) - polyval(p, ...
+                        widths(3, planData.startTrim+i)) .* ...
+                        ceil(sinogram(:,i)), 0);
+                end
+            end
+            
+            % Clear temporary variables
+            clear widths p;
         end
 
         % Store the sinogram difference array as a 1D vector
