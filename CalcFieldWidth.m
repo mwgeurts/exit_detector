@@ -1,5 +1,5 @@
 function widths = CalcFieldWidth(plan)
-% CalcFieldWidth computes the jaw position and field width at each
+% CalcFieldWidth computes the jaw positions and field width at each
 % projection for a given delivery plan structure.  The return variable
 % includes the front jaw, back jaw, and field widths as defined below.  The
 % values are in centimeters projected to isocenter.
@@ -30,8 +30,15 @@ function widths = CalcFieldWidth(plan)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
+% Execute in try/catch statement
+try  
+    
 % Total tau and event data are required for field width computation
 if isfield(plan, 'totalTau') && isfield(plan, 'events')
+    
+% Log start
+Event('Computing jaw profiles using delivery plan events');
+tic;
     
 % Initialize return variable
 widths = zeros(3, plan.totalTau);
@@ -85,4 +92,13 @@ widths = widths * 85;
 % Compute field width as difference between front and back
 widths(3,:) = widths(1,:) - widths(2,:);
 
+% Log completion
+Event(sprintf('Jaw profiles computed successfully in %0.3f seconds', toc));
+
+end
+
+% Catch errors, log, and rethrow
+catch err
+    % Log error via Event.m
+    Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'ERROR');
 end

@@ -74,6 +74,7 @@ set(handles.results_axes, 'visible', 'off');
 
 % Execute code block based on display GUI item value
 switch get(handles.results_display, 'Value')
+    
     % Leaf Offsets (aka Even/Odd leaves plot) plot
     case 2
         % Log plot selection

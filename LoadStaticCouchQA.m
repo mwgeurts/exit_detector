@@ -43,10 +43,15 @@ function [planUID, rawData] = LoadStaticCouchQA(path, name, leftTrim, ...
 % Execute in try/catch statement
 try  
 
+% Log start of plan loading and start timer
+Event(['Parsing Static Couch QA data from ', name]);
+tic;
+    
 % The patient XML is parsed using xpath class
 import javax.xml.xpath.*
 
 % Read in the patient XML and store the Document Object Model node to doc
+Event('Loading file contents data using xmlread');
 doc = xmlread(fullfile(path, name));
 
 % Initialize a new xpath instance to the variable factory
@@ -112,7 +117,8 @@ for i = 1:nodeList.getLength
     end
 
     % Store the returndata description
-    returnDQAData{i}.description = char(subnode.getFirstChild.getNodeValue);
+    returnDQAData{i}.description = ...
+        char(subnode.getFirstChild.getNodeValue);
 
     % Search for delivery plan XML object date
     subexpression = xpath.compile(['procedure/briefProcedure/', ...
@@ -193,14 +199,13 @@ for i = 1:nodeList.getLength
         str2double(subnode.getFirstChild.getNodeValue);
 end 
 
-%% Select static couch run to process (if multiple exist)
 % Remove empty result cells (due to results that were skipped
 % because they were not Static Couch DQA plans or performed)
 returnDQAData = returnDQAData(~cellfun('isempty', returnDQAData));
 returnDQADataList = ...
     returnDQADataList(~cellfun('isempty', returnDQADataList));
 
-% Prompt user to select return data
+%% If not static couch QA data was found
 if size(returnDQAData,2) == 0
     % Request the user to select the DQA exit detector DICOM
     Event(['No static couch data was found in patient archive. ', ...
@@ -210,16 +215,21 @@ if size(returnDQAData,2) == 0
 
     % If the user selected a file
     if ~isequal(name, 0)
+        % Log choice
+        Event(['User selected ', name]);
+        
         % rightTrim should be set to the channel in the exit detector data
         % that corresponds to the last channel in the Daily QA data, and is
         % easily calculated form leftTrim using the size of channelCal
         rightTrim = size(channelCal, 2) + leftTrim - 1; 
  
         % Read the DICOM header information for the DQA plan into exitInfo
+        Event('Reading DICOM header');
         exitInfo = dicominfo(fullfile(path, name));
 
         % Open read handle to DICOM file (dicomread can't handle RT 
         % RECORDS) 
+        Event('Opening read file handle to file');
         fid = fopen(fullfile(path, name), 'r', 'l');
 
         % For static couch DQA RT records, the Private_300d_2026 tag is set 
@@ -238,6 +248,8 @@ if size(returnDQAData,2) == 0
             % projections (note, this assumes the procedure was stopped 
             % after the last active projection)
             exitInfo.Private_300d_2026.Item_1.StopTrim = str2double(x);
+            Event(sprintf('User manually provided stop trim value %i', ...
+                exitInfo.Private_300d_2026.Item_1.StopTrim));
             
             % Clear temporary variables
             clear x;
@@ -269,25 +281,33 @@ if size(returnDQAData,2) == 0
             exitInfo.PixelDataGroupLength = ...
                 (exitInfo.Private_300d_2026.Item_1.StopTrim * ...
                 detectorRows * 4) + 8;
+            Event(sprintf('Pixel data group length computed as %i', ...
+                exitInfo.PixelDataGroupLength));
         end
         
         % Move the file pointer to the beginning of the detector data,
         % determined from the PixelDataGroupLength tag relative to the end 
         % of the file
+        Event('Moving pointer to start of binary data');
         fseek(fid,-(int32(exitInfo.PixelDataGroupLength) - 8), 'eof');
         
         % Read the data as unsigned integers into a temporary array, 
         % reshaping into the number of rows by the number of projections
         arr = reshape(fread(fid, (int32(exitInfo.PixelDataGroupLength) ...
             - 8) / 4, 'uint32'), detectorRows, []);
+        Event(sprintf(['%i projections successfully loaded across ', ...
+            '%i channels'], size(arr)));
         
         % Set rawData by trimming the temporary array by leftTrim and 
         % rightTrim channels (to match the QA data and leafMap) and 
         % startTrim and stopTrim projections (to match the sinogram)
+        Event(sprintf('Trimming raw data to %i:%i, %i:%i', leftTrim, rightTrim, ...
+            startTrim, stopTrim));
         rawData = arr(leftTrim:rightTrim, startTrim:stopTrim);
         
         % Divide each projection by channelCal to account for relative 
         % channel sensitivity effects (see LoadFileQA.m for more info)
+        Event('Correcting raw data by channel calibration');
         rawData = rawData ./ (channelCal' * ones(1, size(rawData,2)));
         
         % Close the file handle
@@ -299,18 +319,32 @@ if size(returnDQAData,2) == 0
         % Set plan UID to UNKNOWN, informing the tool must auto-select
         planUID = 'UNKNOWN';
 
+        % Log event
+        Event(['Static Couch QA successfully parsed from ', name]);
+        
     % Otherwise the user did not select a file
     else
         Event(['No Static-Couch DQA data was loaded. The data must be ', ...
             'contained in the patient archive or loaded as a Transit ', ...
             'Dose DICOM Exported file'], 'ERROR');
     end
+    
+%% Otherwise, static couch QA data was found    
 else
     % If only one result was found, assume the user will pick it
     if size(returnDQAData,2) == 1
+        % Log event
+        Event('Only one static couch QA return data found');
+        
         % Set the plan index to 1
         plan = 1; 
+    
+    % Otherwise, multiple results were found
     else
+        % Log event
+        Event(['Multiple static couch QA return data found, opening ', ...
+            'listdlg to prompt user to select which one to load']);
+        
         % Otherwise open a menu to prompt the user to select the
         % procedure, using returnDQADataList
         [plan, ok] = listdlg('Name', 'Select Static-Couch DQA', ...
@@ -321,7 +355,9 @@ else
 
         % If the user selected cancel, throw an error
         if ok == 0
-            error('No delivery plan was chosen.');
+            Event('No return data was chosen', 'ERROR');
+        else
+            Event(sprint('User selected return data %i', plan));
         end
         
         % Clear temporary variables
@@ -329,6 +365,8 @@ else
     end
     
     %% Load parent plan information
+    Event('Searching for approved treatment plan for static couch QA');
+    
     % Initialize an xpath expression to find all plan data arrays
     expression = xpath.compile(['//fullPlanDataArray/fullPlanDataArray/', ...
         'plan/briefPlan/dbInfo']);
@@ -371,12 +409,17 @@ else
 
         % Return the parent plan uid
         planUID = char(subnode.getFirstChild.getNodeValue);
-
+        Event(sprintf(['Plan UID %s matched database parent of static ', ...
+            'couch QA'], planUID));
+        
         % Stop as the plan was found
         break;
     end
 
     %% Load rawData
+    Event(sprintf('Loading delivery plan binary data from %s', ...
+        returnDQAData{plan}.sinogram));
+    
     % rightTrim should be set to the channel in the exit detector data
     % that corresponds to the last channel in the Daily QA data, and is
     % easily calculated form leftTrim using the size of channelCal
@@ -407,10 +450,13 @@ else
     % Set rawData by trimming the temporary array by leftTrim and 
     % rightTrim channels (to match the QA data and leafMap) and 
     % startTrim and stopTrim projections (to match the sinogram)
+    Event(sprintf('Trimming raw data to %i:%i, %i:%i', leftTrim, rightTrim, ...
+            startTrim, stopTrim));
     rawData = arr(leftTrim:rightTrim, startTrim:stopTrim);
 
     % Divide each projection by channelCal to account for relative channel
     % sensitivity effects (see calculation of channelCal above)
+    Event('Correcting raw data by channel calibration');
     rawData = rawData ./ (channelCal' * ones(1, size(rawData, 2)));
 
     % Close the file handle
@@ -422,6 +468,10 @@ end
 
 % Clear xpath temporary variables
 clear doc factory xpath;
+
+% Report success
+Event(sprintf(['Static Couch QA exit detector data loaded ', ...
+    'successfully in %0.3f seconds'], toc));
 
 % Catch errors, log, and rethrow
 catch err

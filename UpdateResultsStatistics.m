@@ -50,8 +50,11 @@ if isfield(handles, 'planData') && isfield(handles.planData, 'sinogram')
     % Remove zero values
     openTimes = openTimes(openTimes > 0);
             
-    % Store the mean leaf open time from the 1D sinogram              
+    % Store the mean leaf open time in % from the 1D sinogram              
     table{c,2} = sprintf('%0.2f%%', mean(openTimes) * 100);
+    
+    % Log result
+    Event(sprintf('Mean LOT computed as %e', mean(openTimes)));
     
     % Clear temporary variables
     clear openTimes;
@@ -63,7 +66,12 @@ end
 c = c + 1;
 table{c,1} = 'Mean Leaf Open Time Error';
 if isfield(handles, 'errors')
+    
+    % Store the mean leaf open time error in %
     table{c,2} = sprintf('%0.2f%%', mean(handles.errors) * 100); 
+    
+    % Log result
+    Event(sprintf('Mean LOT error computed as %e', mean(handles.errors)));
 else
     table{c,2} = '';
 end
@@ -72,8 +80,12 @@ end
 c = c + 1;
 table{c,1} = 'St Dev Leaf Open Time Error';
 if isfield(handles, 'diff')
-    % Store the st dev errors            
+    
+    % Store the st dev error in %           
     table{c,2} = sprintf('%0.2f%%', std(handles.errors) * 100);
+    
+    % Log result
+    Event(sprintf('St Dev LOT error computed as %e', std(handles.errors)));
 else
     table{c,2} = '';
 end
@@ -81,10 +93,17 @@ end
 % 5% LOT error pass rate
 c = c + 1;
 table{c,1} = '5% LOT Error Pass Rate';
-if isfield(handles, 'errors')          
+if isfield(handles, 'errors') 
+    
+    % Store pass rate
     table{c,2} = sprintf('%0.2f%%', ...
         length(handles.errors(abs(handles.errors) <= 0.05)) / ...
         length(handles.errors) * 100);
+    
+    % Log result
+    Event(sprintf('5%% pass rate computed as %e%%', ...
+        length(handles.errors(abs(handles.errors) <= 0.05)) / ...
+        length(handles.errors) * 100));
 else
     table{c,2} = '';
 end
@@ -96,7 +115,8 @@ set(handles.stats_table, 'Data', table);
 clear table;
 
 % Log completion
-Event(sprintf('Statistics table updated successfully in %0.3f seconds', toc));
+Event(sprintf(['Statistics table updated successfully in %0.3f', ...
+    ' seconds'], toc));
 
 % Catch errors, log, and rethrow
 catch err

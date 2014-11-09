@@ -46,6 +46,7 @@ planData.planUID = planUID;
 import javax.xml.xpath.*
 
 % Read in the patient XML and store the Document Object Model node to doc
+Event('Loading file contents data using xmlread');
 doc = xmlread(fullfile(path, name));
 
 % Initialize a new xpath instance to the variable factory
@@ -683,6 +684,7 @@ sinogram = zeros(64, planData.numprojections);
 
 % Loop through the number of projections in the delivery plan
 for i = 1:planData.numprojections
+    
     % Read 2 double events for every leaf in numberOfLeaves.  Note that
     % the XML delivery plan stores each all the leaves for the first
     % projection, then the second, etc, as opposed to the dose
@@ -693,6 +695,7 @@ for i = 1:planData.numprojections
 
     % Loop through each projection (2 events)
     for j = 1:2:size(leaves)
+        
        % The projection number is the mean of the "open" and "close"
        % events.  This assumes that the open time was centered on the 
        % projection.  1 is added as MATLAB uses one based indices.

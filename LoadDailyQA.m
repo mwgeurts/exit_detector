@@ -192,25 +192,36 @@ dailyqa.channelGold = [45.8720005199238,47.8498858353154,49.3011672921640,...
 % Execute in try/catch statement
 try  
     
+% Log start of plan loading and start timer
+Event(['Parsing Daily QA data from ', name]);
+tic;
+    
 % Search for an xml extension
 s = regexpi(name, '.xml$');
 
 % If .xml was not found, use DICOM RT to load daily QA result     
 if isempty(s) 
 
+    % Log event
+    Event('File assumed to be DICOM RT Detector format');
+    
     % Read DICOM header
+    Event('Reading DICOM header');
     info = dicominfo(fullfile(path, name));
 
     % Open read handle to DICOM file (dicomread can't do RT RECORDS)
+    Event('Opening read file handle to file');
     fid = fopen(fullfile(path, name), 'r', 'l');
 
     % Set file pointer to the beginning of the data (stored under
     % PixelDataGroupLength).  Note you need to go forward two bytes
+    Event('Moving pointer to start of binary data');
     fseek(fid, -(int32(info.PixelDataGroupLength) - 8),'eof');
 
-    % Set rows to the number of detector channels included in the DICOM file
+    % Set rows to the number of detector channels included in DICOM file
     % For gen4 (TomoDetectors), this should be 531 (detectorChanSelection
     % is set to KEEP_OPEN_FIELD_CHANNELS for the Daily QA XML)
+    Event(sprintf('Total number of channels set to %i', openRows));
     rows = openRows;
     
     % Read daily QA data into temporary array
@@ -219,11 +230,14 @@ if isempty(s)
 
     % Now set rows to the number of active MVCT data channels.  Typically
     % the last three channels are monitor chamber data
+    Event(sprintf('Number of MVCT detector channels set to %i', mvctRows));
     rows = mvctRows;
     
     % Read from the temporary array into dailyqa.rawData, which should be
     % just MVCT channel data
     dailyqa.rawData = arr(1:rows, 1:numProjections);
+    Event(sprintf('%i projections successfully loaded across %i channels', ...
+        numProjections, rows));
 
     % Close file handle
     fclose(fid);
@@ -233,16 +247,21 @@ if isempty(s)
 
 % Else .xml was found, so use patient archive to load daily QA result
 else 
+    % Log event
+    Event('File identified as patient archive XML');
+    
     % showAll is a local flag.  When set to 1, all procedure return
     % data found in the XML will be displayed to the user.  This should
     % be enabled only for testing purposes.
     showAll = 0;
+    Event(sprintf('Debug show all flag set to %i', showAll));
 
     % The patient XML is parsed using xpath class
     import javax.xml.xpath.*
 
     % Read in the patient XML and store the Document Object Model node 
     % to doc
+    Event('Loading file contents data using xmlread');
     doc = xmlread(fullfile(path, name));
 
     % Initialize a new xpath instance to the variable factory
@@ -378,15 +397,22 @@ else
     if size(dailyqa.returnQAData, 2) == 0
 
         % If none were found in the XML, throw an error
-        error('No delivery plans found in XML file.');
+        Event('No delivery plans found in XML file', 'ERROR');
 
     % If only one result was found, assume the user will pick it
     elseif size(dailyqa.returnQAData,2) == 1
 
+        % Log event
+        Event('Only one exit detector return data found');
+        
         % Set the plan index to 1
         plan = 1;
 
     else
+        % Log event
+        Event(['Multiple exit detector return data found, opening ', ...
+            'listdlg to prompt user to select which one to load']);
+        
         % Otherwise, prompt the user to select from returnQADataList
         [plan, ok] = listdlg('Name', 'Select Daily QA', ...
             'PromptString', ['Multiple Daily QA ', ...
@@ -396,7 +422,9 @@ else
 
         % If the user selected cancel, throw an error
         if ok == 0
-            error('No delivery plan was chosen.');
+            Event('No delivery plan was chosen', 'ERROR');
+        else
+            Event(sprintf('User selected delivery plan %i', plan));
         end
         
         % Clear temporary variables
@@ -404,6 +432,9 @@ else
     end
 
     %% Load return data
+    Event(sprintf('Loading delivery plan binary data from %s', ...
+        dailyqa.returnQAData{plan}.sinogram));
+    
     % Open read handle to sinogram file
     fid = fopen(dailyqa.returnQAData{plan}.sinogram, 'r', 'b');
 
@@ -412,7 +443,7 @@ else
 
     % Read daily QA data into temporary array
     arr = reshape(fread(fid, ...
-        rows*dailyqa.returnQAData{plan}.dimensions(2),'single'), ...
+        rows*dailyqa.returnQAData{plan}.dimensions(2), 'single'), ...
         rows, dailyqa.returnQAData{plan}.dimensions(2));
 
     % Now set rows to the number of active MVCT data channels.  Typically
@@ -430,7 +461,7 @@ else
     % Otherwise, if the number of projections is less than 9000, pad
     % the data to total 9000
     if size(arr,2) < numProjections
-        arr = padarray(arr,[0 numProjections-size(arr,2)],'post');
+        arr = padarray(arr,[0 numProjections-size(arr,2)], 'post');
     end
 
     % Read from the temporary array into dailyqa.rawData, which should be
@@ -446,12 +477,18 @@ else
     
     % Clear xpath temporary variables
     clear doc factory xpath;
+    
+    % Report success
+    Event(sprintf('%i projections successfull loaded across %i channels', ...
+        numProjections, rows));
 end
 
 % Clear temporary variables
 clear s;
 
 %% Parse leaf map, and background from Daily QA data
+Event('Parsing even and odd leaves');
+
 % The odd leaves are measured in projections 5401-5699; note that 
 % averaging determines the mean MLC channel over gantry rotation
 dailyqa.oddLeaves = mean(dailyqa.rawData(:, 5401:5699), 2);
@@ -462,12 +499,14 @@ dailyqa.evenLeaves = mean(dailyqa.rawData(:, 5701:5999), 2);
 % Read background from center channels (200-300), over projections
 % 6001-6099; background is intended to be measured under closed leaves
 dailyqa.background = mean2(dailyqa.rawData(200:300,6001:6099));
+Event(sprintf('Mean background signal = %e', dailyqa.background));
 
 % Initialize leafMap vector.  leafMap correlates the center MVCT
 % channel for each leaf (1-64)
 dailyqa.leafMap = zeros(64,1);
 
 % Find peaks in the odd leaves detector data
+Event('Searching for odd leaf map peaks');
 peaks = find(dailyqa.oddLeaves(2:end-1) >= ...
     dailyqa.oddLeaves(1:end-2) & dailyqa.oddLeaves(2:end-1) >= ...
     dailyqa.oddLeaves(3:end)) + 1;
@@ -477,11 +516,23 @@ peaks(dailyqa.oddLeaves(peaks) <= max(dailyqa.oddLeaves)/3) = [];
 
 % Start infinite loop
 while 1
+    
+    % Calculate distances between adjacent non-unity values
     del = diff(peaks) < round(rows/64);
+    
+    % If all values are zero, end search
     if ~any(del), break; end
+    
+    % Otherwise, load peaks
     pks = dailyqa.oddLeaves(peaks);
-    [~,mins] = min([pks(del) ; pks([false del])]); 
+    
+    % Identify minimum values
+    [~, mins] = min([pks(del) ; pks([false del])]); 
+    
+    % Find indices of non-zero values
     deln = find(del);
+    
+    % Remove minimum values
     deln = [deln(mins == 1) deln(mins == 2) + 1];
     peaks(deln) = [];
 end
@@ -492,6 +543,7 @@ clear del deln pks;
 % If findpeaks could not find 32 leaves, the final leaf is at the edge
 % channel
 if size(peaks,1) == 31
+    Event('Only 31 odd leaf peaks found, assuming 32nd is last channel');
     peaks(32) = rows;
 end
 
@@ -499,6 +551,7 @@ end
 dailyqa.leafMap(1:2:64) = sort(peaks, 'descend');
 
 % Find peaks in the even leaves detector data
+Event('Searching for even leaf map peaks');
 peaks = find(dailyqa.evenLeaves(2:end-1) >= dailyqa.evenLeaves(1:end-2) ...
     & dailyqa.evenLeaves(2:end-1) >= dailyqa.evenLeaves(3:end)) + 1;
 
@@ -507,11 +560,23 @@ peaks(dailyqa.evenLeaves(peaks) <= max(dailyqa.evenLeaves)/3) = [];
 
 % Start infinite loop
 while 1
+    
+    % Calculate differences between adjacent non-unity values
     del = diff(peaks) < round(rows/64);
+    
+    % If all values are zero, end search
     if ~any(del), break; end
+    
+    % Otherwise, load peaks
     pks = dailyqa.evenLeaves(peaks);
+    
+    % Identify minima
     [~,mins] = min([pks(del) ; pks([false del])]); 
+    
+    % Find indices of non-zero values
     deln = find(del);
+    
+    % Remove minimum values
     deln = [deln(mins == 1) deln(mins == 2) + 1];
     peaks(deln) = [];
 end
@@ -522,6 +587,7 @@ clear del deln pks;
 % If findpeaks could not find 32 leaves, the final leaf is at the edge
 % channel
 if size(peaks,1) == 31
+    Event('Only 31 even leaf peaks found, assuming 32nd is first channel');
     peaks(32) = 1;
 end
 
@@ -529,6 +595,8 @@ end
 dailyqa.leafMap(2:2:64) = sort(peaks, 'descend');
 
 %% Calculate channel calibration vector channelCal
+Event('Computing channel calibration vector');
+
 % Calculate the effective channel response function channelCal,
 % defined as the "actual" response in a 5cm (J42) open field divided by
 % the "expected" response, derived from the beam model (see above).
@@ -541,6 +609,8 @@ dailyqa.channelCal = mean(dailyqa.rawData(:,1000:2000),2)'./...
 dailyqa.channelCal = dailyqa.channelCal/mean(dailyqa.channelCal);
 
 %% Calculate leaf spread function
+Event('Computing leaf spread function');
+
 % Initialize the leaf spread function vector leafSpread.  The leaf
 % spread array stores the relative MVCT response for an open leaf
 % relative to 15 nearby closed leaves.  15 is arbitrarily chosen.
@@ -562,6 +632,10 @@ dailyqa.leafSpread = dailyqa.leafSpread/max(dailyqa.leafSpread);
 
 % Clear temporary variables
 clear i peaks;
+
+% Report success
+Event(sprintf(['Daily QA loaded and analyzed successfully in %0.3f ', ...
+    'seconds'], toc));
 
 % Catch errors, log, and rethrow
 catch err

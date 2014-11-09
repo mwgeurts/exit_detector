@@ -85,10 +85,15 @@ end
 % Execute in try/catch statement
 try  
    
+% Log start of matching and start timer
+Event(sprintf('Searching %s for matching delivery plans', name));
+tic;
+    
 % The patient XML is parsed using xpath class
 import javax.xml.xpath.*
 
 % Read in the patient XML and store the Document Object Model node
+Event('Loading file contents data using xmlread');
 doc = xmlread(fullfile(path, name));
 
 % Initialize a new xpath instance to the variable factory
@@ -108,6 +113,9 @@ nodeList = expression.evaluate(doc, XPathConstants.NODESET);
 % Preallocate cell arrrays
 deliveryPlans = cell(1, nodeList.getLength);
 deliveryPlanList = cell(1, nodeList.getLength);
+
+% Log number of delivery plans found
+Event(sprintf('%i delivery plans found', nodeList.getLength));
 
 % Loop through the results
 for i = 1:nodeList.getLength
@@ -131,10 +139,6 @@ for i = 1:nodeList.getLength
             strcmp(char(subnode.getFirstChild.getNodeValue), ...
             'Machine_Specific'))
 
-        % Log delivery plan type
-        Event(['Delivery purpose identified as ', ...
-            char(subnode.getFirstChild.getNodeValue)]);
-
         % Store delivery plan type
         deliveryPlans{i}.purpose = ...
             char(subnode.getFirstChild.getNodeValue);
@@ -149,8 +153,8 @@ for i = 1:nodeList.getLength
     subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
     subnode = subnodeList.item(0);
 
-    % Store the parentuid
-    deliveryPlans{i}.parentuid = ...
+    % Store the parentUID
+    deliveryPlans{i}.parentUID = ...
         char(subnode.getFirstChild.getNodeValue);
 
     % Search for parent fullPlanDataArray
@@ -186,7 +190,7 @@ for i = 1:nodeList.getLength
         % database parent UID, this plan is the parent.  Otherwise
         % continue to next result
         if strcmp(char(subparentnode.getFirstChild.getNodeValue), ...
-                deliveryPlans{i}.parentuid) == 0
+                deliveryPlans{i}.parentUID) == 0
             continue
         end
 
@@ -205,6 +209,18 @@ for i = 1:nodeList.getLength
         % Store the planLabel from the parent plan to this deliveryPlan
         subparentnode = subparentnodeList.item(0);
         deliveryPlans{i}.label = ...
+            char(subparentnode.getFirstChild.getNodeValue);
+        
+        % Search for delivery plan XML object databaseUID
+        subparentexpression = xpath.compile('dbInfo/databaseUID');
+
+        % Retrieve the results
+        subparentnodeList = subparentexpression.evaluate(parentnode, ...
+            XPathConstants.NODESET);
+        
+        % Store the plan UID
+        subparentnode = subparentnodeList.item(0);
+        deliveryPlans{i}.planUID = ...
             char(subparentnode.getFirstChild.getNodeValue);
     end
 
@@ -239,6 +255,11 @@ for i = 1:nodeList.getLength
     deliveryPlanList{i} = sprintf('%s-%s   |   %s (%s)', ...
         deliveryPlans{i}.date, deliveryPlans{i}.time, ...
         deliveryPlans{i}.label, deliveryPlans{i}.purpose);
+    
+    % Log delivery plan found
+    Event(sprintf('Plan %i label %s, purpose %s, UID %s', i, ...
+        deliveryPlans{i}.label, deliveryPlans{i}.purpose, ...
+        deliveryPlans{i}.planUID));
 
      % Search for  delivery plan XML object lower leaf index 
     subexpression = ...
@@ -301,27 +322,49 @@ deliveryPlanList = ...
 
 % If no valid delivery plans were found, throw an error.
 if size(deliveryPlans, 2) == 0
-   error('No delivery plans found in XML file.'); 
+   Event('No delivery plans found in XML file', 'ERROR'); 
 end
 
 % If delivery plan auto-selection is disabled
 if autoSelect == 0
-    % Open a menu to prompt the user to select the delivery plan using 
-    % deliveryPlanList
-    [plan, ok] = listdlg('Name', 'Select Delivery Plan', ...
-        'PromptString', 'Select the delivery plan to compare to:', ...
-        'SelectionMode', 'single', 'ListSize', [500 300], ...
-        'ListString', deliveryPlanList);
+    % Log event
+    Event('Auto-select is disabled');
+    
+    % If only one result was found, assume the user will pick it
+    if size(deliveryPlans, 2) == 1
+        % Log event
+        Event('Only one delivery plan was found');
+        
+        % Set the plan index to 1
+        plan = 1;
+        
+    % Otherwise, multiple results were found
+    else
+        % Log event
+        Event(['Multiple delivery plans found, opening ', ...
+            'listdlg to prompt user to select which one matches']);
+        
+        % Open a menu to prompt the user to select the delivery plan using 
+        % deliveryPlanList
+        [plan, ok] = listdlg('Name', 'Select Delivery Plan', ...
+            'PromptString', 'Select the delivery plan to compare to:', ...
+            'SelectionMode', 'single', 'ListSize', [500 300], ...
+            'ListString', deliveryPlanList);
 
-    % If the user selected cancel, throw an error
-    if ok == 0
-        error('No delivery plan was chosen.');
+        % If the user selected cancel, throw an error
+        if ok == 0
+            Event('No delivery plan was chosen', 'ERROR');
+        else
+            Event(sprintf('User selected delivery plan %i', plan));
+        end
+
+        % Clear temporary variables
+        clear ok;
     end
     
-    % Clear temporary variables
-    clear ok;
-    
     % Open read file handle to delivery plan, using binary mode
+    Event(sprintf('Loading delivery plan binary data from %s', ...
+        deliveryPlans{plan}.dplan));
     fid = fopen(deliveryPlans{plan}.dplan, 'r', 'b');
 
     % Initialize a temporary array to store sinogram (64 leaves
@@ -360,6 +403,9 @@ if autoSelect == 0
 
             % Set startTrim to the current projection
             startTrim = i;
+            
+            % Log result
+            Event(sprintf('Start Trim projection set to %i', startTrim));
 
             % Stop looking for the first active projection
             break;
@@ -375,6 +421,9 @@ if autoSelect == 0
 
             % Set stopTrim to the current projection
             stopTrim = i;
+            
+            % Log result
+            Event(sprintf('Stop Trim projection set to %i', stopTrim));
 
             % Stop looking for the last active projection
             break;
@@ -382,7 +431,7 @@ if autoSelect == 0
     end
 
     % Set the planUID return variable
-    planUID = deliveryPlans{plan}.parentuid;
+    planUID = deliveryPlans{plan}.planUID;
     
     % Set the sinogram return variable to the start and stop trimmed
     % binary array
@@ -395,7 +444,11 @@ if autoSelect == 0
     clear arr startTrim stopTrim;
 
 % Otherwise, automatically determine optimal plan
-else  
+else
+    % Log event
+    Event(['Auto-selection enabled, plan will automatically be selected ', ...
+        'according to correlation coefficient']);
+    
     % Loop through the deliveryPlan cell array
     for plan = 1:size(deliveryPlans, 2)
     
@@ -469,6 +522,8 @@ else
         % binary array
         deliveryPlans{plan}.sinogram = arr(:, startTrim:stopTrim);
 
+        % If the number of projections is greater than the raw data, ignore
+        % this plan
         if deliveryPlans{plan}.numprojections > size(rawData,2)
            continue 
         end
@@ -498,7 +553,11 @@ else
                 % the best sinogram to compare to.
                 j = corr2(deliveryPlans{plan}.sinogram, ...
                     circshift(exitData,[0 i]));
-
+                
+                % Log result
+                Event(sprintf('Plan %i shift %i correlation = %e', ...
+                    plan, i, j));
+                
                 % If the maximum correlation is less than the current 
                 % correlation, update the maximum correlation parameter
                 if j > deliveryPlans{plan}.maxcorr
@@ -513,6 +572,10 @@ else
             % unshifted 2D correlation
             deliveryPlans{plan}.maxcorr = ...
                 corr2(deliveryPlans{plan}.sinogram, exitData);
+            
+            % Log result
+            Event(sprintf('Plan %i correlation = %e', plan, ...
+                deliveryPlans{plan}.maxcorr));
         end
 
         % Clear temporary variables
@@ -537,14 +600,22 @@ else
             sinogram = deliveryPlans{plan}.sinogram; 
 
             % Set the planUID return variable to this delivery plan
-            planUID = deliveryPlans{plan}.parentuid; 
+            planUID = deliveryPlans{plan}.planUID; 
         end
     end
+    
+    % Log max correlation
+    Event(sprintf('Maximum correlation value = %e', maxcorr));
 end
     
 % Clear temporary variables
 clear plan doc factory xpath;
     
+% Report success
+Event(sprintf(['Matching delivery plan UID %s successfully identified ', ...
+    ' with %i x %i sinogram in %0.3f seconds'], planUID, ...
+    size(sinogram,1), size(sinogram,2), toc));
+
 % Catch errors, log, and rethrow
 catch err  
     % Log error via Event.m

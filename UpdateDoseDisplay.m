@@ -74,8 +74,12 @@ set(handles.alpha, 'visible', 'off');
 
 % Execute code block based on display GUI item value
 switch get(handles.dose_display, 'Value')
+    
     % Planned dose display
     case 2
+        % Log plot selection
+        Event('Planned dose plot selected');
+        
         % Check if the planned dose and image are loaded
         if isfield(handles, 'referenceImage') && ...
                 isfield(handles.referenceImage, 'data') ...
@@ -105,7 +109,9 @@ switch get(handles.dose_display, 'Value')
                 handles.dose_slider, ...
                 sscanf(get(handles.alpha, 'String'), '%f%%')/100, ...
                 image1, image2);
-            
+        else
+            % Log why plot was not displayed
+            Event('Planned dose not displayed as no data exists');
         end
 end
 
