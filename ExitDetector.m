@@ -200,7 +200,7 @@ try
     
     % Load Ganymed-SSH2 javalib
     Event('Adding Ganymed-SSH2 javalib');
-    addpath('../ssh2_v2_m1_r5/'); 
+    addpath('../ssh2_v2_m1_r6/'); 
     Event('Ganymed-SSH2 javalib added successfully');
     
     % Establish connection to computation server.  The ssh2_config
@@ -286,11 +286,35 @@ function daily_browse_Callback(hObject, ~, handles) %#ok<*DEFNU>
 % Log event
 Event('Daily QA browse button selected');
 
-% Request the user to select the Daily QA DICOM or XML
-Event('UI window opened to select file');
-[name, path] = uigetfile({'*.dcm', 'Transit Dose File (*.dcm)'; ...
-    '*_patient.xml', 'Patient Archive (*.xml)'}, ...
-    'Select the Daily QA File', handles.path);
+% Warn the user that existing data will be deleted
+if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
+    
+    % Ask user if they want to calculate dose
+    choice = questdlg(['Existing Static Couch QA data exists and will ', ...
+        'be deleted. Continue?'], 'Calculate Gamma', 'Yes', 'No', 'Yes');
+
+    % If the user chose yes
+    if strcmp(choice, 'Yes')
+        
+        % If patient data exists, clear it
+        handles = clearPatientData(handles);
+
+        % Request the user to select the Daily QA DICOM or XML
+        Event('UI window opened to select file');
+        [name, path] = uigetfile({'*.dcm', 'Transit Dose File (*.dcm)'; ...
+            '*_patient.xml', 'Patient Archive (*.xml)'}, ...
+            'Select the Daily QA File', handles.path);
+    else
+        Event('User chose not to select new Daily QA data');
+        name = 0;
+    end
+else
+    % Request the user to select the Daily QA DICOM or XML
+    Event('UI window opened to select file');
+    [name, path] = uigetfile({'*.dcm', 'Transit Dose File (*.dcm)'; ...
+        '*_patient.xml', 'Patient Archive (*.xml)'}, ...
+        'Select the Daily QA File', handles.path);
+end
 
 % If the user selected a file
 if ~isequal(name, 0)
@@ -301,9 +325,6 @@ if ~isequal(name, 0)
     
     % Update daily_file text box
     set(handles.daily_file, 'String', fullfile(path, name));
-    
-    % If patient data exists, clear it before continuing
-    handles = clearPatientData(handles);
         
     % Extract file contents
     handles.dailyqa = LoadDailyQA(path, name, handles.dailyqaProjections, ...
@@ -373,12 +394,12 @@ if ~isequal(name, 0);
     % Update default path
     handles.path = path;
     Event(['Default file path updated to ', path]);
+
+    % If patient data exists, clear it before continuing
+    handles = clearPatientData(handles);
     
     % Update archive_file text box
     set(handles.archive_file, 'String', fullfile(path, name));
-    
-    % If patient data exists, clear it before continuing
-    handles = clearPatientData(handles);
     
     % Initialize progress bar
     progress = waitbar(0.1, 'Loading static couch QA data...');
@@ -390,6 +411,10 @@ if ~isequal(name, 0);
     
     % If LoadStaticCouchQA was successful
     if ~strcmp(handles.planUID, '')
+        
+        % DEBUG testing, see planUID to UNKNOWN
+        % Event('PlanUID set to UNKNOWN', 'DEBUG');
+        % handles.planUID = 'UNKNOWN';
         
         % If the planUID is not known
         if strcmp(handles.planUID, 'UNKNOWN')
@@ -485,23 +510,30 @@ if ~isequal(name, 0);
                 % Execute CalcDose
                 handles.dqaDose = CalcDose(handles.referenceImage, ...
                     handles.dqaPlanData, [0 0 0 0 0 0], handles.ssh2);
-            end
+            
 
-            % Ask user if they want to calculate dose
-            choice = questdlg('Continue to Calculate Gamma?', ...
-                'Calculate Gamma', 'Yes', 'No', 'Yes');
+                % Ask user if they want to calculate dose
+                choice = questdlg('Continue to Calculate Gamma?', ...
+                    'Calculate Gamma', 'Yes', 'No', 'Yes');
 
-            % If the user chose yes
-            if strcmp(choice, 'Yes')
-                
-                % Update progress bar
-                waitbar(0.8, progress, 'Calculating gamma...');
-                
-                %
-                %
-                % ADD CODE HERE
-                %
-                %
+                % If the user chose yes
+                if strcmp(choice, 'Yes')
+
+                    % Update progress bar
+                    waitbar(0.8, progress, 'Calculating gamma...');
+
+                    %
+                    %
+                    % ADD CODE HERE
+                    %
+                    %
+                else
+                    % Log choice
+                    Event('User chose not to compute gamma');
+                end
+            else
+                % Log choice
+                Event('User chose not to compute dose');
             end
 
             % Clear temporary variables
@@ -560,10 +592,19 @@ if ~isequal(name, 0);
         if isfield(handles, 'planData') && ...
                 isfield(handles.planData, 'sinogram') && ...
                 size(handles.planData.sinogram,1) > 0
+            
+            % Log event
+            Event('Updating plan sinogram plot');
+                
+            % Enable axes and set focus
             set(allchild(handles.sino1_axes),'visible','on'); 
             set(handles.sino1_axes,'visible','on');
             axes(handles.sino1_axes);
+            
+            % Plot sinogram in %
             imagesc(handles.planData.sinogram*100)
+            
+            % Set plot options
             set(gca,'YTickLabel',[])
             set(gca,'XTickLabel',[])
             title('Planned Fluence (%)')
@@ -573,10 +614,19 @@ if ~isequal(name, 0);
         
         % Update exit data plot
         if isfield(handles, 'exitData') && size(handles.exitData,1) > 0
+            
+            % Log event
+            Event('Updating deconvolved measured plot');
+            
+            % Enable axes and set focus
             set(allchild(handles.sino2_axes),'visible','on'); 
             set(handles.sino2_axes,'visible','on');
             axes(handles.sino2_axes);
+            
+            % Plot exitData in %
             imagesc(handles.exitData*100)
+            
+            % Set plot options
             set(gca,'YTickLabel',[])
             set(gca,'XTickLabel',[])
             title('Deconvolved Measured Fluence (%)')
@@ -586,10 +636,19 @@ if ~isequal(name, 0);
         
         % Update difference plot
         if isfield(handles, 'diff') && size(handles.diff,1) > 0
+            
+            % Log event
+            Event('Updating difference plot');
+            
+            % Enable axes and set focus
             set(allchild(handles.sino3_axes),'visible','on'); 
             set(handles.sino3_axes,'visible','on');
             axes(handles.sino3_axes);  
+            
+            % Plot difference in %
             imagesc(handles.diff*100)
+            
+            % Set plot options
             set(gca,'YTickLabel',[])
             title('Difference (%)')
             xlabel('Projection')
@@ -846,15 +905,43 @@ function autoselect_box_Callback(hObject, ~, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Log value change
-if get(hObject,'Value') == 1
-    Event('Delivery plan auto-selection enabled');
-else
-    Event('Delivery plan auto-selection disabled');
-end
+% Warn the user that existing data will be deleted
+if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
+    
+    % Ask user if they want to calculate dose
+    choice = questdlg(['Existing Static Couch QA data exists and will ', ...
+        'be deleted. Continue?'], 'Calculate Gamma', 'Yes', 'No', 'Yes');
 
-% If patient data exists, clear it
-handles = clearPatientData(handles);
+    % If the user chose yes
+    if strcmp(choice, 'Yes')
+        % If patient data exists, clear it
+        handles = clearPatientData(handles);
+        
+        % Log value change
+        if get(hObject,'Value') == 1
+            Event('Delivery plan auto-selection enabled');
+        else
+            Event('Delivery plan auto-selection disabled');
+        end
+    else
+        % Log choice
+        Event('User chose not to continue changing auto-selection');
+        
+        % Revert value
+        if get(hObject, 'Value') == 1
+            set(hObject, 'Value', 0);
+        else
+            set(hObject, 'Value', 1);
+        end
+    end
+else
+    % Log value change
+    if get(hObject, 'Value') == 1
+        Event('Delivery plan auto-selection enabled');
+    else
+        Event('Delivery plan auto-selection disabled');
+    end
+end
 
 % Update handles structure
 guidata(hObject, handles);
@@ -865,15 +952,43 @@ function autoshift_box_Callback(hObject, ~, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Log value change
-if get(hObject,'Value') == 1
-    Event('Delivery plan auto-alignment enabled');
-else
-    Event('Delivery plan auto-alignment disabled');
-end
+% Warn the user that existing data will be deleted
+if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
+    
+    % Ask user if they want to calculate dose
+    choice = questdlg(['Existing Static Couch QA data exists and will ', ...
+        'be deleted. Continue?'], 'Calculate Gamma', 'Yes', 'No', 'Yes');
 
-% If patient data exists, clear it
-handles = clearPatientData(handles);
+    % If the user chose yes
+    if strcmp(choice, 'Yes')
+        % If patient data exists, clear it
+        handles = clearPatientData(handles);
+        
+        % Log value change
+        if get(hObject,'Value') == 1
+            Event('Delivery plan auto-alignment enabled');
+        else
+            Event('Delivery plan auto-alignment disabled');
+        end
+    else
+        % Log choice
+        Event('User chose not to continue changing auto-alignment');
+        
+        % Revert value
+        if get(hObject, 'Value') == 1
+            set(hObject, 'Value', 0);
+        else
+            set(hObject, 'Value', 1);
+        end
+    end
+else
+    % Log value change
+    if get(hObject, 'Value') == 1
+        Event('Delivery plan auto-alignment enabled');
+    else
+        Event('Delivery plan auto-alignment disabled');
+    end
+end
 
 % Update handles structure
 guidata(hObject, handles);
@@ -884,15 +999,43 @@ function dynamicjaw_box_Callback(hObject, ~, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Log value change
-if get(hObject,'Value') == 1
-    Event('Dynamic jaw compensation enabled');
-else
-    Event('Dynamic jaw compensation disabled');
-end
+% Warn the user that existing data will be deleted
+if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
+    
+    % Ask user if they want to calculate dose
+    choice = questdlg(['Existing Static Couch QA data exists and will ', ...
+        'be deleted. Continue?'], 'Calculate Gamma', 'Yes', 'No', 'Yes');
 
-% If patient data exists, clear it
-handles = clearPatientData(handles);
+    % If the user chose yes
+    if strcmp(choice, 'Yes')
+        % If patient data exists, clear it
+        handles = clearPatientData(handles);
+        
+        % Log value change
+        if get(hObject,'Value') == 1
+            Event('Dynamic jaw compensation enabled');
+        else
+            Event('Dynamic jaw compensation disabled');
+        end
+    else
+        % Log choice
+        Event('User chose not to continue changing jaw compensation');
+        
+        % Revert value
+        if get(hObject, 'Value') == 1
+            set(hObject, 'Value', 0);
+        else
+            set(hObject, 'Value', 1);
+        end
+    end
+else
+    % Log value change
+    if get(hObject, 'Value') == 1
+        Event('Dynamic jaw compensation enabled');
+    else
+        Event('Dynamic jaw compensation disabled');
+    end
+end
 
 % Update handles structure
 guidata(hObject, handles);
