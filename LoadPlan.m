@@ -55,6 +55,35 @@ factory = XPathFactory.newInstance;
 % Initialize a new xpath to the variable xpath
 xpath = factory.newXPath;
 
+%% Load Patient Info
+% Search for patient name
+expression = ...
+    xpath.compile('//FullPatient/patient/briefPatient/patientName');
+
+% Evaluate xpath expression and retrieve the results
+nodeList = expression.evaluate(doc, XPathConstants.NODESET);  
+
+% If no patient name was found, this might not be a patient archive
+if nodeList.getLength == 0
+    Event(['Patient demographics could not be found. It is possible ', ...
+        'this is not a valid patient archive.'], 'ERROR');
+end
+    
+% Retrieve result
+node = nodeList.item(0);
+planData.patientName = char(node.getFirstChild.getNodeValue);
+
+% Search for patient ID
+expression = ...
+    xpath.compile('//FullPatient/patient/briefPatient/patientID');
+
+% Evaluate xpath expression and retrieve the results
+nodeList = expression.evaluate(doc, XPathConstants.NODESET);  
+
+% Retrieve result
+node = nodeList.item(0);
+planData.patientID = char(node.getFirstChild.getNodeValue);
+
 %% Load Plan Trial UID
 % Search for treatment plans
 expression = ...
