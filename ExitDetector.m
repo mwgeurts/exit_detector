@@ -110,15 +110,17 @@ set(handles.rawdata_button, 'Enable', 'off');
 % Disable print button (Patient data must be loaded first)
 set(handles.print_button, 'Enable', 'off');
 
-% Set checkbox defaults
+% Set auto-select checkbox default
 set(handles.autoselect_box, 'Enable', 'on');
 set(handles.autoselect_box, 'Value', 1);
 Event('Delivery plan auto-selection enabled by default');
 
+% Set auto-align checkbox default
 set(handles.autoshift_box, 'Enable', 'on');
 set(handles.autoshift_box, 'Value', 1);
 Event('Delivery plan auto-alignment enabled by default');
 
+% Set dynamic jaw compensation checkbox default
 set(handles.dynamicjaw_box, 'Enable', 'on');
 set(handles.dynamicjaw_box, 'Value', 1);
 Event('Dynamic jaw compensation enabled by default');
@@ -127,6 +129,12 @@ Event('Dynamic jaw compensation enabled by default');
 % Default folder path when selecting input files
 handles.path = userpath;
 Event(['Default file path set to ', handles.path]);
+
+% Flags used by LoadDailyQA.  Set to 1 to enable auto-alignment of the gold 
+% standard reference profile.
+handles.shiftGold = 1;
+Event(sprintf('Auto shift gold standard flag set to %i', ...
+    handles.shiftGold));
 
 % Flags used by MatchDeliveryPlan.  Set to 1 to hide machine specific and 
 % fluence delivery plans from delivery plan selection
@@ -328,7 +336,7 @@ if ~isequal(name, 0)
         
     % Extract file contents
     handles.dailyqa = LoadDailyQA(path, name, handles.dailyqaProjections, ...
-        handles.openRows, handles.mvctRows);  
+        handles.openRows, handles.mvctRows, handles.shiftGold);  
     
     % If LoadDailyQA was successful
     if isfield(handles.dailyqa, 'channelCal')

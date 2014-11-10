@@ -1,5 +1,5 @@
 function dailyqa = LoadDailyQA(path, name, numProjections, openRows, ...
-    mvctRows)
+    mvctRows, shiftGold)
 % LoadDailyQA is called from ExitDetector.m and parses a TomoTherapy
 % Transit Dose DICOM RT object or Patient Archive XML file for procedure 
 % return data, This function sets a number of key variables for later use 
@@ -12,6 +12,8 @@ function dailyqa = LoadDailyQA(path, name, numProjections, openRows, ...
 %   numProjections: number of projections in the daily QA procedure
 %   openRows: number of detector channels included in the DICOM file
 %   mvctRows: the number of active MVCT data channels
+%   shiftGold: boolean, set to 1 to auto-shift gold standard data to
+%       measured profile when computing channelCal
 %
 % The following variables are returned upon succesful completion:
 %   dailyqa.rawData: an array of raw MVCT detector channel data
@@ -602,11 +604,49 @@ Event('Computing channel calibration vector');
 % the "expected" response, derived from the beam model (see above).
 % The average response of each channel over projections 1000-2000 is
 % used
-dailyqa.channelCal = mean(dailyqa.rawData(:,1000:2000),2)'./...
-    dailyqa.channelGold;
+meas = mean(dailyqa.rawData(:,1000:2000),2)';
+
+% If goldShift is set to 1, find best agreement by shifting gold data
+if shiftGold == 1
+    
+    % Log event
+    Event('Aligning gold standard to measured data');
+    
+    % Initialize maxcorr and shift variables
+    maxcorr = 0;
+    shift = 0;
+    
+    % Loop through +/- 2 channel shifts
+    for i = -4:4
+        % Compute correlation coefficient
+        c = corr2(meas, circshift(dailyqa.channelGold, [0 i]));
+        
+        % Log result
+        Event(sprintf('Shift %i correlation = %e', i, c));
+        
+        % If this correlation is optimal, update the maxcorr valueEx
+        if c > maxcorr
+            shift = i;
+            maxcorr = c;
+        end
+    end
+    
+    % Set channelCal using the optimal shift
+    dailyqa.channelCal = meas ./ circshift(dailyqa.channelGold, shift);
+    
+    % Clear temporary variables
+    clear c i shift maxcorr;
+else 
+    % Otherwise, simply compute standard channel calibration assuming the
+    % measurement data already aligned
+    dailyqa.channelCal = meas ./ dailyqa.channelGold;
+end
+
+% Clear temporary variables
+clear meas;
 
 % Normalize the channelCal to its mean value
-dailyqa.channelCal = dailyqa.channelCal/mean(dailyqa.channelCal);
+dailyqa.channelCal = dailyqa.channelCal / mean(dailyqa.channelCal);
 
 %% Calculate leaf spread function
 Event('Computing leaf spread function');
