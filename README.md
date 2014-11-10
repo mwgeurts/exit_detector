@@ -33,7 +33,7 @@ addpath('../ssh2_v2_m1_r6/');
 handles.ssh2 = ssh2_config('tomo-research','tomo','hi-art');
 ```
 
-This application uses the (SSH/SFTP/SCP for Matlab (v2)) [http://www.mathworks.com/matlabcentral/fileexchange/35409-sshsftpscp-for-matlab-v2] interface based on the Ganymed-SSH2 javalib for communication with the dose calculation server.  If performing dose calculation, this interface must be downloaded and the ExitDetector.m statement `addpath('../ssh2_v2_m1_r6/')` modified to reflect its location.  If this interface is not available, use of the TomoTherapy Exit Detector Analysis application is still available for sinogram comparison, but all dose and Gamma computation and evaluation functionality will be automatically disabled.
+This application uses the [SSH/SFTP/SCP for Matlab (v2)] (http://www.mathworks.com/matlabcentral/fileexchange/35409-sshsftpscp-for-matlab-v2) interface based on the Ganymed-SSH2 javalib for communication with the dose calculation server.  If performing dose calculation, this interface must be downloaded and the ExitDetector.m statement `addpath('../ssh2_v2_m1_r6/')` modified to reflect its location.  If this interface is not available, use of the TomoTherapy Exit Detector Analysis application is still available for sinogram comparison, but all dose and Gamma computation and evaluation functionality will be automatically disabled.
 
 Next, edit `ssh2_config()` with the the IP/DNS address of the dose computation server (tomo-research, for example), a user account on the server (tomo), and password (hi-art).  This user account must have SSH access rights, rights to execute `gpusadose`, and finally read/write acces to the temp directory.  See Accuray Incorporated to see if your research workstation includes this feature.
 
