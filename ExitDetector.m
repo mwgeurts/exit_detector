@@ -170,11 +170,17 @@ handles.mvctRows = 528;
 Event(sprintf('Number of active MVCT channels set to %i', ...
     handles.mvctRows));
 
-% GLOBAL Gamma criteria
+% Gamma criteria
 handles.abs = 3.0; % percent
 handles.dta = 3.0; % mm
-Event(sprintf('Gamma criteria set to %0.1f%%/%0.1f mm global', ...
-    [handles.abs handles.dta]));
+handles.local = 0; % boolean, 0 (global) or 1 (local)
+if handles.local == 0
+    Event(sprintf('Gamma criteria set to %0.1f%%/%0.1f mm global', ...
+        handles.abs, handles.dta));
+else
+    Event(sprintf('Gamma criteria set to %0.1f%%/%0.1f mm local', ...
+        handles.abs, handles.dta));
+end
 
 % Scalar representing the threshold (dose relative to the maximum dose)
 % below which the Gamma index will not be reported. 

@@ -430,7 +430,6 @@ if exist('ssh2', 'var') && ~isempty(ssh2)
     
 %% Otherwise execute gpusadose locally
 else
-
     % First, initialize and clear GPU memory
     Event('Clearing GPU memory');
     gpuDevice(1);
