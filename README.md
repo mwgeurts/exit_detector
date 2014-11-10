@@ -61,7 +61,7 @@ This application records key input parameters and results to a log.txt file usin
 
 ## Methods
 
-The following sections describe the high level theory behind the computation of the measured fluence using the exit detector sinogram.  For full details, see the [wiki pages](https://github.com/mwgeurts/exit_detector/wiki wiki pages).
+The following sections describe the high level theory behind the computation of the measured fluence using the exit detector sinogram.  For full details, see the [wiki pages](https://github.com/mwgeurts/exit_detector/wiki).
 
 ### Exit Detector Fluence Computation Methods
 
