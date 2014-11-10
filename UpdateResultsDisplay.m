@@ -1,9 +1,20 @@
 function varargout = UpdateResultsDisplay(varargin)
-% UpdateResultsDisplay is called by ExitDetector when initializing or
-% updating the results plot.  When called with no input arguments, this
-% function returns a string cell array of available plots that the user can
-% choose from.  When called with a GUI handles structure, will update
-% handles.results_axes based on the value of handles.results_display.
+% UpdateResultsDisplay is called by ExitDetector.m and PrintReport.m when 
+% initializing or updating the results plot.  When called with no input 
+% arguments, this function returns a string cell array of available plots 
+% that the user can choose from.  When called with a plot handle and GUI 
+% handles structure, will update varagin{2} based on the value of 
+% varargin{2} using the data structure in handles.
+%
+% The following variables are required for proper execution: 
+%   varargin{1} (optional): plot handle to update
+%   varargin{2} (optional): type of plot to display (see below for options)
+%   handles (optional): structure containing the data variables used 
+%       for statistics computation. This will typically be the guidata (or 
+%       data structure, in the case of PrintReport).
+%
+% The following variables are returned upon succesful completion:
+%   vararout{1}: if nargin == 0, cell array of plot options available.
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
 % Copyright (C) 2014 University of Wisconsin Board of Regents
@@ -49,10 +60,10 @@ if nargin == 0
     return;
     
 % Otherwise, if 1, set the input variable and update the plot
-elseif nargin == 1
-    
+elseif nargin == 3
+
     % Set input variables
-    handles = varargin{1};
+    handles = varargin{3};
 
     % Log start
     Event('Updating plot display');
@@ -64,16 +75,16 @@ else
 end
 
 % Clear and set reference to axis
-cla(handles.results_axes, 'reset');
-axes(handles.results_axes);
-Event('Current plot set to handles.results_axes');
+cla(varargin{1}, 'reset');
+axes(varargin{1});
+Event('Current plot set to results display');
 
 % Turn off the display while building
-set(allchild(handles.results_axes), 'visible', 'off'); 
-set(handles.results_axes, 'visible', 'off');
+set(allchild(varargin{1}), 'visible', 'off'); 
+set(varargin{1}, 'visible', 'off');
 
 % Execute code block based on display GUI item value
-switch get(handles.results_display, 'Value')
+switch varargin{2}
     
     % Leaf Offsets (aka Even/Odd leaves plot) plot
     case 2
@@ -92,7 +103,8 @@ switch get(handles.results_display, 'Value')
             set(handles.results_axes, 'visible', 'on');
             
             % Plot even and odd leaves
-            plot([handles.dailyqa.evenLeaves handles.dailyqa.oddLeaves])
+            plot([handles.dailyqa.evenLeaves ...
+                handles.dailyqa.oddLeaves])
             
             % Set plot options
             colormap(handles.results_axes, 'default')
@@ -257,7 +269,8 @@ switch get(handles.results_display, 'Value')
             
             % Set plot options
             colormap(handles.results_axes, 'default')
-            xlim([0 handles.planData.stopTrim-handles.planData.startTrim])
+            xlim([0 handles.planData.stopTrim - ...
+                handles.planData.startTrim])
             xlabel('Projection')
             ylabel('Jaw Position (cm)')
             grid on
@@ -290,7 +303,8 @@ switch get(handles.results_display, 'Value')
             
             % Set plot options
             colormap(handles.results_axes, 'default')
-            xlim([0 handles.planData.stopTrim-handles.planData.startTrim])
+            xlim([0 handles.planData.stopTrim - ...
+                handles.planData.startTrim])
             xlabel('Projection')
             ylabel('Field Width (cm)')
             grid on
@@ -375,7 +389,8 @@ switch get(handles.results_display, 'Value')
             gammahist = reshape(handles.gamma,1,[]);
 
             % Remove values less than or equal to zero (due to
-            % handles.dose_threshold; see CalcDose for more information)
+            % handles.dose_threshold; see CalcDose for more 
+            % information)
             gammahist = gammahist(gammahist > 0); 
 
             % Plot gamma histogram
@@ -395,9 +410,6 @@ end
 
 % Log completion
 Event(sprintf('Plot updated successfully in %0.3f seconds', toc));
-
-% Return the modified handles
-varargout{1} = handles; 
 
 % Catch errors, log, and rethrow
 catch err

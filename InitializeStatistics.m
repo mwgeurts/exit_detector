@@ -99,7 +99,6 @@ for i = 1:size(varargin{1}.structures, 2)
             end
         end
         
-        
         % Clear temporary variables
         clear in ex;
     end

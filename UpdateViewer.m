@@ -252,10 +252,11 @@ if isfield(image1,'structures')
         
         % If the statistics display column for this structure is set to
         % true (checked)
-        if stats{i,2}
+        if ~iscell(stats) || stats{i,2}
             
             % Extract structure mask based on T/C/S setting
             switch tcsview
+                
                 % If orientation is Transverse
                 case 'T'
                     % Use bwboundaries to generate X/Y contour points based
@@ -280,8 +281,10 @@ if isfield(image1,'structures')
             
             % Loop through each contour set (typically this is one)
             for k=1:length(B)
+                
                 % Extract structure mask based on T/C/S setting
                 switch tcsview
+                    
                     % If orientation is Transverse
                     case 'T'
                         % Plot the contour points given the structure color

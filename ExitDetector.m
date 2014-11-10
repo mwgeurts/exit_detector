@@ -341,7 +341,7 @@ if ~isequal(name, 0)
 
         % Update results display
         set(handles.results_display, 'Value', 2);
-        handles = UpdateResultsDisplay(handles);
+        UpdateResultsDisplay(handles.results_axes, 2, handles);
     end
     
 % Otherwise the user did not select a file
@@ -545,10 +545,10 @@ if ~isequal(name, 0);
         
         % Update results display
         set(handles.results_display, 'Value', 9);
-        handles = UpdateResultsDisplay(handles);
+        UpdateResultsDisplay(handles.results_axes, 9, handles);
         
         % Update results statistics
-        handles = UpdateResultsStatistics(handles);
+        set(handles.stats_table, 'Data', UpdateResultsStatistics(handles));
         
         % If DQA dose was calculated
         if dqa == 1
@@ -588,73 +588,10 @@ if ~isequal(name, 0);
         % Clear temporary variables
         clear dvh;
 
-        % Update sinogram plot
-        if isfield(handles, 'planData') && ...
-                isfield(handles.planData, 'sinogram') && ...
-                size(handles.planData.sinogram,1) > 0
-            
-            % Log event
-            Event('Updating plan sinogram plot');
-                
-            % Enable axes and set focus
-            set(allchild(handles.sino1_axes),'visible','on'); 
-            set(handles.sino1_axes,'visible','on');
-            axes(handles.sino1_axes);
-            
-            % Plot sinogram in %
-            imagesc(handles.planData.sinogram*100)
-            
-            % Set plot options
-            set(gca,'YTickLabel',[])
-            set(gca,'XTickLabel',[])
-            title('Planned Fluence (%)')
-            colormap(handles.sino1_axes, 'default')
-            colorbar
-        end
-        
-        % Update exit data plot
-        if isfield(handles, 'exitData') && size(handles.exitData,1) > 0
-            
-            % Log event
-            Event('Updating deconvolved measured plot');
-            
-            % Enable axes and set focus
-            set(allchild(handles.sino2_axes),'visible','on'); 
-            set(handles.sino2_axes,'visible','on');
-            axes(handles.sino2_axes);
-            
-            % Plot exitData in %
-            imagesc(handles.exitData*100)
-            
-            % Set plot options
-            set(gca,'YTickLabel',[])
-            set(gca,'XTickLabel',[])
-            title('Deconvolved Measured Fluence (%)')
-            colormap(handles.sino2_axes, 'default')
-            colorbar
-        end
-        
-        % Update difference plot
-        if isfield(handles, 'diff') && size(handles.diff,1) > 0
-            
-            % Log event
-            Event('Updating difference plot');
-            
-            % Enable axes and set focus
-            set(allchild(handles.sino3_axes),'visible','on'); 
-            set(handles.sino3_axes,'visible','on');
-            axes(handles.sino3_axes);  
-            
-            % Plot difference in %
-            imagesc(handles.diff*100)
-            
-            % Set plot options
-            set(gca,'YTickLabel',[])
-            title('Difference (%)')
-            xlabel('Projection')
-            colormap(handles.sino3_axes, 'default')
-            colorbar
-        end
+        % Update sinogram plots
+        UpdateSinogramDisplay(handles.sino1_axes, ...
+            handles.planData.sinogram, handles.sino2_axes, ...
+            handles.exitData, handles.sino3_axes, handles.diff);
     end
 
     % Update progress bar
@@ -664,7 +601,7 @@ if ~isequal(name, 0);
     close(progress);
     
     % Enable print button
-    % set(handles.print_button, 'Enable', 'on');
+    set(handles.print_button, 'Enable', 'on');
     
 % Otherwise the user did not select a file
 else
@@ -841,10 +778,16 @@ clear stats;
 guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function print_button_Callback(hObject, ~, handles)
+function print_button_Callback(~, ~, handles)
 % hObject    handle to print_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+% Log event
+Event('Print button selected');
+
+% Execute PrintReport, passing current handles structure as data
+PrintReport('Data', handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function rawdata_button_Callback(~, ~, handles)
@@ -1047,7 +990,7 @@ function results_display_Callback(hObject, ~, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Update plot based on new value
-handles = UpdateResultsDisplay(handles);
+UpdateResultsDisplay(handles.results_axes, get(hObject, 'Value'), handles);
 
 % Update handles structure
 guidata(hObject, handles);
@@ -1125,6 +1068,10 @@ handles.referenceDose = [];
 % structure. See CalcDose.m and UpdateDVH.m
 handles.dqaDose = [];
 
+% gamma stores the gamma comparison between the planned and recomputed 
+% dose. See CalcGamma.m
+handles.gamma = [];
+
 % rawData is a 643 x n array of compressed exit detector data.  See
 % LoadStaticCouchQA.m
 handles.rawData = [];
@@ -1174,4 +1121,4 @@ set(handles.alpha, 'visible', 'off');
 
 % Clear tables
 set(handles.dvh_table, 'Data', cell(16,5));
-set(handles.stats_table, 'Data', cell(14,2));
+set(handles.stats_table, 'Data', UpdateResultsStatistics(handles));

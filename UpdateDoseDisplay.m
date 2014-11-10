@@ -106,9 +106,8 @@ switch get(handles.dose_display, 'Value')
             
             % Initialize image viewer
             InitializeViewer(handles.dose_axes, handles.tcsview, ...
-                handles.dose_slider, ...
                 sscanf(get(handles.alpha, 'String'), '%f%%')/100, ...
-                image1, image2);
+                image1, image2, handles.dose_slider);
         else
             % Log why plot was not displayed
             Event('Planned dose not displayed as no data exists');

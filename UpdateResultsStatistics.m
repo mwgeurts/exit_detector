@@ -1,9 +1,15 @@
-function handles = UpdateResultsStatistics(handles)
-% UpdateResultsStatistics is called by ExitDetector after new daily QA or 
-% patient data is loaded.  See below for more information on the statistics 
-% computed.  This function uses GUI handles data (passed in the first input 
-% variable). Upon successful completion, an updated GUI handles structure 
-% is returned.
+function table = UpdateResultsStatistics(handles)
+% UpdateResultsStatistics is called by ExitDetector.m or PrintReport.m 
+% after new daily QA or patient data is loaded.  See below for more 
+% information on the statistics computed.
+%
+% The following variables are required for proper execution: 
+%   handles: structure containing the data variables used for statistics 
+%       computation. This will typically be the guidata (or data structure,
+%       in the case of PrintReport).
+%
+% The following variables are returned upon succesful completion:
+%   table: cell array of table values, for use in updating a GUI table.
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
 % Copyright (C) 2014 University of Wisconsin Board of Regents
@@ -28,8 +34,8 @@ try
 Event('Updating results table statistics');
 tic;
 
-% Load table data cell array
-table = get(handles.stats_table, 'Data');
+% Initialize empty table
+table = cell(1,2);
 
 % Initialize row counter
 c = 0;
@@ -107,12 +113,6 @@ if isfield(handles, 'errors')
 else
     table{c,2} = '';
 end
-
-% Set table data
-set(handles.stats_table, 'Data', table);
-
-% Clear temporary variables
-clear table;
 
 % Log completion
 Event(sprintf(['Statistics table updated successfully in %0.3f', ...
