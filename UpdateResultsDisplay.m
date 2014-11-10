@@ -193,7 +193,7 @@ switch varargin{2}
             set(handles.results_axes,'visible', 'on');
             
             % Plot leaf spread function
-            plot(handles.dailyqa.leaf_spread)
+            semilogy(handles.dailyqa.leafSpread)
             
             % Set plot options
             colormap(handles.results_axes, 'default')
