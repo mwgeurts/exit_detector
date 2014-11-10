@@ -71,7 +71,7 @@ end
 % Mean LOT error
 c = c + 1;
 table{c,1} = 'Mean Leaf Open Time Error';
-if isfield(handles, 'errors')
+if isfield(handles, 'errors') && ~isempty(handles.errors)
     
     % Store the mean leaf open time error in %
     table{c,2} = sprintf('%0.2f%%', mean(handles.errors) * 100); 
@@ -85,7 +85,7 @@ end
 % St Dev LOT error
 c = c + 1;
 table{c,1} = 'St Dev Leaf Open Time Error';
-if isfield(handles, 'diff')
+if isfield(handles, 'errors') && ~isempty(handles.errors)
     
     % Store the st dev error in %           
     table{c,2} = sprintf('%0.2f%%', std(handles.errors) * 100);
@@ -99,7 +99,7 @@ end
 % 5% LOT error pass rate
 c = c + 1;
 table{c,1} = '5% LOT Error Pass Rate';
-if isfield(handles, 'errors') 
+if isfield(handles, 'errors') && ~isempty(handles.errors)
     
     % Store pass rate
     table{c,2} = sprintf('%0.2f%%', ...
