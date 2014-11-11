@@ -357,7 +357,7 @@ else
         if ok == 0
             Event('No return data was chosen', 'ERROR');
         else
-            Event(sprint('User selected return data %i', plan));
+            Event(sprintf('User selected return data %i', plan));
         end
         
         % Clear temporary variables

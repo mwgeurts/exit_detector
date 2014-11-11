@@ -52,8 +52,9 @@ try
 % Downsampling factor.  The calculated dose will be downsampled (from the
 % CT image resolution) by this factor in the IECX and IECY directions, then
 % upsampled (using nearest neighbor interpolation) back to the original CT
-% resolution following calculation.
-downsample = 2;
+% resolution following calculation.  downsample must be an even divisor of
+% the CT dimensions (1, 2, 4, etc).
+downsample = 1;
 
 % If only one argument was passed, store as registration and use previous
 % image and plan variables
@@ -112,6 +113,12 @@ end
 if registration(1) ~= 0 || registration(2) ~= 0
     Event(['Error: dose calculation cannot handle pitch or yaw ', ...
         'corrections at this time'], 'ERROR');
+end
+
+% Test if the downsample factor is valid
+if mod(image.dimensions(1), downsample) ~= 0
+    Event(['The downsample factor is not an even divisor of the ', ...
+        'image dimensions'], 'ERROR'); 
 end
 
 % Log beginning of dose calculation and start timer
@@ -223,6 +230,10 @@ if nargin >= 2
     %% Write plan.img
     Event(['Writing plan.img to ', folder]);
 
+    % Extend sinogram to full size given start and stopTrim
+    sinogram = zeros(64, plan.numberOfProjections);
+    sinogram(:, plan.startTrim:plan.stopTrim) = plan.sinogram;
+    
     % Generate a temporary file on the local computer to store the
     % plan.header dose calculator input file.  Then open a write file 
     % handle to the plan.img temporary file
@@ -234,13 +245,13 @@ if nargin >= 2
             plan.numberOfLeaves
         
         % Loop through the number of projections for this leaf
-        for j = 1:size(plan.sinogram,2)
+        for j = 1:size(sinogram, 2)
             
             % Write "open" and "close" events based on the sinogram leaf
             % open time. 0.5 is subtracted to remove the one based indexing
             % and center the open time on the projection.
-            fwrite(fid,j - 0.5 - plan.sinogram(i,j)/2,'double');
-            fwrite(fid,j - 0.5 + plan.sinogram(i,j)/2,'double');
+            fwrite(fid,j - 0.5 - sinogram(i,j)/2, 'double');
+            fwrite(fid,j - 0.5 + sinogram(i,j)/2, 'double');
         end
     end
 
@@ -248,7 +259,7 @@ if nargin >= 2
     fclose(fid);
 
     % Clear temporary variables
-    clear i j fid;
+    clear i j fid sinogram;
 
     %% Write reference dose.cfg
     Event(['Writing dose.cfg to ', folder]);
@@ -395,7 +406,7 @@ if exist('ssh2', 'var') && ~isempty(ssh2)
     
     % This temprary directory will be used to store a copy of all dose
     % calculator input files. 
-    remotefolder = ['/tmp', dicomuid];
+    remotefolder = ['/tmp/', strrep(dicomuid, '.', '_')];
 
     % Make temporary directory on remote server (note, the remote server's
     % temporary directory is assumed to be /tmp)
@@ -407,19 +418,17 @@ if exist('ssh2', 'var') && ~isempty(ssh2)
 
     % Loop through each local file, copying it to 
     for i = 1:length(list)
-        if ~strcmp(list(1).name, '.') && ~strcmp(list(1).name, '..')
+        if ~strcmp(list(i).name, '.') && ~strcmp(list(i).name, '..')
             Event(['Secure copying file ', list(i).name]);
             ssh2 = scp_put(ssh2, list(i).name, remotefolder, folder);
         end
     end
 
     % Execute gpusadose in the remote server temporary directory
-    [ssh2, cmdout] = ssh2_command(ssh2, ...
-        ['cd ',remotefolder,'; ./gpusadose -C dose.cfg']);
-
-    % Log output not as an error
-    Event(cmdout);
-
+    Event('Executing gpusadose on remote server');
+    ssh2 = ssh2_command(ssh2, ...
+        ['cd ',remotefolder,'; gpusadose -C dose.cfg']);
+    
     % Retrieve dose image to the temporary directory on the local 
     % computer
     Event('Retrieving calculated dose image from remote direcory');
@@ -467,22 +476,32 @@ tempdose = reshape(fread(fid, image.dimensions(1)/downsample * ...
 % Initialize dose.data array
 dose.data = zeros(image.dimensions);
 
-% Log interpolation stemp
-Event(sprintf(['Upsampling calculated dose image by %i using nearest ', ...
-    'neighbor'], downsample));
-
 % Since the downsampling is only in the axial plane, loop through each 
 % IEC-Y slice
-for i = 1:image.dimensions(3)
-    % Upsample dataset back to CT resolution using nearest neighbor
-    % interpolation.  
-    dose.data(1:image.dimensions(1)-1,1:image.dimensions(2)-1, i) = ...
-        interp2(tempdose(:,:,i), downsample - 1, 'nearest');
+if downsample > 1
+    
+    % Log interpolation stemp
+    Event(sprintf(['Upsampling calculated dose image by %i using nearest ', ...
+        'neighbor'], downsample));
+    
+    for i = 1:image.dimensions(3)
+        % Upsample dataset back to CT resolution using nearest neighbor
+        % interpolation.  
+        dose.data(1:image.dimensions(1)-1,1:image.dimensions(2)-1, i) = ...
+            interp2(tempdose(:,:,i), downsample - 1, 'nearest');
+    end
+    
+    % Replicate last rows and columns (since they are not interpolated)
+    for i = 0:downsample-2
+        dose.data(image.dimensions(1)-i,:,:) = ...
+            dose.data(image.dimensions(1)-(downsample-1),:,:);
+        dose.data(:, image.dimensions(2)-i,:) = ...
+            dose.data(:,image.dimensions(2)-(downsample-1),:);
+    end
+else
+    % If no downsampling occurred, simply copy tempdose
+    dose.data = tempdose;
 end
-
-% Replicate last row and column (since they are not interpolated)
-dose.data(image.dimensions(1),:,:) = dose.data(image.dimensions(1)-1,:,:);
-dose.data(:, image.dimensions(2),:) = dose.data(:,image.dimensions(2)-1,:);
 
 % Clear temporary variables
 clear i tempdose;

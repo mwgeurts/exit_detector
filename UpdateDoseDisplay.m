@@ -112,6 +112,159 @@ switch get(handles.dose_display, 'Value')
             % Log why plot was not displayed
             Event('Planned dose not displayed as no data exists');
         end
+        
+    % DQA dose display
+    case 3
+        % Log plot selection
+        Event('DQA dose plot selected');
+        
+        % Check if the planned dose and image are loaded
+        if isfield(handles, 'referenceImage') && ...
+                isfield(handles.referenceImage, 'data') ...
+                && isfield(handles, 'dqaDose') && ...
+                isfield(handles.dqaDose, 'data')
+                
+            % Enable Image Viewer UI components
+            set(allchild(handles.dose_axes), 'visible', 'on'); 
+            set(handles.dose_axes, 'visible', 'on');
+            set(handles.dose_slider, 'visible', 'on');
+            set(handles.tcs_button, 'visible', 'on'); 
+            set(handles.alpha, 'visible', 'on');
+            
+            % Set references to currently displayed data
+            image1.data = handles.referenceImage.data;
+            image1.width = handles.referenceImage.width;
+            image1.start = handles.referenceImage.start;
+            image1.structures = handles.referenceImage.structures;
+            image1.stats = get(handles.dvh_table, 'Data');
+            image2.data = handles.dqaDose.data;
+            image2.width = handles.dqaDose.width;
+            image2.start = handles.dqaDose.start;
+            image2.registration = [];
+            
+            % Initialize image viewer
+            InitializeViewer(handles.dose_axes, handles.tcsview, ...
+                sscanf(get(handles.alpha, 'String'), '%f%%')/100, ...
+                image1, image2, handles.dose_slider);
+        else
+            % Log why plot was not displayed
+            Event('DQA dose not displayed as no data exists');
+        end
+        
+    % Dose difference % display
+    case 4
+        % Log plot selection
+        Event('Relative dose difference plot selected');
+        
+        % Check if the planned dose and image are loaded
+        if isfield(handles, 'referenceImage') && ...
+                isfield(handles.referenceImage, 'data') ...
+                && isfield(handles, 'doseDiff') && ...
+                isfield(handles.doseDiff, 'data')
+                
+            % Enable Image Viewer UI components
+            set(allchild(handles.dose_axes), 'visible', 'on'); 
+            set(handles.dose_axes, 'visible', 'on');
+            set(handles.dose_slider, 'visible', 'on');
+            set(handles.tcs_button, 'visible', 'on'); 
+            set(handles.alpha, 'visible', 'on');
+            
+            % Set references to currently displayed data
+            image1.data = handles.referenceImage.data;
+            image1.width = handles.referenceImage.width;
+            image1.start = handles.referenceImage.start;
+            image1.structures = handles.referenceImage.structures;
+            image1.stats = get(handles.dvh_table, 'Data');
+            image2.data = (handles.doseDiff - ...
+                image1.data) ./ image1.data;
+            image2.width = handles.referenceImage.width;
+            image2.start = handles.referenceImage.start;
+            image2.registration = [];
+            
+            % Initialize image viewer
+            InitializeViewer(handles.dose_axes, handles.tcsview, ...
+                sscanf(get(handles.alpha, 'String'), '%f%%')/100, ...
+                image1, image2, handles.dose_slider);
+        else
+            % Log why plot was not displayed
+            Event('Dose difference not displayed as no data exists');
+        end
+        
+    % Dose difference abs display
+    case 5
+        % Log plot selection
+        Event('Absolute dose difference plot selected');
+        
+        % Check if the planned dose and image are loaded
+        if isfield(handles, 'referenceImage') && ...
+                isfield(handles.referenceImage, 'data') ...
+                && isfield(handles, 'doseDiff') && ...
+                isfield(handles.doseDiff, 'data')
+                
+            % Enable Image Viewer UI components
+            set(allchild(handles.dose_axes), 'visible', 'on'); 
+            set(handles.dose_axes, 'visible', 'on');
+            set(handles.dose_slider, 'visible', 'on');
+            set(handles.tcs_button, 'visible', 'on'); 
+            set(handles.alpha, 'visible', 'on');
+            
+            % Set references to currently displayed data
+            image1.data = handles.referenceImage.data;
+            image1.width = handles.referenceImage.width;
+            image1.start = handles.referenceImage.start;
+            image1.structures = handles.referenceImage.structures;
+            image1.stats = get(handles.dvh_table, 'Data');
+            image2.data = handles.doseDiff - image1.data;
+            image2.width = handles.referenceImage.width;
+            image2.start = handles.referenceImage.start;
+            image2.registration = [];
+            
+            % Initialize image viewer
+            InitializeViewer(handles.dose_axes, handles.tcsview, ...
+                sscanf(get(handles.alpha, 'String'), '%f%%')/100, ...
+                image1, image2, handles.dose_slider);
+        else
+            % Log why plot was not displayed
+            Event('Dose difference not displayed as no data exists');
+        end
+    
+    % Gamma display
+    case 6
+        % Log plot selection
+        Event('Gamma index plot selected');
+        
+        % Check if the planned dose and image are loaded
+        if isfield(handles, 'referenceImage') && ...
+                isfield(handles.referenceImage, 'data') ...
+                && isfield(handles, 'gamma') && ...
+                ~isempty(handles.gamma)
+                
+            % Enable Image Viewer UI components
+            set(allchild(handles.dose_axes), 'visible', 'on'); 
+            set(handles.dose_axes, 'visible', 'on');
+            set(handles.dose_slider, 'visible', 'on');
+            set(handles.tcs_button, 'visible', 'on'); 
+            set(handles.alpha, 'visible', 'on');
+            
+            % Set references to currently displayed data
+            image1.data = handles.referenceImage.data;
+            image1.width = handles.referenceImage.width;
+            image1.start = handles.referenceImage.start;
+            image1.structures = handles.referenceImage.structures;
+            image1.stats = get(handles.dvh_table, 'Data');
+            image2.data = handles.gamma;
+            image2.width = handles.referenceImage.width;
+            image2.start = handles.referenceImage.start;
+            image2.registration = [];
+            
+            % Initialize image viewer
+            InitializeViewer(handles.dose_axes, handles.tcsview, ...
+                sscanf(get(handles.alpha, 'String'), '%f%%')/100, ...
+                image1, image2, handles.dose_slider);
+        else
+            % Log why plot was not displayed
+            Event('Gamma index not displayed as no data exists');
+        end
 end
 
 % Clear temporary variables

@@ -43,7 +43,7 @@ c = 0;
 % Gamma parameters
 c = c + 1;
 table{c,1} = 'Gamma criteria';
-table{c,2} = sprintf('%0.1f%%/%0.1f mm', [handles.abs, handles.dta]);
+table{c,2} = sprintf('%0.1f%%/%0.1f mm', [handles.percent, handles.dta]);
 
 % Mean LOT
 c = c + 1;

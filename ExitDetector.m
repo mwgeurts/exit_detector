@@ -171,15 +171,15 @@ Event(sprintf('Number of active MVCT channels set to %i', ...
     handles.mvctRows));
 
 % Gamma criteria
-handles.abs = 3.0; % percent
+handles.percent = 3.0; % percent
 handles.dta = 3.0; % mm
 handles.local = 0; % boolean, 0 (global) or 1 (local)
 if handles.local == 0
     Event(sprintf('Gamma criteria set to %0.1f%%/%0.1f mm global', ...
-        handles.abs, handles.dta));
+        handles.percent, handles.dta));
 else
     Event(sprintf('Gamma criteria set to %0.1f%%/%0.1f mm local', ...
-        handles.abs, handles.dta));
+        handles.percent, handles.dta));
 end
 
 % Scalar representing the threshold (dose relative to the maximum dose)
@@ -484,7 +484,7 @@ if ~isequal(name, 0);
         [handles.exitData, handles.diff, handles.errors] = ...
             CalcSinogramDiff(handles.dailyqa.background, ...
             handles.dailyqa.leafSpread, handles.dailyqa.leafMap, ...
-            handles.rawData, handles.planData.sinogram, ...
+            handles.rawData, handles.planData.agnostic, ...
             get(handles.autoshift_box, 'Value'), ...
             get(handles.dynamicjaw_box, 'Value'), handles.planData);
         
@@ -508,12 +508,8 @@ if ~isequal(name, 0);
                 
                 % Adjust delivery plan sinogram by measured differences
                 handles.dqaPlanData = handles.planData;
-                handles.dqaPlanData.sinogram(:,...
-                    handles.dqaPlanData.startTrim:...
-                    handles.dqaPlanData.stopTrim) = ...
-                    handles.dqaPlanData.sinogram(:,...
-                    handles.dqaPlanData.startTrim:...
-                    handles.dqaPlanData.stopTrim) + handles.diff;
+                handles.dqaPlanData.sinogram = ...
+                    handles.planData.sinogram + handles.diff;
                 
                 % Trim any sinogram projection values outside of [0 1]
                 handles.dqaPlanData.sinogram = ...
@@ -525,6 +521,9 @@ if ~isequal(name, 0);
                 handles.dqaDose = CalcDose(handles.referenceImage, ...
                     handles.dqaPlanData, [0 0 0 0 0 0], handles.ssh2);
             
+                % Calculate dose difference
+                handles.doseDiff = CalcDoseDifference(...
+                    handles.referenceDose, handles.dqaDose);
 
                 % Ask user if they want to calculate dose
                 choice = questdlg('Continue to Calculate Gamma?', ...
@@ -536,11 +535,10 @@ if ~isequal(name, 0);
                     % Update progress bar
                     waitbar(0.8, progress, 'Calculating gamma...');
 
-                    %
-                    %
-                    % ADD CODE HERE
-                    %
-                    %
+                    % ExecuteCalcGamma
+                    handles.gamma = CalcGamma(handles.referenceDose, ...
+                        handles.dqaDose, handles.percent, handles.dta, ...
+                        handles.local);
                 else
                     % Log choice
                     Event('User chose not to compute gamma');
@@ -604,7 +602,7 @@ if ~isequal(name, 0);
 
         % Update sinogram plots
         UpdateSinogramDisplay(handles.sino1_axes, ...
-            handles.planData.sinogram, handles.sino2_axes, ...
+            handles.planData.agnostic, handles.sino2_axes, ...
             handles.exitData, handles.sino3_axes, handles.diff);
     end
 
@@ -1082,8 +1080,12 @@ handles.referenceDose = [];
 % structure. See CalcDose.m and UpdateDVH.m
 handles.dqaDose = [];
 
+% doseDiff stores the absolute difference between the dqaDose and
+% referenceDose as an array.  See CalcDoseDifference.m
+handles.doseDiff = [];
+
 % gamma stores the gamma comparison between the planned and recomputed 
-% dose. See CalcGamma.m
+% dose as an array. See CalcGamma.m
 handles.gamma = [];
 
 % rawData is a 643 x n array of compressed exit detector data.  See

@@ -67,9 +67,15 @@ for i = 1:nodeList.getLength
     % Evaluate xpath expression and retrieve the results
     subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
     
-    % Store the first returned value
-    subnode = subnodeList.item(0);
-
+    % If a UID was found
+    if subnodeList.getLength > 0
+        % Store the first returned value
+        subnode = subnodeList.item(0);
+    else
+        % Otherwise, continue to next result
+        continue
+    end
+    
     % If the plan data array does not match the provided UID, continue to
     % next result
     if ~strcmp(char(subnode.getFirstChild.getNodeValue), planUID)

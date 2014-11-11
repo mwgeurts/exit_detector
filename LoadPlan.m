@@ -158,6 +158,8 @@ if ~isfield(planData, 'planTrialUID')
 end
 
 %% Load Fluence Delivery Plan
+Event('Searching for fluence delivery plan');
+
 % Search for fluence delivery plan associated with the plan trial
 expression = ...
     xpath.compile('//fullDeliveryPlanDataArray/fullDeliveryPlanDataArray');
@@ -269,7 +271,7 @@ for i = 1:nodeList.getLength
     subnode = subnodeList.item(0);
 
     % Store the number of projections value
-    planData.numprojections = ...
+    planData.numberOfProjections = ...
         str2double(subnode.getFirstChild.getNodeValue);
 
     %% Load number of leaves
@@ -680,7 +682,7 @@ for i = 1:nodeList.getLength
     subnode = subnodeList.item(0);
 
     % Store the binary image file archive path
-    planData.filename = ...
+    planData.fluenceFilename = ...
         fullfile(path, char(subnode.getFirstChild.getNodeValue));
 
     % Because the matching fluence delivery plan was found, break the
@@ -712,19 +714,20 @@ planData.events{k,3} = 1.7976931348623157E308;
 % Sort events by tau
 planData.events = sortrows(planData.events);
 
+%% Save fluence sinogram
 % Log start of sinogram load
 Event(sprintf('Loading delivery plan binary data from %s', ...
-    planData.filename));
+    planData.fluenceFilename));
 
 % Open a read file handle to the delivery plan binary array 
-fid = fopen(planData.filename, 'r', 'b');
+fid = fopen(planData.fluenceFilename, 'r', 'b');
 
 % Initalize the return variable sinogram to store the delivery 
 % plan in sinogram notation
-sinogram = zeros(64, planData.numprojections);
+sinogram = zeros(64, planData.numberOfProjections);
 
 % Loop through the number of projections in the delivery plan
-for i = 1:planData.numprojections
+for i = 1:planData.numberOfProjections
     
     % Read 2 double events for every leaf in numberOfLeaves.  Note that
     % the XML delivery plan stores each all the leaves for the first
@@ -789,10 +792,136 @@ end
 % binary array
 planData.sinogram = sinogram(:, planData.startTrim:planData.stopTrim);
 
+%% Load machine agnostic delivery plan
+Event('Searching for machine agnostic plan');
+
+% Search for fluence delivery plan associated with the plan trial
+expression = ...
+    xpath.compile('//fullDeliveryPlanDataArray/fullDeliveryPlanDataArray');
+
+% Evaluate xpath expression and retrieve the results
+nodeList = expression.evaluate(doc, XPathConstants.NODESET);  
+
+% Loop through the deliveryPlanDataArrays
+for i = 1:nodeList.getLength
+    %% Load delivery plan basics 
+    % Retrieve a handle to this delivery plan
+    node = nodeList.item(i-1);
+
+    % Search for delivery plan parent UID
+    subexpression = xpath.compile('deliveryPlan/dbInfo/databaseParent');
+
+    % Evaluate xpath expression and retrieve the results
+    subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
+
+    % If no database parent was found, continue to next result
+    if subnodeList.getLength == 0
+        continue
+    end
+
+    % Otherwise, retrieve a handle to the results
+    subnode = subnodeList.item(0);
+
+    % If the delivery databaseParent UID does not match the plan
+    % trial's UID, this delivery plan is associated with a different
+    % plan, so continue to next result
+    if strcmp(char(subnode.getFirstChild.getNodeValue), ...
+            planData.planTrialUID) == 0
+        continue
+    end
+
+    % Search for delivery plan purpose
+    subexpression = xpath.compile('deliveryPlan/purpose');
+
+    % Evaluate xpath expression and retrieve the results
+    subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
+
+    % If no purpose was found, continue to next result
+    if subnodeList.getLength == 0
+        continue
+    end
+
+    % Otherwise, retrieve a handle to the purpose search result
+    subnode = subnodeList.item(0);
+
+    % If the delivery plan purpose is not Fluence, continue to next result
+    if strcmp(char(subnode.getFirstChild.getNodeValue), ...
+            'Machine_Agnostic') == 0
+        continue
+    end
+    
+    %% Store delivery plan image file reference
+    % Search for delivery plan parent UID
+    subexpression = ...
+        xpath.compile('binaryFileNameArray/binaryFileNameArray');
+
+    % Evaluate xpath expression and retrieve the results
+    subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
+    
+    % Store the first returned value
+    subnode = subnodeList.item(0);
+
+    % Store the binary image file archive path
+    planData.agnosticFilename = ...
+        fullfile(path, char(subnode.getFirstChild.getNodeValue));
+
+    % Because the matching agnostic delivery plan was found, break the
+    % for loop to stop searching
+    break
+end
+
+%% Save machine agnostic sinogram
+% Log start of sinogram load
+Event(sprintf('Loading delivery plan binary data from %s', ...
+    planData.agnosticFilename));
+
+% Open a read file handle to the delivery plan binary array 
+fid = fopen(planData.agnosticFilename, 'r', 'b');
+
+% Initalize the return variable sinogram to store the delivery 
+% plan in sinogram notation
+sinogram = zeros(64, planData.numberOfProjections);
+
+% Loop through the number of projections in the delivery plan
+for i = 1:planData.numberOfProjections
+    
+    % Read 2 double events for every leaf in numberOfLeaves.  Note that
+    % the XML delivery plan stores each all the leaves for the first
+    % projection, then the second, etc, as opposed to the dose
+    % calculator plan.img, which stores all events for the first leaf,
+    % then all events for the second leaf, etc.  The first event is the
+    % "open" tau value, while the second is the "close" value
+    leaves = fread(fid, planData.numberOfLeaves * 2, 'double');
+
+    % Loop through each projection (2 events)
+    for j = 1:2:size(leaves)
+        
+       % The projection number is the mean of the "open" and "close"
+       % events.  This assumes that the open time was centered on the 
+       % projection.  1 is added as MATLAB uses one based indices.
+       index = floor((leaves(j) + leaves(j+1)) / 2) + 1;
+
+       % Store the difference between the "open" and "close" tau values
+       % as the fractional leaf open time (remember one tau = one
+       % projection) in the sinogram array under the correct
+       % leaf (numbered 1:64)
+       sinogram(planData.lowerLeafIndex+(j+1)/2, index) = ...
+           leaves(j+1) - leaves(j);
+    end
+end
+
+% Close the delivery plan file handle
+fclose(fid);
+
+% Set the agnostic return variable to the start and stop trimmed
+% binary array
+planData.agnostic = sinogram(:, planData.startTrim:planData.stopTrim);
+
+%% Finish up
 % Report success
 Event(sprintf(['Plan data loaded successfully with %i events and %i', ...
     'projections in %0.3f seconds'], size(planData.events, 1), ...
-    planData.numprojections, toc));
+    planData.numberOfProjections, toc));
 
 % Clear temporary variables
 clear fid i j node subnode subsubnode nodeList subnodeList subsubnodeList ...

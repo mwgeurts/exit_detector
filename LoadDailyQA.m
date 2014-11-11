@@ -1,4 +1,4 @@
-function dailyqa = LoadDailyQA(path, name, numProjections, openRows, ...
+function dailyqa = LoadDailyQA(path, name, numberOfProjections, openRows, ...
     mvctRows, shiftGold)
 % LoadDailyQA is called from ExitDetector.m and parses a TomoTherapy
 % Transit Dose DICOM RT object or Patient Archive XML file for procedure 
@@ -9,7 +9,7 @@ function dailyqa = LoadDailyQA(path, name, numProjections, openRows, ...
 % The following variables are required for proper execution:
 %   name: name of the DICOM RT file or patient archive XML file
 %   path: path to the DICOM RT file or patient archive XML file
-%   numProjections: number of projections in the daily QA procedure
+%   numberOfProjections: number of projections in the daily QA procedure
 %   openRows: number of detector channels included in the DICOM file
 %   mvctRows: the number of active MVCT data channels
 %   shiftGold: boolean, set to 1 to auto-shift gold standard data to
@@ -237,9 +237,9 @@ if isempty(s)
     
     % Read from the temporary array into dailyqa.rawData, which should be
     % just MVCT channel data
-    dailyqa.rawData = arr(1:rows, 1:numProjections);
+    dailyqa.rawData = arr(1:rows, 1:numberOfProjections);
     Event(sprintf('%i projections successfully loaded across %i channels', ...
-        numProjections, rows));
+        numberOfProjections, rows));
 
     % Close file handle
     fclose(fid);
@@ -455,20 +455,20 @@ else
     % If the number of projections is greater than 9000, it is likely
     % that the compression factor was set to 1.  The below analysis 
     % requires the data to be downsampled by a factor of 10
-    if size(arr,2) > numProjections
+    if size(arr,2) > numberOfProjections
         arr = imresize(arr,[dailyqa.returnQAData{plan}.dimensions(1) ...
             floor(dailyqa.returnQAData{plan}.dimensions(2)/10)]);
     end
 
     % Otherwise, if the number of projections is less than 9000, pad
     % the data to total 9000
-    if size(arr,2) < numProjections
-        arr = padarray(arr,[0 numProjections-size(arr,2)], 'post');
+    if size(arr,2) < numberOfProjections
+        arr = padarray(arr,[0 numberOfProjections-size(arr,2)], 'post');
     end
 
     % Read from the temporary array into dailyqa.rawData, which should be
     % just MVCT channel data
-    dailyqa.rawData = arr(1:rows,1:numProjections);
+    dailyqa.rawData = arr(1:rows,1:numberOfProjections);
 
     % Close file handle
     fclose(fid);
@@ -482,7 +482,7 @@ else
     
     % Report success
     Event(sprintf('%i projections successfull loaded across %i channels', ...
-        numProjections, rows));
+        numberOfProjections, rows));
 end
 
 % Clear temporary variables

@@ -121,9 +121,9 @@ if size(varargin{4}.data,1) ~= size(varargin{5}.data,1) ...
     tform(3,4) = 0;
     tform(4,4) = 1;
 
-    %% Generate mesh grids for reference image
+    %% Generate mesh grids for primary image
     % Log start of mesh grid computation and dimensions
-    Event(sprintf(['Generating reference mesh grid with dimensions', ...
+    Event(sprintf(['Generating prinary mesh grid with dimensions', ...
         ' (%i %i %i 3)'], size(varargin{4}.data)));
 
     % Generate x, y, and z grids using start and width structure fields
@@ -139,7 +139,7 @@ if size(varargin{4}.data,1) ~= size(varargin{5}.data,1) ...
     % matrix transform
     ref1 = ones(size(varargin{4}.data));
 
-    %% Generate meshgrids for daily image
+    %% Generate meshgrids for secondary image
     % Log start of mesh grid computation and dimensions
     Event(sprintf(['Generating secondary mesh grid with dimensions', ...
         ' (%i %i %i 3)'], size(varargin{5}.data)));
@@ -153,7 +153,7 @@ if size(varargin{4}.data,1) ~= size(varargin{5}.data,1) ...
         varargin{5}.start(3):varargin{5}.width(3):varargin{5}.start(3) ...
         + varargin{5}.width(3) * (size(varargin{5}.data, 3) - 1));
 
-    %% Transform reference image meshgrids
+    %% Transform secondary image meshgrids
     % Log start of transformation
     Event('Applying transformation matrix to reference mesh grid');
 
@@ -170,7 +170,7 @@ if size(varargin{4}.data,1) ~= size(varargin{5}.data,1) ...
     % Clear temporary variables
     clear result ref1 tform;
 
-    %% Interpolate transformed reference image
+    %% Interpolate transformed secondary image
     % Log start of interpolation
     Event('Attempting interpolation of secondary image');
 

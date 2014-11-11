@@ -282,7 +282,7 @@ for i = 1:nodeList.getLength
     subnode = subnodeList.item(0);
 
     % Store the number of projections
-    deliveryPlans{i}.numprojections = ...
+    deliveryPlans{i}.numberOfProjections = ...
         str2double(subnode.getFirstChild.getNodeValue);
 
     % Search for all delivery plan XML object numberOfLeaves values
@@ -368,11 +368,11 @@ if autoSelect == 0
     fid = fopen(deliveryPlans{plan}.dplan, 'r', 'b');
 
     % Initialize a temporary array to store sinogram (64 leaves
-    % x numprojections)
-    arr = zeros(64, deliveryPlans{plan}.numprojections);
+    % x numberOfProjections)
+    arr = zeros(64, deliveryPlans{plan}.numberOfProjections);
 
     % Loop through each projection
-    for i = 1:deliveryPlans{plan}.numprojections
+    for i = 1:deliveryPlans{plan}.numberOfProjections
 
         % Loop through each active leaf, set in numleaves
         for j = 1:deliveryPlans{plan}.numleaves
@@ -456,11 +456,11 @@ else
         fid = fopen(deliveryPlans{plan}.dplan, 'r', 'b');
 
         % Initialize a temporary array to store sinogram (64 leaves x
-        % numprojections)
-        arr = zeros(64, deliveryPlans{plan}.numprojections);
+        % numberOfProjections)
+        arr = zeros(64, deliveryPlans{plan}.numberOfProjections);
 
         % Loop through each projection
-        for i = 1:deliveryPlans{plan}.numprojections
+        for i = 1:deliveryPlans{plan}.numberOfProjections
 
             % Loop through each active leaf, set in numleaves
             for j = 1:deliveryPlans{plan}.numleaves
@@ -513,9 +513,9 @@ else
             end
         end
 
-        % Update the delivery plan numprojections field based on
+        % Update the delivery plan numberOfProjections field based on
         % the start and stop trim values
-        deliveryPlans{plan}.numprojections = ...
+        deliveryPlans{plan}.numberOfProjections = ...
             stopTrim - startTrim + 1;
 
         % Set the sinogram field to the start and stop trimmed
@@ -524,7 +524,7 @@ else
 
         % If the number of projections is greater than the raw data, ignore
         % this plan
-        if deliveryPlans{plan}.numprojections > size(rawData,2)
+        if deliveryPlans{plan}.numberOfProjections > size(rawData,2)
            continue 
         end
 
@@ -532,7 +532,7 @@ else
         % computation).  Note, this exitData is not stored into
         % the global variable.
         exitData = rawData(leafMap(1:64), size(rawData,2) - ...
-            deliveryPlans{plan}.numprojections + 1:...
+            deliveryPlans{plan}.numberOfProjections + 1:...
             size(rawData,2)) - background;  
 
         % Check if auto-shift is enabled
