@@ -194,30 +194,8 @@ if isstruct(image2)
     % transparency input
     set(handle, 'AlphaData', varargin{2});
     
-    % If the secondary dataset is intensity based (not RGB)
-    if size(size(image2.data),2) == 3
-        
-        % If the range of data is less than 1, use three decimal
-        % places for the label
-        if max(abs(minval),abs(maxval)) < 1
-            fmt = '%0.3f';   
-            
-        % Otherwise just use one decimal for the colorbar label
-        else
-            fmt = '%0.1f';
-        end
-
-        % Set the colorbar ticks and tick labels based on the format 
-        % specified
-        labels = cell(1,6);
-        for i = 0:6
-            labels{i+1} = sprintf(fmt, minval + (maxval - minval)/6 * i);
-        end
-        colorbar('Ticks', 1:10.4:64, 'TickLabels', labels);
-        
-        % Clear temporary variables
-        clear fmt labels;
-    end
+    % Enable colorbar
+    colorbar;
     
 % Otherwise, only a primary dataset was provided
 else

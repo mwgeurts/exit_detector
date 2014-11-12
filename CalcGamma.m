@@ -134,7 +134,7 @@ if nargin < 6
 end
 
 % Set restrictSearch flag. If 1, only the gamma values along the X/Y/Z axes
-% are computed. If 0, the entire square search space is computed.
+% are computed during 3D. If 0, the entire square search space is computed
 restrictSearch = 1;
 
 % If the reference dataset is 1-D
@@ -169,15 +169,15 @@ elseif size(varargin{1}.width,2) == 3
     Event('Reference dataset is 3-D');
     
     % Compute X, Y, and Z meshgrids for the reference dataset positions
-    % using the start and width values
-    [refX, refY, refZ] = meshgrid(single(varargin{1}.start(1): ...
-        varargin{1}.width(1):varargin{1}.start(1) + varargin{1}.width(1) * ...
-        (size(varargin{1}.data,1) - 1)), single(varargin{1}.start(2): ...
-        varargin{1}.width(2):varargin{1}.start(2) + varargin{1}.width(2)...
-        * (size(varargin{1}.data,2) - 1)), single(varargin{1}.start(3):...
+    % using the start and width values, permuting X/Y
+    [refX, refY, refZ] = meshgrid(single(varargin{1}.start(2): ...
+        varargin{1}.width(2):varargin{1}.start(2) + varargin{1}.width(2) * ...
+        (size(varargin{1}.data,2) - 1)), single(varargin{1}.start(1): ...
+        varargin{1}.width(1):varargin{1}.start(1) + varargin{1}.width(1)...
+        * (size(varargin{1}.data,1) - 1)), single(varargin{1}.start(3):...
         varargin{1}.width(3):varargin{1}.start(3) + varargin{1}.width(3)...
         * (size(varargin{1}.data,3) - 1)));
-    
+
 % Otherwise, if the reference data is of higher dimension
 else
     % Throw an error and stop execution
@@ -216,12 +216,12 @@ elseif size(varargin{2}.width,2) == 3
     Event('Target dataset is 3-D');
     
     % Compute X, Y, and Z meshgrids for the target dataset positions using
-    % the start and width values
-    [tarX, tarY, tarZ] = meshgrid(single(varargin{2}.start(1):...
-        varargin{2}.width(1):varargin{2}.start(1) + varargin{2}.width(1) * ...
-        (size(varargin{2}.data,1) - 1)), single(varargin{2}.start(2): ...
-        varargin{2}.width(2):varargin{2}.start(2) + varargin{2}.width(2) ...
-        * (size(varargin{2}.data,2) - 1)), single(varargin{2}.start(3):...
+    % the start and width values, permuting X/Y
+    [tarX, tarY, tarZ] = meshgrid(single(varargin{2}.start(2):...
+        varargin{2}.width(2):varargin{2}.start(2) + varargin{2}.width(2) * ...
+        (size(varargin{2}.data,2) - 1)), single(varargin{2}.start(1): ...
+        varargin{2}.width(1):varargin{2}.start(1) + varargin{2}.width(1) ...
+        * (size(varargin{2}.data,1) - 1)), single(varargin{2}.start(3):...
         varargin{2}.width(3):varargin{2}.start(3) + varargin{2}.width(3) ...
         * (size(varargin{2}.data,3) - 1)));
     
@@ -244,7 +244,7 @@ elseif size(varargin{2}.width,2) == 2
     res = 100;
 elseif size(varargin{2}.width,2) == 3
     % Set 3-D resolution
-    res = 30;
+    res = 20;
 end
 
 % Log resolution
@@ -254,9 +254,19 @@ Event(sprintf('Interpolation resolution set to %i', res));
 % reliable value of gamma).
 gamma = ones(size(varargin{2}.data)) * 2;
 
-% Log number of gamma calculations (for curiosity)
-Event(sprintf('Number of gamma calculations = %g', ...
-    numel(gamma) * res * 2 * size(varargin{2}.width,2)));
+% Log number of gamma calculations (for status updates on 3D calcs)
+if restrictSearch == 1
+    num = res * 4 * size(varargin{2}.width,2);
+else
+    num = res * 4 ^ size(varargin{2}.width,2);
+end
+
+% num is the number of iterations, num * numel the total number of
+% interpolations being performed
+Event(sprintf('Number of gamma calculations = %g', num * numel(gamma)));
+
+% Initialize counter (for progress indicator)
+n = 0;
 
 % Start try-catch block to safely test for CUDA functionality
 try
@@ -270,7 +280,7 @@ try
     % Note to support parfor loops indices must be integers, so x varies 
     % from -2 to +2 multiplied by the number of interpolation steps.  
     % Effectively, this evaluates gamma from -2 * DTA to +2 * DTA.
-    for x = -2*res:2:res
+    for x = -2*res:2*res
         
         % i is the x axis step value
         i = x/res * varargin{4};
@@ -326,6 +336,15 @@ try
                             gamma = min(gamma, GammaEquation(interp, ...
                                 varargin{2}.data, i, j, k, varargin{3}, varargin{4}, ...
                                 varargin{6}, varargin{5}));
+                            
+                            % Update counter 
+                            n = n + 1;
+                            
+                            % If counter is at an even %, display progress
+                            if mod((n-1)/num, 0.01) > 0.005 && ...
+                                    mod(n/num, 0.01) < 0.005
+                                fprintf('%0.1f%%\n', n/num*100);
+                            end
                         end
                     end
                     
@@ -359,9 +378,6 @@ try
                 i, j, k, varargin{3}, varargin{4}, ...
                 varargin{6}, varargin{5}));
         end
-        
-        % Print computation status (in %) to stdout
-        fprintf('%0.1f%%\n', (x + 2 * res) / (4 * res) * 100);
     end
    
 % If GPU fails, revert to CPU computation
@@ -427,6 +443,15 @@ catch
                             gamma = min(gamma, GammaEquation(interp, ...
                                 varargin{2}.data, i, j, k, varargin{3}, ...
                                 varargin{4}, varargin{6}, varargin{5}));
+                            
+                            % Update counter 
+                            n = n + 1;
+                            
+                            % If counter is at an even %, display progress
+                            if mod((n-1)/num, 0.01) > 0.005 && ...
+                                    mod(n/num, 0.01) < 0.005
+                                fprintf('%0.1f%%\n', n/num*100);
+                            end
                         end
                     end
                     
@@ -458,9 +483,6 @@ catch
                 i, j, k, varargin{3}, varargin{4}, ...
                 varargin{6}, varargin{5}));
         end
-        
-        % Print computation status (in %) to stdout
-        % fprintf('%0.1f%%\n', (x + 2 * res) / (4 * res) * 100);
     end
 end
     

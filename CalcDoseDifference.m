@@ -207,7 +207,7 @@ end
 
 %% Finish up
 % Return difference
-diff = varargin{1}.data - varargin{2}.data;
+diff = varargin{2}.data - varargin{1}.data;
 
 % Log completion
 Event(sprintf(['Dose difference computed completed successfully ', ...

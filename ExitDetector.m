@@ -145,6 +145,14 @@ handles.hideFluence = 1;
 Event(sprintf('Hide fluence delivery plan flag set to %i', ...
     handles.hideFluence));
 
+% Flag to recalculate reference dose using gpusadose.  Should be set to 1
+% if the beam model differs significantly from the actual TPS, as dose
+% difference/gamma comparison will now compare two dose distributions
+% computed using the same model
+handles.calcRefDose = 0;
+Event(sprintf('Recalculate reference dose flag set to %i', ...
+    handles.calcRefDose));
+
 % The daily QA is 9000 projections long.  If the sinogram data is
 % different, the data will be manipulated below to fit
 handles.dailyqaProjections = 9000;
@@ -192,8 +200,8 @@ Event(sprintf('Dose threshold set to %0.1f%% of maximum dose', ...
 % corresponds to the first channel in the channel calibration array. For  
 % gen4 (TomoDetectors), this should be 27, as detectorChanSelection is set
 % to KEEP_OPEN_FIELD_CHANNELS for the Daily QA XML)
-handles.doseThreshold = 27;
-Event(sprintf('Left trim channel set to %i', handles.doseThreshold));
+handles.leftTrim = 27;
+Event(sprintf('Left trim channel set to %i', handles.leftTrim));
 
 % Set the initial image view orientation to Transverse (T)
 handles.tcsview = 'T';
@@ -420,7 +428,7 @@ if ~isequal(name, 0);
     
     % Search archive for static couch QA procedures
     [handles.planUID, handles.rawData] = ...
-        LoadStaticCouchQA(path, name, handles.doseThreshold, ...
+        LoadStaticCouchQA(path, name, handles.leftTrim, ...
         handles.dailyqa.channelCal, handles.detectorRows);
     
     % If LoadStaticCouchQA was successful
@@ -462,7 +470,7 @@ if ~isequal(name, 0);
         % Update progress bar
         waitbar(0.4, progress, 'Loading reference dose...');
         
-        % Load reference image
+        % Load reference dose
         handles.referenceDose = ...
             LoadReferenceDose(path, name, handles.planUID);
         
@@ -506,7 +514,15 @@ if ~isequal(name, 0);
                 % Update progress bar
                 waitbar(0.7, progress, 'Calculating dose...');
                 
+                % Execute CalcDose on reference plan 
+                if handles.calcRefDose == 1
+                    Event('Calculating reference dose');
+                    handles.referenceDose = CalcDose(handles.referenceImage, ...
+                       handles.planData, [0 0 0 0 0 0], handles.ssh2);
+                end
+                
                 % Adjust delivery plan sinogram by measured differences
+                Event('Modifying delivery plan using difference array');
                 handles.dqaPlanData = handles.planData;
                 handles.dqaPlanData.sinogram = ...
                     handles.planData.sinogram + handles.diff;
@@ -518,6 +534,7 @@ if ~isequal(name, 0);
                     min(1, handles.dqaPlanData.sinogram);
                 
                 % Execute CalcDose
+                Event('Calculating DQA dose');
                 handles.dqaDose = CalcDose(handles.referenceImage, ...
                     handles.dqaPlanData, [0 0 0 0 0 0], handles.ssh2);
             
@@ -539,6 +556,11 @@ if ~isequal(name, 0);
                     handles.gamma = CalcGamma(handles.referenceDose, ...
                         handles.dqaDose, handles.percent, handles.dta, ...
                         handles.local);
+                    
+                    % Eliminate gamma values below dose treshold
+                    handles.gamma = handles.gamma .* ...
+                        (handles.referenceDose.data > handles.doseThreshold * ...
+                        max(max(max(handles.referenceDose.data))));
                 else
                     % Log choice
                     Event('User chose not to compute gamma');

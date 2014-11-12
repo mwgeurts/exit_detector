@@ -850,6 +850,51 @@ for i = 1:nodeList.getLength
         continue
     end
     
+    %% Load lower lead index
+    % Search for delivery plan lower leaf index
+    subexpression = ...
+        xpath.compile('deliveryPlan/states/states/lowerLeafIndex');
+
+    % Evaluate xpath expression and retrieve the results
+    subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
+    
+    % Store the first returned value
+    subnode = subnodeList.item(0);
+
+    % Store the lower leaf index value
+    planData.agnosticLowerLeafIndex = ...
+        str2double(subnode.getFirstChild.getNodeValue);
+
+    %% Load number of projections
+    % Search for delivery plan number of projections
+    subexpression = ...
+        xpath.compile('deliveryPlan/states/states/numberOfProjections');
+
+    % Evaluate xpath expression and retrieve the results
+    subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
+    
+    % Store the first returned value
+    subnode = subnodeList.item(0);
+
+    % Store the number of projections value
+    planData.agnosticNumberOfProjections = ...
+        str2double(subnode.getFirstChild.getNodeValue);
+
+    %% Load number of leaves
+    % Search for delivery plan number of leaves
+    subexpression = ...
+        xpath.compile('deliveryPlan/states/states/numberOfLeaves');
+
+    % Evaluate xpath expression and retrieve the results
+    subnodeList = subexpression.evaluate(node, XPathConstants.NODESET);
+    
+    % Store the first returned value
+    subnode = subnodeList.item(0);
+
+    % Store the number of leaves value
+    planData.agnosticNumberOfLeaves = ...
+        str2double(subnode.getFirstChild.getNodeValue);
+    
     %% Store delivery plan image file reference
     % Search for delivery plan parent UID
     subexpression = ...
@@ -880,10 +925,10 @@ fid = fopen(planData.agnosticFilename, 'r', 'b');
 
 % Initalize the return variable sinogram to store the delivery 
 % plan in sinogram notation
-sinogram = zeros(64, planData.numberOfProjections);
+sinogram = zeros(64, planData.agnosticNumberOfProjections);
 
 % Loop through the number of projections in the delivery plan
-for i = 1:planData.numberOfProjections
+for i = 1:planData.agnosticNumberOfProjections
     
     % Read 2 double events for every leaf in numberOfLeaves.  Note that
     % the XML delivery plan stores each all the leaves for the first
@@ -891,7 +936,7 @@ for i = 1:planData.numberOfProjections
     % calculator plan.img, which stores all events for the first leaf,
     % then all events for the second leaf, etc.  The first event is the
     % "open" tau value, while the second is the "close" value
-    leaves = fread(fid, planData.numberOfLeaves * 2, 'double');
+    leaves = fread(fid, planData.agnosticNumberOfLeaves * 2, 'double');
 
     % Loop through each projection (2 events)
     for j = 1:2:size(leaves)
@@ -905,7 +950,7 @@ for i = 1:planData.numberOfProjections
        % as the fractional leaf open time (remember one tau = one
        % projection) in the sinogram array under the correct
        % leaf (numbered 1:64)
-       sinogram(planData.lowerLeafIndex+(j+1)/2, index) = ...
+       sinogram(planData.agnosticLowerLeafIndex+(j+1)/2, index) = ...
            leaves(j+1) - leaves(j);
     end
 end

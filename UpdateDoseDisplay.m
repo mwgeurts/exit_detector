@@ -160,7 +160,7 @@ switch get(handles.dose_display, 'Value')
         if isfield(handles, 'referenceImage') && ...
                 isfield(handles.referenceImage, 'data') ...
                 && isfield(handles, 'doseDiff') && ...
-                isfield(handles.doseDiff, 'data')
+                ~isempty(handles.doseDiff)
                 
             % Enable Image Viewer UI components
             set(allchild(handles.dose_axes), 'visible', 'on'); 
@@ -175,8 +175,8 @@ switch get(handles.dose_display, 'Value')
             image1.start = handles.referenceImage.start;
             image1.structures = handles.referenceImage.structures;
             image1.stats = get(handles.dvh_table, 'Data');
-            image2.data = (handles.doseDiff - ...
-                image1.data) ./ image1.data;
+            image2.data = handles.doseDiff ./ image1.data .* ...
+                (image1.data > 1) * 100;
             image2.width = handles.referenceImage.width;
             image2.start = handles.referenceImage.start;
             image2.registration = [];
@@ -199,7 +199,7 @@ switch get(handles.dose_display, 'Value')
         if isfield(handles, 'referenceImage') && ...
                 isfield(handles.referenceImage, 'data') ...
                 && isfield(handles, 'doseDiff') && ...
-                isfield(handles.doseDiff, 'data')
+                ~isempty(handles.doseDiff)
                 
             % Enable Image Viewer UI components
             set(allchild(handles.dose_axes), 'visible', 'on'); 
@@ -214,7 +214,7 @@ switch get(handles.dose_display, 'Value')
             image1.start = handles.referenceImage.start;
             image1.structures = handles.referenceImage.structures;
             image1.stats = get(handles.dvh_table, 'Data');
-            image2.data = handles.doseDiff - image1.data;
+            image2.data = handles.doseDiff;
             image2.width = handles.referenceImage.width;
             image2.start = handles.referenceImage.start;
             image2.registration = [];

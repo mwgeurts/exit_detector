@@ -128,18 +128,19 @@ else
     UpdateDVH(handles.axes5, get(data.dvh_table, 'Data'), ...
         data.referenceImage, data.referenceDose);
 end
+title('Dose Volume Histogram');
     
 % Plot LOT histogram
 UpdateResultsDisplay(handles.axes6, 6, data);
+title('LOT Histogram');
 
-% If gamma data exists
-if isfield(data, 'gamma') && isfield(data.gamma, 'data')
-    % Plot gamma error histogram
-    UpdateResultsDisplay(handles.axes7, 11, data);
-else
-   % Plot LOT error histogram
-    UpdateResultsDisplay(handles.axes7, 9, data);
-end
+% Plot LOT error histogram
+UpdateResultsDisplay(handles.axes7, 9, data);
+title('LOT Error Histogram');
+
+% Plot gamma error histogram
+UpdateResultsDisplay(handles.axes8, 11, data);
+title('Gamma Histogram');
 
 % Update handles structure
 guidata(hObject, handles);

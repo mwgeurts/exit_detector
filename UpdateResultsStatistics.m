@@ -40,14 +40,9 @@ table = cell(1,2);
 % Initialize row counter
 c = 0;
 
-% Gamma parameters
-c = c + 1;
-table{c,1} = 'Gamma criteria';
-table{c,2} = sprintf('%0.1f%%/%0.1f mm', [handles.percent, handles.dta]);
-
 % Mean LOT
 c = c + 1;
-table{c,1} = 'Mean Leaf Open Time (LOT)';
+table{c,1} = 'Mean leaf open time (LOT)';
 if isfield(handles, 'planData') && isfield(handles.planData, 'sinogram')
   
     % Reshape the sinogram into a 1D vector
@@ -60,7 +55,7 @@ if isfield(handles, 'planData') && isfield(handles.planData, 'sinogram')
     table{c,2} = sprintf('%0.2f%%', mean(openTimes) * 100);
     
     % Log result
-    Event(sprintf('Mean LOT computed as %e', mean(openTimes)));
+    Event(sprintf('Mean LOT = %e', mean(openTimes)));
     
     % Clear temporary variables
     clear openTimes;
@@ -70,35 +65,35 @@ end
 
 % Mean LOT error
 c = c + 1;
-table{c,1} = 'Mean Leaf Open Time Error';
+table{c,1} = 'Mean leaf open time error';
 if isfield(handles, 'errors') && ~isempty(handles.errors)
     
     % Store the mean leaf open time error in %
     table{c,2} = sprintf('%0.2f%%', mean(handles.errors) * 100); 
     
     % Log result
-    Event(sprintf('Mean LOT error computed as %e', mean(handles.errors)));
+    Event(sprintf('Mean LOT error = %e', mean(handles.errors)));
 else
     table{c,2} = '';
 end
 
 % St Dev LOT error
 c = c + 1;
-table{c,1} = 'St Dev Leaf Open Time Error';
+table{c,1} = 'St dev leaf open time error';
 if isfield(handles, 'errors') && ~isempty(handles.errors)
     
     % Store the st dev error in %           
     table{c,2} = sprintf('%0.2f%%', std(handles.errors) * 100);
     
     % Log result
-    Event(sprintf('St Dev LOT error computed as %e', std(handles.errors)));
+    Event(sprintf('St Dev LOT error = %e', std(handles.errors)));
 else
     table{c,2} = '';
 end
 
 % 5% LOT error pass rate
 c = c + 1;
-table{c,1} = '5% LOT Error Pass Rate';
+table{c,1} = '5% LOT error pass rate';
 if isfield(handles, 'errors') && ~isempty(handles.errors)
     
     % Store pass rate
@@ -107,11 +102,45 @@ if isfield(handles, 'errors') && ~isempty(handles.errors)
         length(handles.errors) * 100);
     
     % Log result
-    Event(sprintf('5%% pass rate computed as %e%%', ...
+    Event(sprintf('5%% pass rate = %e%%', ...
         length(handles.errors(abs(handles.errors) <= 0.05)) / ...
         length(handles.errors) * 100));
 else
     table{c,2} = '';
+end
+
+% Gamma parameters
+c = c + 1;
+table{c,1} = 'Gamma criteria';
+table{c,2} = sprintf('%0.1f%%/%0.1f mm', handles.percent, handles.dta);
+
+c = c + 1;
+table{c,1} = 'Gamma dose threshold';
+table{c,2} = sprintf('%0.1f%%', handles.doseThreshold * 100);
+
+% Gamma pass rate
+c = c + 1;
+table{c,1} = 'Gamma pass rate';
+if isfield(handles, 'gamma') && size(handles.gamma,1) > 0
+    % Initialize the gammahist temporary variable to compute the 
+    % gamma pass rate, by reshaping gamma to a 1D vector
+    gammahist = reshape(handles.gamma,1,[]);
+
+    % Remove values less than or equal to zero (due to
+    % handles.dose_threshold; see CalcDose for more 
+    % information)
+    gammahist = gammahist(gammahist > 0); 
+            
+    % Store pass rate
+    table{c,2} = sprintf('%0.2f%%', ...
+        length(gammahist(gammahist <= 1)) / length(gammahist) * 100);
+    
+    % Log result
+    Event(sprintf('Gamma pass rate = %e%%', ...
+        length(gammahist(gammahist <= 1)) / length(gammahist) * 100));
+    
+    % Clear temporary variables
+    clear gammahist;
 end
 
 % Log completion
