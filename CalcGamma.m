@@ -1,45 +1,62 @@
-function h = CalcGamma(h)
-% CalcGamma calculates the 3D Gamma index between two volumes
-%   CalcGamma computes the Gamma index between two datasets (typically dose
-%   volumes) given a defined size and coordinate space.  The datasets must
-%   be identical in size and coordinates.  A global or local Gamma
-%   computation can be performed, as set by the local_gamma boolean.  See
-%   the README for more details on the algorithm implemented.
+function gamma = CalcGamma(varargin)
+% CalcGamma computes 1-D, 2-D, or 3-D global or absolute gamma between two
+% datasets (reference and target) given a defined coordinate space. The 
+% datasets must have the same number of dimensions, although they can be 
+% different sizes. Gamma will be computed for each target dose point by
+% shifting the reference image (using linear interpolation) and determining
+% the minimum Gamma index across all shifts.
 %
-%   This function optionally uses the Parallel Computing Toolbox parfor
-%   function to increase computation speed.
+% This function optionally uses the Parallel Computing Toolbox GPU interp
+% functions to increase computation speed. A try-catch statement is used
+% to test for GPU support. In addition, for memory management, the
+% meshgrid and data arrays are converted to single precision during
+% interpolation. This function calls Event.m to log results.
 %
-%   To improve calculation efficiency, this MATLAB implementation of 3D
-%   gamma computation only searches for the minimum gamma along the x, y,
-%   and z axes (not in any diagonal directions from these axes).  For
-%   additional accuracy, a single parfor loop in one direction with nested 
-%   for loops in the other two dimensions can be used.
+% For more information on the Gamma evaluation function, see D. A. Low et 
+% al., "A technique for the quantitative evaluation of dose distributions", 
+% Med Phys. 1998 May; 25(5): 656-61.
 %
-% The following handle structures are read by CalcGamma and are required
-% for proper execution:
-%   h.ct: contains a structure of ct/dose parameters.  Should contain the
-%       following fields: start (3x1 vector of X,Y,Z start coorindates in 
-%       cm), width (3x1 vector of widths in cm), and dimensions (3x1 vector
-%       of number of voxels)
-%   h.dose_reference: a 3D array, of the same size in h.ct.dimensions, of
-%       the "planned" dose
-%   h.dose_dqa: a 3D array, of the same size in h.ct.dimensions, of the 
-%       "measured" or "adjusted" dose 
-%   h.dose_threshold: a fraction (relative to the maximum dose) of 
-%       h.dose_reference below which the gamma will not be reported
-%   h.gamma_percent: the percentage of the maximum (global) or local dose
-%       to be evaluated by the Gamma algorithm 
-%   h.gamma_dta: the Distance-To-Agreement (in mm) to be evaluated by the
-%       Gamma algorithm
-%   h.parallelize: boolean, as to whether to attempt to use a parfor loop
-%       (requires the Parallel Computing Toolbox to be installed)
-%   h.local_gamma: boolean, as to whether a local Gamma algorithm should
-%       be performed.  Otherwise a global Gamma algorithm is used. 
+% The following variables are required for proper execution: 
+%   varargin{1}: structure containing the reference data, where the field
+%       start is an array containing the coordinates along each dimension
+%       of the first voxel, width is an array containing the width of each
+%       voxel along each dimension, and data is an n-dimensional array
+%   varargin{2}: structure containing the target data, where the field
+%       start is an array containing the coordinates along each dimension
+%       of the first voxel, width is an array containing the width of each
+%       voxel along each dimension, and data is an n-dimensional array
+%   varargin{3}: Gamma absolute criterion percentage
+%   varargin{4}: Gamma Distance To Agreement (DTA) criterion, in the same
+%       units as the reference and target width structure fields  
+%   varargin{5} (optional): boolean, indicates whether to perform a local 
+%       (1) or global (0) Gamma computation.  If not present, the function
+%       will assume a global Gamma computation.
+%   varargin{6} (optional): reference value for the global absolute 
+%       criterion.  Is used with the percentage from varargin{3} to compute
+%       absolute value.  If not present, the maximum value in the reference
+%       data is used.
 %
-% The following handles are returned upon succesful completion:
-%   h.gamma: a 3D array, of the same size in h.ct.dimensions, containing
-%   the Gamma index for each voxel
+% The following variables are returned upon succesful completion:
+%   gamma: array of the same dimensions as varargin{2}.data containing the
+%       computed gamma values
 %
+% Below is an example of how the function is used:
+%
+%   reference.start = [-10 -10]; % mm
+%   reference.width = [0.1 0.1]; % mm
+%   reference.data = rand(200);
+%
+%   target.start = [-10 -10]; % mm
+%   target.width = [0.1 0.1]; % mm
+%   target.data = rand(200);
+%
+%   percent = 3;
+%   dta = 0.5; % mm
+%   local = 0; % Perform global gamma
+%   
+%   gamma = CalcGamma(reference, target, percent, dta, local);
+%
+% Author: Mark Geurts, mark.w.geurts@gmail.com
 % Copyright (C) 2014 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
@@ -54,294 +71,461 @@ function h = CalcGamma(h)
 % 
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
-% 
 
-% The dose images are assumed to be the same, so one mesh is used to
-% define the coordinates of both datasets.  The meshgrid is based on the
-% h.ct start, width, and dimensions vectors.  
-[meshX, meshY, meshZ] = meshgrid(...
-h.ct.start(2):h.ct.width(2):h.ct.start(2)+h.ct.width(2)*(h.ct.dimensions(2)-1), ...
-h.ct.start(1):h.ct.width(1):h.ct.start(1)+h.ct.width(1)*(h.ct.dimensions(1)-1), ...
-h.ct.start(3):h.ct.width(3):h.ct.start(3)+h.ct.width(3)*(h.ct.dimensions(3)-1));
+% Log initialization and start timer
+Event('Beginning Gamma calculation');
+tic;
 
-% Convert the mesh matrices to single datatypes to reduce memory overhead
-meshX = single(meshX);
-meshY = single(meshY);
-meshZ = single(meshZ);
-
-% Generate a progress bar to let user know what's happening
-h.progress = waitbar(0.1,'Calculating gamma...');
-
-% Calculate maximum dose for the reference array (used for thresholding and
-% global gamma computations)
-max_dose = max(max(max(h.dose_reference)));
-
-% Generate an initial gamma volume, neglecting DTA.  Note that for
-% local gamma calculations h.gamma_percent is multiplied by the
-% h.dose.reference value for each voxel (ie, 3% of that voxel's dose).
-% For global gamma calculations h.gamma_percent is multiplied by the
-% max_dose value for the entire volume (ie, 3% of the maximum dose)
-gamma = GammaEquation(h.dose_reference, h.dose_dqa, 0, 0, 0, h.gamma_percent, h.gamma_dta, max_dose, h.local_gamma);
-
-% Try to perform the gamma computation using the Parallel Computing Toolbox
-try 
-    % If the flag h.parallelize flag is set to zero, throw error to revert
-    % computation to a single processor.
-    if h.parallelize == 0
-        error('Parallel processing has been disabled.');
-    end
+% Check if the reference structure contains width, start, and data fields,
+% and if the size of the width and start vectors are equal
+if ~isfield(varargin{1}, 'width') || ~isfield(varargin{1}, 'start') || ...
+        ~isfield(varargin{1}, 'data') || ~isequal(size(varargin{1}.width), ...
+        size(varargin{1}.start))
     
-    % The resolution parameter determines the number of steps (relative to 
-    % the distance to agreement) that each h.dose_dqa voxel will be
-    % interpolated to and gamma calculated.  A value of 5 with a DTA of 3
-    % mm means that gamma will be calculated at intervals of 3/5 = 0.6 mm
-    resolution = 5;
+    % If not, throw an error and stop execution
+    Event(['Incorrect reference data format.  Must contain width, start, ', ...
+        'and data fields and be of equal dimensions'], 'ERROR');
     
-    % Retrieve a handle to the current parallel pool, if one exists
-    p = gcp('nocreate');
-    % If the handle is empty, a parallel pool does not yet exist
-    if isempty(p)
-        % Update the progress bar message to indicate that a parallel pool
-        % is being started
-        waitbar(0.1,h.progress,'Starting paralellel pool...');
-        % Attempt to start a local parallel pool on this workstation.  If
-        % the Parallel Computing Toolbox is not installed or using R2013a
-        % and Java is incorrectly configured, this function will error, and
-        % the script will automatically revert to an unparalleled
-        % computation via the catch statement
-        parpool(3);
-        % Update the progress bar to inform the user that the pool has been
-        % initialized, and that gamma computation is resuming
-        waitbar(0.2,h.progress,'Calculating gamma...');
-    end
+% Check if the target structure contains width, start, and data fields,
+% and if the size of the width and start vectors are equal
+elseif ~isfield(varargin{2}, 'width') || ~isfield(varargin{2}, 'start') || ...
+        ~isfield(varargin{2}, 'data') || ~isequal(size(varargin{2}.width), ...
+        size(varargin{2}.start))
     
-    % Initialize local variables to eliminate handle referncing during the
-    % parallel for loops.  This dramatically improves the computation time
-    % by not requiring the entire structure h to be sent to each worker
-    dqa = h.dose_dqa;
-    ref = h.dose_reference;
-    perc = h.gamma_percent;
-    dta = h.gamma_dta;
-    local = h.local_gamma;
+    % If not, throw an error and stop execution
+    Event(['Incorrect target data format.  Must contain width, start, ', ...
+        'and data fields and be of equal dimensions'], 'ERROR');
     
-    % Start a parallel for loop to interpolate the dose array along the
-    % x-direction.  Note that parfor loops require indecies as integers, so
-    % x varies from -2 to +2 multiplied by the number of interpolation
-    % steps.  Effectively, this evaluates gamma from -2 * DTA to +2 * DTA.
-    parfor x = -2*resolution:2*resolution
-        % i is the x axis step value.  j is the y axis step value.  k is
-        % the z axis step value.  This parfor loop steps the gamma
-        % computation along the x axis. 
-        i = x/resolution * dta;
-        j = 0;
-        k = 0;
-        
-        % Interpolate the measured dose based on the steps set in i, j, k.
-        % The *linear method is used to speed up this computation.
-        dqa_interp = interp3(meshX, meshY, meshZ, ...
-            dqa, meshX+i, meshY+j, meshZ+k, '*linear',0);
-        
-        % Compute new gamma values for each voxel based on the i, j, and k,
-        % shifts, and compare to the previous gamma values using min.
-        gamma = min(gamma,GammaEquation(ref, dqa_interp, i, j, k, perc, dta, max_dose, local));
-    end
-
-    % Update the progress bar
-    waitbar(0.4);
-
-    % Start a parallel for loop to interpolate the dose array along the
-    % y-direction.  Note that parfor loops require indecies as integers, so
-    % x varies from -2 to +2 multiplied by the number of interpolation
-    % steps.  Effectively, this evaluates gamma from -2 * DTA to +2 * DTA.
-    parfor x = -2*resolution:2*resolution
-        % i is the x axis step value.  j is the y axis step value.  k is
-        % the z axis step value.  This parfor loop steps the gamma
-        % computation along the y axis. 
-        i = 0;
-        j = x/resolution * dta;
-        k = 0;
-        
-        % Interpolate the measured dose based on the steps set in i, j, k.
-        % The *linear method is used to speed up this computation.
-        dqa_interp = interp3(meshX, meshY, meshZ, ...
-            dqa, meshX+i, meshY+j, meshZ+k, '*linear',0);
-        
-        % Compute new gamma values for each voxel based on the i, j, and k,
-        % shifts, and compare to the previous gamma values using min.
-        gamma = min(gamma,GammaEquation(ref, dqa_interp, i, j, k, perc, dta, max_dose, local));
-
-    end
-
-    % Update the progress bar
-    waitbar(0.7);
-
-    % Start a parallel for loop to interpolate the dose array along the
-    % z-direction.  Note that parfor loops require indecies as integers, so
-    % x varies from -2 to +2 multiplied by the number of interpolation
-    % steps.  Effectively, this evaluates gamma from -2 * DTA to +2 * DTA.
-    parfor x = -2*resolution:2*resolution
-        % i is the x axis step value.  j is the y axis step value.  k is
-        % the z axis step value.  This parfor loop steps the gamma
-        % computation along the z axis. 
-        i = 0;
-        j = 0;
-        k = x/resolution * dta;
-        
-        % Interpolate the measured dose based on the steps set in i, j, k.
-        % The *linear method is used to speed up this computation.
-        dqa_interp = interp3(meshX, meshY, meshZ, ...
-            dqa, meshX+i, meshY+j, meshZ+k, '*linear',0);
-        
-        % Compute new gamma values for each voxel based on the i, j, and k,
-        % shifts, and compare to the previous gamma values using min.
-        gamma = min(gamma,GammaEquation(ref, dqa_interp, i, j, k, perc, dta, max_dose, local));
-    end
-% If the Parallel Computing Toolbox is not configured correctly, or 
-% h.parallelize is set to 0, catch the error and continue the computation
-% using conventional for loops.  This method is longer but will work on all
-% systems.
-catch exception
-    % Print the error message to stdout
-    fprintf(strcat(exception.message,'\n'));
+% Check if the reference and target data arrays are the same number of
+% dimensions.  Calculating the gamma from a lower dimensional dataset to a
+% higher dimensional reference is currently not supported
+elseif ~isequal(size(size(varargin{1}.data)), size(size(varargin{2}.data)))
     
-    % The resolution parameter determines the number of steps (relative to 
-    % the distance to agreement) that each h.dose_dqa voxel will be
-    % interpolated to and gamma calculated. This variable is identical to 
-    % the resolution value defined above but can be reduced for unparallel
-    % computation to speed up the calculation.
-    resolution = 3;
-    
-    % Update the progress bar
-    waitbar(0.1,h.progress,'Calculating gamma...');
-    
-    % Start a parallel for loop to interpolate the dose array along the
-    % x-direction.  Note that parfor loops require indecies as integers, so
-    % x varies from -2 to +2 multiplied by the number of interpolation
-    % steps.  Effectively, this evaluates gamma from -2 * DTA to +2 * DTA.
-    for x = -2*resolution:2*resolution
-        % i is the x axis step value.  j is the y axis step value.  k is
-        % the z axis step value.  This for loop steps the gamma
-        % computation along the x axis. 
-        i = x/resolution * h.gamma_dta;
-        j = 0;
-        k = 0;
-        
-        % Interpolate the measured dose based on the steps set in i, j, k.
-        % The *linear method is used to speed up this computation.
-        dqa_interp = interp3(meshX, meshY, meshZ, ...
-            h.dose_dqa, meshX+i, meshY+j, meshZ+k, '*linear',0);
-        
-        % Compute new gamma values for each voxel based on the i, j, and k,
-        % shifts, and compare to the previous gamma values using min.
-        gamma = min(gamma,GammaEquation(h.dose_reference, dqa_interp, i, ...
-            j, k, h.gamma_percent, h.gamma_dta, max_dose, h.local_gamma));
-        
-        % Update the waitbar at each iteration, from 10% to 40%
-        waitbar(0.1+0.3*(x+2*resolution)/(4*resolution));
-    end
-
-    % Start a parallel for loop to interpolate the dose array along the
-    % y-direction.  Note that parfor loops require indecies as integers, so
-    % x varies from -2 to +2 multiplied by the number of interpolation
-    % steps.  Effectively, this evaluates gamma from -2 * DTA to +2 * DTA.
-    for x = -2*resolution:2*resolution
-        % i is the x axis step value.  j is the y axis step value.  k is
-        % the z axis step value.  This for loop steps the gamma
-        % computation along the y axis. 
-        i = 0;
-        j = x/resolution * h.gamma_dta;
-        k = 0;
-        
-        % Interpolate the measured dose based on the steps set in i, j, k.
-        % The *linear method is used to speed up this computation.
-        dqa_interp = interp3(meshX, meshY, meshZ, ...
-            h.dose_dqa, meshX+i, meshY+j, meshZ+k, '*linear',0);
-        
-        % Compute new gamma values for each voxel based on the i, j, and k,
-        % shifts, and compare to the previous gamma values using min.
-        gamma = min(gamma,GammaEquation(h.dose_reference, dqa_interp, i, ...
-            j, k, h.gamma_percent, h.gamma_dta, max_dose, h.local_gamma));
-        
-        % Update the waitbar at each iteration, from 40% to 70%
-        waitbar(0.4+0.3*(x+2*resolution)/(4*resolution));
-    end
-
-    % Start a parallel for loop to interpolate the dose array along the
-    % z-direction.  Note that parfor loops require indecies as integers, so
-    % x varies from -2 to +2 multiplied by the number of interpolation
-    % steps.  Effectively, this evaluates gamma from -2 * DTA to +2 * DTA.
-    for x = -2*resolution:2*resolution
-        % i is the x axis step value.  j is the y axis step value.  k is
-        % the z axis step value.  This for loop steps the gamma
-        % computation along the z axis. 
-        i = 0;
-        j = 0;
-        k = x/resolution * h.gamma_dta;
-        
-        % Interpolate the measured dose based on the steps set in i, j, k.
-        % The *linear method is used to speed up this computation.
-        dqa_interp = interp3(meshX, meshY, meshZ, ...
-            h.dose_dqa, meshX+i, meshY+j, meshZ+k, '*linear',0);
-        
-        % Compute new gamma values for each voxel based on the i, j, and k,
-        % shifts, and compare to the previous gamma values using min.
-        gamma = min(gamma,GammaEquation(h.dose_reference, dqa_interp, i, ...
-            j, k, h.gamma_percent, h.gamma_dta, max_dose, h.local_gamma));
-        
-        % Update the waitbar at each iteration, from 70% to 100%
-        waitbar(0.7+0.3*(x+2*resolution)/(4*resolution));
-    end
+    % If not, throw an error and stop execution
+    Event('The fixed and target data arrays must be of the same dimensions', ...
+        'ERROR');
 end
 
-% Store the temporary gamma variable to h.gamma handle, and threshold all
-% values less than h.dose_threshold (relative to the maximum dose)
-h.gamma = gamma.*ceil(h.dose_reference/max_dose - h.dose_threshold);
+% Log validation completed
+Event('Data validation completed');
 
-% Clear all temporary variables
-clear x i j k dqa_interp gamma meshX meshY meshZ dqa ref perc dta local;
-
-% Complete the progress bar, and update message to "Done"
-waitbar(1.0,h.progress,'Done.');
+% If a local/global Gamma flag was not provided
+if nargin < 4
+    % Assume the computation is global
+    varargin{5} = 0;
     
-% Close the progress bar
-close(h.progress);
+    % Log type
+    Event('Gamma calculation assumed to global');
+    
+elseif varargin{5} == 0  
+    % Log type
+    Event('Gamma calculation set to global');
+else
+    % Log type
+    Event('Gamma calculation set to local');  
+end
 
-function gamma = GammaEquation(ref, interp, i, j, k, perc, dta, max_dose, local)
-% GammaEquation computes the Gamma values
-%   GammaEquation is the programmatic form of the Gamma definition as given
-%   by Low et al in matrix form.  This function computes both local and
-%   global Gamma, and is a local function for CalcGamma.
+% If a reference absolute value was not provided
+if nargin < 6
+    % Assume the reference value is the maximum value in the reference data
+    % array (ie, Gamma % criterion is % of max value)
+    varargin{6} = max(max(max(varargin{1}.data)));
+    Event('No reference value was provided, maximum value in dataset used');
+end
+
+% Set restrictSearch flag. If 1, only the gamma values along the X/Y/Z axes
+% are computed during 3D. If 0, the entire square search space is computed
+restrictSearch = 1;
+
+% If the reference dataset is 1-D
+if size(varargin{1}.width,2) == 1
+    Event('Reference dataset is 1-D');
+    
+    % Check if the data is in rows or columns (this is only needed for 1-D)
+    if size(varargin{1}.data,1) > size(varargin{1}.data,2)
+        
+        % If in rows, transpose
+        varargin{1}.data = varargin{1}.data';
+    end
+    
+    % Compute the reference X coordinates using the start and width values
+    refX = single(varargin{1}.start(1):varargin{1}.width(1):varargin{1}.start(1) ...
+        + varargin{1}.width(1) * (size(varargin{1}.data,2) - 1));
+    
+% Otherwise, if the reference dataset is 2-D
+elseif size(varargin{1}.width,2) == 2
+    Event('Reference dataset is 2-D');
+    
+    % Compute X and Y meshgrids for the reference dataset positions using 
+    % the start and width values
+    [refX, refY] = meshgrid(single(varargin{1}.start(1):varargin{1}.width(1): ...
+        varargin{1}.start(1) + varargin{1}.width(1) * ...
+        (size(varargin{1}.data,1) - 1)), single(varargin{1}.start(2): ...
+        varargin{1}.width(2):varargin{1}.start(2)...
+        + varargin{1}.width(2) * (size(varargin{1}.data,2) - 1)));
+    
+% Otherwise, if the reference dataset is 3-D
+elseif size(varargin{1}.width,2) == 3
+    Event('Reference dataset is 3-D');
+    
+    % Compute X, Y, and Z meshgrids for the reference dataset positions
+    % using the start and width values, permuting X/Y
+    [refX, refY, refZ] = meshgrid(single(varargin{1}.start(2): ...
+        varargin{1}.width(2):varargin{1}.start(2) + varargin{1}.width(2) * ...
+        (size(varargin{1}.data,2) - 1)), single(varargin{1}.start(1): ...
+        varargin{1}.width(1):varargin{1}.start(1) + varargin{1}.width(1)...
+        * (size(varargin{1}.data,1) - 1)), single(varargin{1}.start(3):...
+        varargin{1}.width(3):varargin{1}.start(3) + varargin{1}.width(3)...
+        * (size(varargin{1}.data,3) - 1)));
+
+% Otherwise, if the reference data is of higher dimension
+else
+    % Throw an error and stop execution
+    Event('The fixed data structure contains too many dimensions', 'ERROR');
+end
+
+% If the target dataset is 1-D
+if size(varargin{2}.width,2) == 1
+    Event('Target dataset is 1-D');
+    
+    % Check if the data is in rows or columns (this is only needed for 1-D)
+    if size(varargin{2}.data,1) > size(varargin{2}.data,2)
+        
+        % If in rows, transpose
+        varargin{2}.data = varargin{2}.data';
+    end
+    
+    % Compute the target X coordinates using the start and width values
+    tarX = single(varargin{2}.start(1):varargin{2}.width(1):varargin{2}.start(1) ...
+        + varargin{2}.width(1) * (size(varargin{2}.data,2) - 1));
+    
+% Otherwise, if the target dataset is 2-D
+elseif size(varargin{2}.width,2) == 2
+    Event('Target dataset is 2-D');
+    
+    % Compute X and Y meshgrids for the target dataset positions using the
+    % start and width values
+    [tarX, tarY] = meshgrid(single(varargin{2}.start(1):varargin{2}.width(1): ...
+        varargin{2}.start(1) + varargin{2}.width(1) * ...
+        (size(varargin{2}.data,1) - 1)), single(varargin{2}.start(2): ...
+        varargin{2}.width(2):varargin{2}.start(2)...
+        + varargin{2}.width(2) * (size(varargin{2}.data,2) - 1)));
+    
+% Otherwise, if the target dataset is 3-D
+elseif size(varargin{2}.width,2) == 3
+    Event('Target dataset is 3-D');
+    
+    % Compute X, Y, and Z meshgrids for the target dataset positions using
+    % the start and width values, permuting X/Y
+    [tarX, tarY, tarZ] = meshgrid(single(varargin{2}.start(2):...
+        varargin{2}.width(2):varargin{2}.start(2) + varargin{2}.width(2) * ...
+        (size(varargin{2}.data,2) - 1)), single(varargin{2}.start(1): ...
+        varargin{2}.width(1):varargin{2}.start(1) + varargin{2}.width(1) ...
+        * (size(varargin{2}.data,1) - 1)), single(varargin{2}.start(3):...
+        varargin{2}.width(3):varargin{2}.start(3) + varargin{2}.width(3) ...
+        * (size(varargin{2}.data,3) - 1)));
+    
+% Otherwise, if the reference data is of higher dimension
+else
+    % Throw an error and stop execution
+    Event('The target data structure contains too many dimensions', 'ERROR');
+end
+
+% The resolution parameter determines the number of steps (relative to 
+% the distance to agreement) that each reference voxel will be
+% interpolated to and gamma calculated.  A value of 5 with a DTA of 3
+% mm means that gamma will be calculated at intervals of 3/5 = 0.6 mm.
+% Different resolutions can be set for different dimensions of data. 
+if size(varargin{2}.width,2) == 1
+    % Set 1-D resolution
+    res = 100;
+elseif size(varargin{2}.width,2) == 2
+    % Set 2-D resolution
+    res = 100;
+elseif size(varargin{2}.width,2) == 3
+    % Set 3-D resolution
+    res = 20;
+end
+
+% Log resolution
+Event(sprintf('Interpolation resolution set to %i', res));
+
+% Generate an initial gamma volume with values of 2 (this is the maximum
+% reliable value of gamma).
+gamma = ones(size(varargin{2}.data)) * 2;
+
+% Log number of gamma calculations (for status updates on 3D calcs)
+if restrictSearch == 1
+    num = res * 4 * size(varargin{2}.width,2);
+else
+    num = res * 4 ^ size(varargin{2}.width,2);
+end
+
+% num is the number of iterations, num * numel the total number of
+% interpolations being performed
+Event(sprintf('Number of gamma calculations = %g', num * numel(gamma)));
+
+% Initialize counter (for progress indicator)
+n = 0;
+
+% Start try-catch block to safely test for CUDA functionality
+try
+    % Clear and initialize GPU memory.  If CUDA is not enabled, or if the
+    % Parallel Computing Toolbox is not installed, this will error, and the
+    % function will automatically rever to CPU computation via the catch
+    % statement
+    gpuDevice(1);
+    
+    % Start a for loop to interpolate the dose array along the x-direction.  
+    % Note to support parfor loops indices must be integers, so x varies 
+    % from -2 to +2 multiplied by the number of interpolation steps.  
+    % Effectively, this evaluates gamma from -2 * DTA to +2 * DTA.
+    for x = -2*res:2*res
+        
+        % i is the x axis step value
+        i = x/res * varargin{4};
+        
+        % Initialize j and k as zero (they will be updated if the data is
+        % of higher dimension)
+        j = 0;
+        k = 0;
+        
+        % If the data contains a second dimension
+        if size(varargin{1}.width,2) > 1
+   
+            % Start a for loop to interpolate the dose array along the
+            % y-direction.  Note to support parfor loops indices must be
+            % integers, so y varies from -2 to +2 multiplied by the number
+            % of interpolation steps.  Effectively, this evaluates gamma
+            % from -2 * DTA to +2 * DTA.
+            for y = -2*res:2*res
+                
+                % j is the y axis step value
+                j = y/res * varargin{4};
+                
+                % Initialize k as zero (it will be updated if the data is
+                % of higher dimension)
+                k = 0;
+                
+                % If the data contains a third dimension
+                if size(varargin{1}.width,2) > 2
+                    
+                    % Start a for loop to interpolate the dose array along 
+                    % the z-direction.  Note to support parfor loops 
+                    % indices must be integers, so z varies from -2 to +2 
+                    % multiplied by the number of interpolation steps.
+                    % Effectively, this evaluates gamma from -2 * DTA to 
+                    % +2 * DTA.
+                    for z = -2*res:2*res
+                        
+                        % k is the z axis step value
+                        k = z/res * varargin{4};
+
+                        % Check restrictSearch flag
+                        if restrictSearch == 0 || sum(abs([x y z]) > 0) == 1
+                            
+                            % Run GPU interp3 function to compute the reference
+                            % values at the specified target coordinate points
+                            interp = gather(interp3(gpuArray(refX), gpuArray(refY), ...
+                                gpuArray(refZ), gpuArray(single(varargin{1}.data)), ...
+                                gpuArray(tarX + i), gpuArray(tarY + j), ...
+                                gpuArray(tarZ + k), 'linear', 0));
+
+                            % Update the gamma array by returning the minimum
+                            % of the existing value or the new value
+                            gamma = min(gamma, GammaEquation(interp, ...
+                                varargin{2}.data, i, j, k, varargin{3}, varargin{4}, ...
+                                varargin{6}, varargin{5}));
+                            
+                            % Update counter 
+                            n = n + 1;
+                            
+                            % If counter is at an even %, display progress
+                            if mod((n-1)/num, 0.01) > 0.005 && ...
+                                    mod(n/num, 0.01) < 0.005
+                                fprintf('%0.1f%%\n', n/num*100);
+                            end
+                        end
+                    end
+                    
+                % Otherwise, the data is 2-D
+                else
+                    % Run GPU interp2 function to compute the reference
+                    % values at the specified target coordinate points
+                    interp = gather(interp2(gpuArray(refX), gpuArray(refY), ...
+                        gpuArray(single(varargin{1}.data)), gpuArray(tarX + i), ...
+                        gpuArray(tarY + j), 'linear', 0));
+                    
+                    % Update the gamma array by returning the minimum
+                    % of the existing value or the new value
+                    gamma = min(gamma, GammaEquation(interp, varargin{2}.data, ...
+                        i, j, k, varargin{3}, varargin{4}, ...
+                        varargin{6}, varargin{5}));
+                end
+            end
+            
+        % Otherwise, the data is 1-D
+        else
+            % Run GPU interp function to compute the reference values at 
+            % the specified target coordinate points
+            interp = gather(interp1(gpuArray(refX), ...
+                gpuArray(single(varargin{1}.data)), gpuArray(tarX + i), ...
+                'linear', 0));
+            
+            % Update the gamma array by returning the minimum of the 
+            % existing value or the new value
+            gamma = min(gamma, GammaEquation(interp, varargin{2}.data, ...
+                i, j, k, varargin{3}, varargin{4}, ...
+                varargin{6}, varargin{5}));
+        end
+    end
+   
+% If GPU fails, revert to CPU computation
+catch
+    % Log GPU failure
+    Event('GPU failed, reverting to CPU method', 'WARN'); 
+    
+    % Start a for loop to interpolate the dose array along the x-direction.  
+    % Note to support parfor loops indices must be integers, so x varies 
+    % from -2 to +2 multiplied by the number of interpolation steps.  
+    % Effectively, this evaluates gamma from -2 * DTA to +2 * DTA.
+    for x = -2*res:2*res
+        % i is the x axis step value
+        i = x/res * varargin{4};
+        
+        % Initialize j and k as zero (they will be updated if the data is
+        % of higher dimension)
+        j = 0;
+        k = 0;
+        
+        % If the data contains a second dimension
+        if size(varargin{1}.width,2) > 1
+            
+            % Start a for loop to interpolate the dose array along the
+            % y-direction.  Note to support parfor loops indices must be
+            % integers, so y varies from -2 to +2 multiplied by the number
+            % of interpolation steps.  Effectively, this evaluates gamma
+            % from -2 * DTA to +2 * DTA.
+            for y = -2*res:2*res
+                
+                % j is the y axis step value
+                j = y/res * varargin{4};
+                
+                % Initialize k as zero (it will be updated if the data is
+                % of higher dimension)
+                k = 0;
+                
+                % If the data contains a third dimension
+                if size(varargin{1}.width,2) > 2
+                    
+                    % Start a for loop to interpolate the dose array along 
+                    % the z-direction.  Note to support parfor loops 
+                    % indices must be integers, so z varies from -2 to +2 
+                    % multiplied by the number of interpolation steps.
+                    % Effectively, this evaluates gamma from -2 * DTA to 
+                    % +2 * DTA.
+                    for z = -2*res:2*res
+                        
+                        % k is the z axis step value
+                        k = z/res * varargin{4};
+
+                        % Check restrictSearch flag
+                        if restrictSearch == 0 || sum(abs([x y z]) > 0) == 1
+                            
+                            % Run CPU interp3 function to compute the reference
+                            % values at the specified target coordinate points
+                            interp = interp3(refX, refY, refZ, ...
+                                single(varargin{1}.data), tarX + i, ...
+                                tarY + j, tarZ + k, '*linear', 0);
+
+                            % Update the gamma array by returning the minimum
+                            % of the existing value or the new value
+                            gamma = min(gamma, GammaEquation(interp, ...
+                                varargin{2}.data, i, j, k, varargin{3}, ...
+                                varargin{4}, varargin{6}, varargin{5}));
+                            
+                            % Update counter 
+                            n = n + 1;
+                            
+                            % If counter is at an even %, display progress
+                            if mod((n-1)/num, 0.01) > 0.005 && ...
+                                    mod(n/num, 0.01) < 0.005
+                                fprintf('%0.1f%%\n', n/num*100);
+                            end
+                        end
+                    end
+                    
+                % Otherwise, the data is 2-D
+                else
+                    % Run CPU interp2 function to compute the reference
+                    % values at the specified target coordinate points
+                    interp = interp2(refX, refY, single(varargin{1}.data), ...
+                        tarX + i, tarY + j, '*linear', 0);
+                    
+                    % Update the gamma array by returning the minimum
+                    % of the existing value or the new value
+                    gamma = min(gamma, GammaEquation(interp, ...
+                        varargin{2}.data, i, j, k, varargin{3}, ...
+                        varargin{4}, varargin{6}, varargin{5}));
+                end
+            end
+            
+        % Otherwise, the data is 1-D
+        else
+            % Run CPU interp function to compute the reference values at 
+            % the specified target coordinate points
+            interp = interp1(refX, single(varargin{1}.data), tarX + i, ...
+                '*linear', 0);
+            
+            % Update the gamma array by returning the minimum of the 
+            % existing value or the new value
+            gamma = min(gamma, GammaEquation(interp, varargin{2}.data, ...
+                i, j, k, varargin{3}, varargin{4}, ...
+                varargin{6}, varargin{5}));
+        end
+    end
+end
+    
+% Log completion
+Event(sprintf('Gamma calculation completed successfully in %0.3f seconds', ...
+    toc));
+
+% Clear temporary variables
+clear refX refY refZ tarX tarY tarZ interp;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function gamma = GammaEquation(ref, tar, i, j, k, perc, dta, refval, local)
+% GammaEquation is the programmatic form of the Gamma definition as given
+% by Low et al in matrix form.  This function computes both local and
+% global Gamma, and is a subfunction for CalcGamma.
 %
 % The following inputs are used for computation and are required:
-%   ref: the reference 3D array
-%   interp: the interpolated "measured" 3D array.  The dimensions of interp
-%       must be identical to ref
-%   i: magnitude of x position offset of interp to ref, unitless but
-%       relative to dta
-%   j: magnitude of y position offset of interp to ref, unitless but
-%       relative to dta
-%   k: magnitude of z position offset of interp to ref, unitless but
-%       relative to dta
+%   ref: the reference 3D array.  Must be the same size as tar
+%   tar: the target 3D array.  Must be the same size as ref
+%   i: magnitude of x position offset of tar to ref, relative to dta
+%   j: magnitude of y position offset of tar to ref, relative to dta
+%   k: magnitude of z position offset of tar to ref, relative to dta
 %   perc: the percent Gamma criterion, given in % (i.e. 3 for 3%)
 %   dta: the distance to agreement Gamma criterion, unitless but relative
 %       to i, j, and k
+%   refval: if global, the reference value to base the % criterion from 
 %   local: boolean, indicates whether to perform a local (1) or global (0)
 %       Gamma computation
 %
 % The following variables are returned:
 %   gamma: a 3D array of the same dimensions as ref and interp of the
 %       computed gamma value for each voxel based on interp and i,j,k
+%
 
 % If local is set to 1, perform a local Gamma computation
 if local == 1
     % Gamma is defined as the sqrt((abs difference/relative tolerance)^2 +
     % sum((voxel offset/dta)^2))
-    gamma = sqrt(((interp-ref)./(ref*perc/100)).^2 + (i/dta)^2 + (j/dta)^2 + (k/dta)^2);
+    gamma = sqrt(((tar-ref)./(ref*perc/100)).^2 + ...
+        (i/dta)^2 + (j/dta)^2 + (k/dta)^2);
 else
     % Gamma is defined as the sqrt((abs difference/absolute  tolerance)^2 +
     % sum((voxel offset/dta)^2))
-    gamma = sqrt(((interp-ref)/(max_dose*perc/100)).^2 + (i/dta)^2 + (j/dta)^2 + (k/dta)^2);
+    gamma = sqrt(((tar-ref)/(refval*perc/100)).^2 + ...
+        (i/dta)^2 + (j/dta)^2 + (k/dta)^2);
 end
-
-
-
