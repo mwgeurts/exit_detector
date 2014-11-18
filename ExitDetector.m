@@ -250,6 +250,18 @@ catch err
     
 end
 
+%% Add CalcGamma submodule
+% Add gamma submodule to search path
+addpath('./gamma');
+
+% Check if MATLAB can find CalcGamma.m
+if exist('CalcGamma', 'file') ~= 2
+    % If not, throw an error
+    Event(['The CalcGamma submodule does not exist in the search path. Use ', ...
+        'git clone --recursive or git submodule init followed by git ', ...
+        'submodule update to fetch all submodules'], 'ERROR');
+end
+
 %% Initialize data handles
 % dailyqa stores all dailyqa data as a structure. See LoadDailyQA.m
 Event('Initializing daily qa variables');
