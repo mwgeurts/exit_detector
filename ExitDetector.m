@@ -564,10 +564,11 @@ if ~isequal(name, 0);
                     % Update progress bar
                     waitbar(0.8, progress, 'Calculating gamma...');
 
-                    % ExecuteCalcGamma
+                    % Execute CalcGamma using restricted 3D search
                     handles.gamma = CalcGamma(handles.referenceDose, ...
                         handles.dqaDose, handles.percent, handles.dta, ...
-                        handles.local);
+                        handles.local, max(max(max(...
+                        handles.referenceDose.data))), 1);
                     
                     % Eliminate gamma values below dose treshold
                     handles.gamma = handles.gamma .* ...
