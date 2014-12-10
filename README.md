@@ -37,7 +37,7 @@ This application uses the [SSH/SFTP/SCP for Matlab (v2)] (http://www.mathworks.c
 
 Next, edit `ssh2_config()` with the the IP/DNS address of the dose computation server (tomo-research, for example), a user account on the server (tomo), and password (hi-art).  This user account must have SSH access rights, rights to execute `gpusadose`, and finally read/write acces to the temp directory.  See Accuray Incorporated to see if your research workstation includes this feature.
 
-Finally, for dose calculation copy the following beam model files in a folder named `GPU` in the MATLAB directory.  These files will be copied to the computation server along with the plan files at the time of program execution.  To change this directory, edit the line `[status, cmdout] = system(['cp GPU/*.* ', folder, '/']);`.
+Finally, for dose calculation copy the following beam model files in a folder named `GPU` in the MATLAB directory.  These files will be copied to the computation server along with the plan files at the time of program execution.  To change this directory, edit the line `[status, cmdout] = system(['cp GPU/*.* ', folder, '/']);` in `CalcDose()`.
 
 * dcom.header
 * lft.img
