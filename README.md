@@ -53,7 +53,7 @@ The TomoTherapy Exit Dose Analysis application uses three inputs: MVCT detector 
 
 The MVCT data can be loaded using two different modes.  In DICOM mode, this application reads Transit Dose DICOM RT objects exported from the TomoTherapy version 5.0 treatment system.  In Archive mode, the MVCT data for the TQA Daily QA module can be loaded from a patient archive of the TQA Daily QA patient, while the Static Couch DQA is loaded from the selected XML.  In Archive mode, both TomoTherapy version 4.2 and 5.0 archives have been validated with this application.
 
-For MATLAB, this application has been validated in versions R2013a and R2014a, Image Processing Toolbox 8.2 and 9.0, and Parallel Computing Toolbox version 6.4 on Macintosh OSX 10.8 (Mountain Lion) thru 10.10 (Yosemite).
+For MATLAB, this application has been validated in versions R2013a (8.3) and R2014a (8.4), Image Processing Toolbox 8.2 and 9.0, and Parallel Computing Toolbox version 6.4 on Macintosh OSX 10.8 (Mountain Lion) thru 10.10 (Yosemite).
 
 ## Troubleshooting
 
