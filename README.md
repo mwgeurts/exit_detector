@@ -51,9 +51,9 @@ For Gamma calculation, if the Parallel Computing Toolbox is enabled, `CalcGamma(
 
 The TomoTherapy Exit Dose Analysis application uses three inputs: MVCT detector data from a TQA Daily QA module delivery, MVCT data from a patient-specific Static Couch DQA delivery, and a patient archive (following plan approval) of the patient for which the Static Couch DQA was run.  
 
-The MVCT data can be loaded using two different modes.  In DICOM mode, this application reads Transit Dose DICOM RT objects exported from the TomoTherapy version 5.0 treatment system.  In Archive mode, the MVCT data for the TQA Daily QA module can be loaded from a patient archive of the TQA Daily QA patient, while the Static Couch DQA is loaded from the selected XML.  In Archive mode, both TomoTherapy version 5.0 and 4.2 archives have been validated with this application.
+The MVCT data can be loaded using two different modes.  In DICOM mode, this application reads Transit Dose DICOM RT objects exported from the TomoTherapy version 5.0 treatment system.  In Archive mode, the MVCT data for the TQA Daily QA module can be loaded from a patient archive of the TQA Daily QA patient, while the Static Couch DQA is loaded from the selected XML.  In Archive mode, both TomoTherapy version 4.2 and 5.0 archives have been validated with this application.
 
-For MATLAB, this application has been validated in versions R2013a and R2014a, Image Processing Toolbox 8.2 and 9.0, and Parallel Computing Toolbox version 6.4 on Macintosh OSX 10.8 (Mountain Lion) and 10.9 (Mavericks).
+For MATLAB, this application has been validated in versions R2013a and R2014a, Image Processing Toolbox 8.2 and 9.0, and Parallel Computing Toolbox version 6.4 on Macintosh OSX 10.8 (Mountain Lion) thru 10.10 (Yosemite).
 
 ## Troubleshooting
 
