@@ -1,5 +1,5 @@
 function varargout = ExitDetector(varargin)
-% The TomoTherapy® Exit Detector Analysis project is a GUI based standalone 
+% The TomoTherapyÂ® Exit Detector Analysis project is a GUI based standalone 
 % application written in MATLAB that parses TomoTherapy patient archives 
 % and DICOM RT Exit Dose files and uses the MVCT response collected during 
 % a Static Couch DQA procedure to estimate the fluence delivered through 
@@ -67,6 +67,15 @@ handles.output = hObject;
 
 % Set version handle
 handles.version = '1.1';
+
+% Determine path of current application
+[path, ~, ~] = fileparts(mfilename('fullpath'));
+
+% Set current directory to location of this application
+cd(path);
+
+% Clear temporary variable
+clear path;
 
 % Set version information.  See LoadVersionInfo for more details.
 handles.versionInfo = LoadVersionInfo;
