@@ -49,7 +49,7 @@ For Gamma calculation, if the Parallel Computing Toolbox is enabled, `CalcGamma(
 
 ## Compatibility and Requirements
 
-The TomoTherapy Exit Dose Analysis application uses three inputs: MVCT detector data from a TQA Daily QA module delivery, MVCT data from a patient-specific Static Couch DQA delivery, and a patient archive (following plan approval) of the patient for which the Static Couch DQA was run.  
+The TomoTherapy Exit Dose Analysis application uses three inputs: MVCT detector data from a TQA Daily QA module delivery, MVCT data from a patient-specific Static Couch DQA delivery, and a patient archive (following plan approval) of the patient for which the Static Couch DQA was run.  Only helical TomoTherapy plans are currently supported.
 
 The MVCT data can be loaded using two different modes.  In DICOM mode, this application reads Transit Dose DICOM RT objects exported from the TomoTherapy version 5.0 treatment system.  In Archive mode, the MVCT data for the TQA Daily QA module can be loaded from a patient archive of the TQA Daily QA patient, while the Static Couch DQA is loaded from the selected XML.  In Archive mode, both TomoTherapy version 4.2 and 5.0 archives have been validated with this application.
 
