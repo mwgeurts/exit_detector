@@ -24,16 +24,16 @@ TomoTherapy is a registered trademark of Accuray Incorporated.
 
 ## Installation and Use
 
-To install the TomoTherapy Exit Detector Analysis application, copy all MATLAB .m and .fig and DICOM .dcm files into a directory with read/write access and then copy the [CalcGamma.m submodule from the gamma repository](https://github.com/mwgeurts/gamma) into the `gamma` subfolder.  If using git, execute `git clone --recursive https://github.com/mwgeurts/exit_detector`.
+To install the TomoTherapy Exit Detector Analysis Tool, copy all MATLAB .m and .fig and DICOM .dcm files into a directory with read/write access and then copy the [CalcGamma.m submodule from the gamma repository](https://github.com/mwgeurts/gamma) into the `gamma` subfolder.  If using git, execute `git clone --recursive https://github.com/mwgeurts/exit_detector`.
 
-To enable dose recalculation based on the measured leaf open times, The TomoTherapy Exit Detector Analysis application must be configured to communicate with a dose calculation server.  Open ExitDetector.m and find the following lines in the function `ExitDetector_OpeningFcn()` (note each line is separated by several lines of comments and `Event()` calls in the actual file):
+To enable dose recalculation based on the measured leaf open times, the TomoTherapy Exit Detector Analysis Tool must be configured to communicate with a dose calculation server.  Open ExitDetector.m and find the following lines in the function `ExitDetector_OpeningFcn()` (note each line is separated by several lines of comments and `Event()` calls in the actual file):
 
 ```
 addpath('../ssh2_v2_m1_r6/');
 handles.ssh2 = ssh2_config('tomo-research','tomo','hi-art');
 ```
 
-This application uses the [SSH/SFTP/SCP for Matlab (v2)] (http://www.mathworks.com/matlabcentral/fileexchange/35409-sshsftpscp-for-matlab-v2) interface based on the Ganymed-SSH2 javalib for communication with the dose calculation server.  If performing dose calculation, this interface must be downloaded and the ExitDetector.m statement `addpath('../ssh2_v2_m1_r6/')` modified to reflect its location.  If this interface is not available, use of the TomoTherapy Exit Detector Analysis application is still available for sinogram comparison, but all dose and Gamma computation and evaluation functionality will be automatically disabled.
+This application uses the [SSH/SFTP/SCP for Matlab (v2)] (http://www.mathworks.com/matlabcentral/fileexchange/35409-sshsftpscp-for-matlab-v2) interface based on the Ganymed-SSH2 javalib for communication with the dose calculation server.  If performing dose calculation, this interface must be downloaded/extracted and the `ExitDetector_OpeningFcn()` statement `addpath('../ssh2_v2_m1_r6/')` modified to reflect its location.  If this interface is not available, use of the TomoTherapy Exit Detector Analysis application is still available for sinogram comparison, but all dose and Gamma computation and evaluation functionality will be automatically disabled.
 
 Next, edit `ssh2_config()` with the the IP/DNS address of the dose computation server (tomo-research, for example), a user account on the server (tomo), and password (hi-art).  This user account must have SSH access rights, rights to execute `gpusadose`, and finally read/write acces to the temp directory.  See Accuray Incorporated to see if your research workstation includes this feature.
 
@@ -53,7 +53,7 @@ The TomoTherapy Exit Dose Analysis application uses three inputs: MVCT detector 
 
 The MVCT data can be loaded using two different modes.  In DICOM mode, this application reads Transit Dose DICOM RT objects exported from the TomoTherapy version 5.0 treatment system.  In Archive mode, the MVCT data for the TQA Daily QA module can be loaded from a patient archive of the TQA Daily QA patient, while the Static Couch DQA is loaded from the selected XML.  In Archive mode, both TomoTherapy version 4.2 and 5.0 archives have been validated with this application.
 
-For MATLAB, this application has been validated in versions 8.3 and 8.4, Image Processing Toolbox 8.2 and 9.0, and Parallel Computing Toolbox version 6.4 on Macintosh OSX 10.8 (Mountain Lion) thru 10.10 (Yosemite).
+For MATLAB, this application has been validated in versions 8.3 and 8.4, Image Processing Toolbox 8.2 and 9.0, and Parallel Computing Toolbox version 6.4 on Macintosh OSX 10.8 (Mountain Lion) thru 10.10 (Yosemite).  The Image Processing Toolbox is required for execution.  As discussed above, the Parallel Computing Toolbox is only required if using the Gamma metric plugin with GPU based computation.
 
 ## Troubleshooting
 
