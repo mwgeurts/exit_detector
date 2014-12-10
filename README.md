@@ -24,7 +24,7 @@ TomoTherapy is a registered trademark of Accuray Incorporated.
 
 ## Installation and Use
 
-To install the TomoTherapy Exit Detector Analysis application, copy all MATLAB .m and .fig and DICOM .dcm files into a directory with read/write access and then copy the [CalcGamma.m submodule from the gamma repository](https://github.com/mwgeurts/gamma) into the gamma subfolder.  If using git, execute `git clone --recursive https://github.com/mwgeurts/exit_detector`.  This application requires MATLAB version R2013a or later and the Image Processing Toolbox version 8.2 or later.  
+To install the TomoTherapy Exit Detector Analysis application, copy all MATLAB .m and .fig and DICOM .dcm files into a directory with read/write access and then copy the [CalcGamma.m submodule from the gamma repository](https://github.com/mwgeurts/gamma) into the `gamma` subfolder.  If using git, execute `git clone --recursive https://github.com/mwgeurts/exit_detector`.  This application requires MATLAB version R2013a or later and the Image Processing Toolbox version 8.2 or later.  
 
 To enable dose recalculation based on the measured leaf open times, The TomoTherapy Exit Detector Analysis application must be configured to communicate with a dose calculation server.  Open ExitDetector.m and find the following lines in the function `ExitDetector_OpeningFcn()` (note each line is separated by several lines of comments and `Event()` calls in the actual file):
 
