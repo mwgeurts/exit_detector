@@ -7,10 +7,12 @@ function stats = UpdateDoseStatistics(varargin)
 %   varargin{1}: cell array of structure statistics table.  See
 %       InitializeStatistics for the full format.  Columns 4 and 5 will be
 %       updated with new Vx values based on the Dx in Column 3.
-%   varargin{2} (optional): If provided, the Column 4 will Dx/Vx values 
+%   varargin{2} (optional): Row/column indices of the edited cell. If 
+%       empty or not provided, all Dx/Vx stats will be calculated.
+%   varargin{3} (optional): If provided, the Column 4 will Dx/Vx values 
 %       will calculated using new reference dose volume histograms included
 %       here.  See UpdateDVH for details on the format of this input.
-%   varargin{3} (optional): If provided, the Column 5 will Dx/Vx values 
+%   varargin{4} (optional): If provided, the Column 5 will Dx/Vx values 
 %       will calculated using new DQA dose volume histograms included
 %       here.  See UpdateDVH for details on the format of this input.
 %
@@ -44,13 +46,14 @@ try
 if nargin >= 1; stats = varargin{1}; end
 
 % If a new reference DVH is provided, persistently store it
-if nargin >= 2; referenceDVH = varargin{2}; end
+if nargin >= 3; referenceDVH = varargin{3}; end
 
 % If a new DQA DVH is provided, persistently store it
-if nargin == 3; dqaDVH = varargin{3}; end
+if nargin == 4; dqaDVH = varargin{3}; end
 
 % If an incorrect number of inputs were provided
-if nargin == 0 || nargin > 3
+if nargin == 0 || nargin > 4
+    
     % Throw an error
     Event(['An incorrect number of arguments were passed to ', ...
         'UpdateStatistics'],'ERROR');
@@ -64,28 +67,39 @@ tic;
 % Loop through each structure
 for i = 1:size(stats, 1)
     
-    % Save formatted Dx value
-    stats{i,3} = sprintf('%0.1f', str2double(stats{i,3}));
+    % If no eventdata exists or if this Dx value was edited
+    if nargin == 1 || isempty(varargin{2}) || isequal([i 3], varargin{2})
+        
+        % Save formatted Dx value
+        stats{i,3} = sprintf('%0.1f', str2double(stats{i,3}));
+    end
 end
     
 %% Update reference dose Dx
-if exist('referenceDVH', 'var') && ~isempty(referenceDVH)
+if exist('referenceDVH', 'var') && ~isempty(referenceDVH) && ...
+        (nargin == 1 || isempty(varargin{2}) || varargin{2}(2) == 3)
     
     % Reverse DVH orientation (to make y-axis values ascending)
     w = flipud(referenceDVH(:, size(referenceDVH, 2)));
 
     % Loop through each structure
     for i = 1:size(stats, 1)
-        % Remove unique values in DVH (interp1 fails with unique lookup 
-        % values)
-        [u,v,~] = unique(flipud(referenceDVH(:,i)));
+        
+        % If no eventdata exists or if this Dx value was edited
+        if nargin == 1 || isempty(varargin{2}) || ...
+                isequal([i 3], varargin{2})
+            
+            % Remove unique values in DVH (interp1 fails with unique lookup 
+            % values)
+            [u, v, ~] = unique(flipud(referenceDVH(:, i)));
 
-        % Interpolate DVH to Dx value 
-        stats{i,4} = sprintf('%0.1f', interp1(u, w(v), ...
-            str2double(stats{i,3}), 'linear'));
+            % Interpolate DVH to Dx value 
+            stats{i,4} = sprintf('%0.1f', interp1(u, w(v), ...
+                str2double(stats{i,3}), 'linear'));
 
-        % Clear temporary variables
-        clear u v;
+            % Clear temporary variables
+            clear u v;
+        end
     end
 
     % Clear temporary variable
@@ -93,23 +107,30 @@ if exist('referenceDVH', 'var') && ~isempty(referenceDVH)
 end
 
 %% Update dqa dose Dx
-if exist('dqaDVH', 'var') && ~isempty(dqaDVH)
+if exist('dqaDVH', 'var') && ~isempty(dqaDVH) && ...
+        (nargin == 1 || isempty(varargin{2}) || varargin{2}(2) == 3)
 
     % Reverse DVH orientation (to make y-axis values ascending)
     w = flipud(dqaDVH(:, size(dqaDVH, 2)));
 
     % Loop through each structure
-    for i = 1:size(stats,1)
-        % Remove unique values in DVH (interp1 fails with unique lookup 
-        % values)
-        [u,v,~] = unique(flipud(dqaDVH(:,i)));
+    for i = 1:size(stats, 1)
+        
+        % If no eventdata exists or if this Dx value was edited
+        if nargin == 1 || isempty(varargin{2}) || ...
+                isequal([i 3], varargin{2})
+            
+            % Remove unique values in DVH (interp1 fails with unique lookup 
+            % values)
+            [u, v, ~] = unique(flipud(dqaDVH(:, i)));
 
-        % Interpolate DVH to Dx value 
-        stats{i,5} = sprintf('%0.1f', interp1(u, w(v), ...
-            str2double(stats{i,3}), 'linear'));
+            % Interpolate DVH to Dx value 
+            stats{i,5} = sprintf('%0.1f', interp1(u, w(v), ...
+                str2double(stats{i,3}), 'linear'));
 
-        % Clear temporary variables
-        clear u v;
+            % Clear temporary variables
+            clear u v;
+        end
     end
 
     % Clear temporary variable

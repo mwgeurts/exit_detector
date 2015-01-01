@@ -621,8 +621,8 @@ if ~isequal(name, 0);
             
             % Update Dx/Vx statistics
             set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
-                get(handles.dvh_table, 'Data'), handles.referenceDose.dvh, ...
-                handles.dqaDose.dvh));
+                get(handles.dvh_table, 'Data'), [], ...
+                handles.referenceDose.dvh, handles.dqaDose.dvh));
         
         % Otherwise, only reference dose exists
         else
@@ -638,7 +638,8 @@ if ~isequal(name, 0);
             
             % Update Dx/Vx statistics
             set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
-                get(handles.dvh_table, 'Data'), handles.referenceDose.dvh));
+                get(handles.dvh_table, 'Data'), [], ...
+                handles.referenceDose.dvh));
         end
         
         % Clear temporary variables
@@ -797,32 +798,58 @@ handles = UpdateDoseDisplay(handles);
 guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dvh_table_CellEditCallback(hObject, ~, handles)
+function dvh_table_CellEditCallback(hObject, eventdata, handles)
 % hObject    handle to dvh_table (see GCBO)
 % eventdata  structure with the following fields (see MATLAB.UI.CONTROL.TABLE)
 %	Indices: row and column indices of the cell(s) edited
 %	PreviousData: previous data for the cell(s) edited
 %	EditData: string(s) entered by the user
-%	NewData: EditData or its converted form set on the Data property. Empty if Data was not changed
-%	Error: error string when failed to convert EditData to appropriate value for Data
+%	NewData: EditData or its converted form set on the Data property. Empty 
+%       if Data was not changed
+%	Error: error string when failed to convert EditData to appropriate 
+%       value for Data
 % handles    structure with handles and user data (see GUIDATA)
 
 % Get current data
 stats = get(hObject, 'Data');
 
-% Update Dx/Vx statistics
-stats = UpdateDoseStatistics(stats);
-
-% Update dose plot if it is displayed
-if get(handles.dose_display, 'Value') > 1 && ...
-        strcmp(get(handles.dose_slider, 'visible'), 'on')
+% Verify edited Dx value is a number or empty
+if eventdata.Indices(2) == 3 && isnan(str2double(...
+        stats{eventdata.Indices(1), eventdata.Indices(2)})) && ...
+        ~isempty(stats{eventdata.Indices(1), eventdata.Indices(2)})
     
-    UpdateViewer(get(handles.dose_slider,'Value'), ...
-        sscanf(get(handles.alpha, 'String'), '%f%%')/100, stats);
-end
+    % Warn user
+    Event(sprintf(['Dx value "%s" is not a number, reverting to previous ', ...
+        'value'], stats{eventdata.Indices(1), eventdata.Indices(2)}), 'WARN');
+    
+    % Revert value to previous
+    stats{eventdata.Indices(1), eventdata.Indices(2)} = ...
+        eventdata.PreviousData;
+    
+% Otherwise, if Dx was changed
+elseif eventdata.Indices(2) == 3
+    
+    % Update edited Dx/Vx statistic
+    stats = UpdateDoseStatistics(stats, eventdata.Indices);
+    
+% Otherwise, if display value was changed
+elseif eventdata.Indices(2) == 2
 
-% Update DVH plot
-UpdateDVH(stats);
+    % Update dose plot if it is displayed
+    if get(handles.dose_display, 'Value') > 1 && ...
+            strcmp(get(handles.dose_slider, 'visible'), 'on')
+
+        UpdateViewer(get(handles.dose_slider,'Value'), ...
+            sscanf(get(handles.alpha, 'String'), '%f%%')/100, stats);
+    end
+
+    % Update DVH plot if it is displayed
+    if strcmp(get(handles.dvh_axes, 'visible'), 'on')
+        
+        % Update DVH plot
+        UpdateDVH(stats); 
+    end
+end
 
 % Set new table data
 set(hObject, 'Data', stats);
