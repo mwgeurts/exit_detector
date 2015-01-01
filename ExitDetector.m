@@ -30,7 +30,7 @@ function varargout = ExitDetector(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Last Modified by GUIDE v2.5 08-Nov-2014 08:57:16
+% Last Modified by GUIDE v2.5 01-Jan-2015 17:32:29
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -319,7 +319,7 @@ Event('Initializing daily qa variables');
 handles.dailyqa = [];
 
 % Initialize all patient data variables
-handles = clearPatientData(handles);
+handles = clear_button_Callback(handles);
 
 %% Complete initialization
 % Attempt to load the atlas
@@ -382,7 +382,7 @@ if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
     if strcmp(choice, 'Yes')
         
         % If patient data exists, clear it
-        handles = clearPatientData(handles);
+        handles = clear_button_Callback(handles);
 
         % Request the user to select the Daily QA DICOM or XML
         Event('UI window opened to select file');
@@ -481,7 +481,7 @@ if ~isequal(name, 0);
     Event(['Default file path updated to ', path]);
 
     % If patient data exists, clear it before continuing
-    handles = clearPatientData(handles);
+    handles = clear_button_Callback(handles);
     
     % Update archive_file text box
     set(handles.archive_file, 'String', fullfile(path, name));
@@ -1017,8 +1017,9 @@ if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
 
     % If the user chose yes
     if strcmp(choice, 'Yes')
+        
         % If patient data exists, clear it
-        handles = clearPatientData(handles);
+        handles = clear_button_Callback(handles);
         
         % Log value change
         if get(hObject,'Value') == 1
@@ -1064,8 +1065,9 @@ if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
 
     % If the user chose yes
     if strcmp(choice, 'Yes')
+        
         % If patient data exists, clear it
-        handles = clearPatientData(handles);
+        handles = clear_button_Callback(handles);
         
         % Log value change
         if get(hObject,'Value') == 1
@@ -1111,8 +1113,9 @@ if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
 
     % If the user chose yes
     if strcmp(choice, 'Yes')
+        
         % If patient data exists, clear it
-        handles = clearPatientData(handles);
+        handles = clear_button_Callback(handles);
         
         % Log value change
         if get(hObject,'Value') == 1
@@ -1199,9 +1202,10 @@ set(handles.stats_table, 'ColumnWidth', ...
 clear pos;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function handles = clearPatientData(handles)
-% clearPatientData clears/initializes all patient related data handles
-% stored in guidata
+function varargout = clear_button_Callback(hObject, ~, handles)
+% hObject    handle to clear_button (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
 
 % Log action
 if isfield(handles, 'planUID')
@@ -1286,3 +1290,15 @@ set(handles.alpha, 'visible', 'off');
 % Clear tables
 set(handles.dvh_table, 'Data', cell(16,5));
 set(handles.stats_table, 'Data', UpdateResultsStatistics(handles));
+
+% If called through the UI, and not another function
+if nargout == 0
+    
+    % Update handles structure
+    guidata(hObject, handles);
+    
+else
+    
+    % Otherwise return the modified handles
+    varargout{1} = handles;
+end
