@@ -221,43 +221,85 @@ set(handles.alpha, 'String', '40%');
 Event(['Default dose view transparency set to ', ...
     get(handles.alpha, 'String')]);
 
-%% Load SSH/SCP Scripts
-% A try/catch statement is used in case Ganymed-SSH2 is not available
-try
-    
-    % Start with the handles.calcDose flag set to 1 (dose calculation
-    % enabled)
-    handles.calcDose = 1;
-    
-    % Load Ganymed-SSH2 javalib
-    Event('Adding Ganymed-SSH2 javalib');
-    addpath('../ssh2_v2_m1_r6/'); 
-    Event('Ganymed-SSH2 javalib added successfully');
-    
-    % Establish connection to computation server.  The ssh2_config
-    % parameters below should be set to the DNS/IP address of the
-    % computation server, user name, and password with SSH/SCP and
-    % read/write access, respectively.  See the README for more infomation
-    Event('Connecting to tomo-research via SSH2');
-    handles.ssh2 = ssh2_config('tomo-research', 'tomo', 'hi-art');
-    
-    % Test the SSH2 connection.  If this fails, catch the error below.
-    [handles.ssh2, ~] = ssh2_command(handles.ssh2, 'ls');
-    Event('SSH2 connection successfully established');
+%% Verify beam model
+% Declare path to beam model folder
+handles.modeldir = './GPU';
 
-% addpath, ssh2_config, or ssh2_command may all fail if ganymed is not
-% available or if the remote server is not responding
-catch err
-    
-    % Log failure
-    Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'WARN');
-    
-    % If either the addpath or ssh2_command calls fails, set 
-    % handles.calcDose flag to zero (dose calculation will be disabled) 
-    Event('Dose calculation will be disabled', 'WARN');
-    handles.calcDose = 0;
-    
+% Check for beam model files
+if exist(fullfile(handles.modeldir, 'dcom.header'), 'file') == 2 && ...
+        exist(fullfile(handles.modeldir, 'fat.img'), 'file') == 2 && ...
+        exist(fullfile(handles.modeldir, 'kernel.img'), 'file') == 2 && ...
+        exist(fullfile(handles.modeldir, 'lft.img'), 'file') == 2 && ...
+        exist(fullfile(handles.modeldir, 'penumbra.img'), 'file') == 2
+
+    % Log name
+    Event('Beam model files verified');
+else
+
+    % Otherwise throw an error
+    Event(sprintf(['Beam model not found. Verify that %s exists and ', ...
+        'contains the necessary model files'], handles.modeldir), 'ERROR');
 end
+
+%% Configure Dose Calculation
+% Start with the handles.calcDose flag set to 1 (dose calculation enabled)
+handles.calcDose = 1;
+
+% Check for gpusadose
+[~, cmdout] = system('which gpusadose');
+
+% If gpusadose exists
+if ~strcmp(cmdout,'')
+    
+    % Log gpusadose version
+    [~, str] = system('gpusadose -V');
+    cellarr = textscan(str, '%s', 'delimiter', '\n');
+    Event(sprintf('Found %s at %s', char(cellarr{1}(1)), cmdout));d
+    
+    % Clear temporary variables
+    clear str cellarr;
+else
+    
+    % Warn the user that gpusadose was not found
+    Event(['Linked application gpusadose not found, will now check for ', ...
+        'remote computation server'], 'WARN');
+
+    % A try/catch statement is used in case Ganymed-SSH2 is not available
+    try
+        % Load Ganymed-SSH2 javalib
+        Event('Adding Ganymed-SSH2 javalib');
+        addpath('../ssh2_v2_m1_r6/'); 
+        Event('Ganymed-SSH2 javalib added successfully');
+
+        % Establish connection to computation server.  The ssh2_config
+        % parameters below should be set to the DNS/IP address of the
+        % computation server, user name, and password with SSH/SCP and
+        % read/write access, respectively.  See the README for more 
+        % infomation
+        Event('Connecting to tomo-research via SSH2');
+        handles.ssh2 = ssh2_config('tomo-research', 'tomo', 'hi-art');
+
+        % Test the SSH2 connection.  If this fails, catch the error below.
+        [handles.ssh2, ~] = ssh2_command(handles.ssh2, 'ls');
+        Event('SSH2 connection successfully established');
+
+    % addpath, ssh2_config, or ssh2_command may all fail if ganymed is not
+    % available or if the remote server is not responding
+    catch err
+
+        % Log failure
+        Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'WARN');
+
+        % If either the addpath or ssh2_command calls fails, set 
+        % handles.calcDose flag to zero (dose calculation will be disabled)
+        Event('Dose calculation will be disabled', 'WARN');
+        handles.calcDose = 0;
+
+    end
+end
+
+% Clear temporary variables
+clear cmdout;
 
 %% Add CalcGamma submodule
 % Add gamma submodule to search path
@@ -529,6 +571,7 @@ if ~isequal(name, 0);
 
             % If the user chose yes
             if strcmp(choice, 'Yes')
+                
                 % Update flag
                 dqa = 1;
                 
@@ -537,9 +580,28 @@ if ~isequal(name, 0);
                 
                 % Execute CalcDose on reference plan 
                 if handles.calcRefDose == 1
+                    
+                    % Log action
                     Event('Calculating reference dose');
-                    handles.referenceDose = CalcDose(handles.referenceImage, ...
-                       handles.planData, [0 0 0 0 0 0], handles.ssh2);
+                    
+                    % If an ssh2 connection is set (remote calculation)
+                    if isfield(handles, 'ssh2')
+                    
+                        % Calculate reference dose using image, plan, 
+                        % directory, & SSH2 connection
+                        handles.referenceDose = CalcDose(...
+                            handles.referenceImage, handles.planData, ...
+                            handles.modeldir, handles.ssh2);
+                       
+                    % Otherwise calculate dose locally
+                    else
+                        
+                        % Calculate reference dose using image, plan, 
+                        % and directory
+                        handles.referenceDose = CalcDose(...
+                            handles.referenceImage, handles.planData, ...
+                            handles.modeldir);
+                    end
                 end
                 
                 % Adjust delivery plan sinogram by measured differences
@@ -556,9 +618,24 @@ if ~isequal(name, 0);
                 
                 % Execute CalcDose
                 Event('Calculating DQA dose');
-                handles.dqaDose = CalcDose(handles.referenceImage, ...
-                    handles.dqaPlanData, [0 0 0 0 0 0], handles.ssh2);
-            
+                
+                % If an ssh2 connection is set (remote calculation)
+                if isfield(handles, 'ssh2')
+                    
+                    % Calculate DQA dose using image, plan, directory, & 
+                    % SSH2 connection
+                    handles.dqaDose = CalcDose(handles.referenceImage, ...
+                        handles.dqaPlanData, handles.modeldir, ...
+                        handles.ssh2);
+                
+                % Otherwise calculate dose locally
+                else
+                    
+                    % Calculate DQA dose using image, plan, & directory
+                    handles.dqaDose = CalcDose(handles.referenceImage, ...
+                        handles.dqaPlanData, handles.modeldir);
+                end
+                
                 % Calculate dose difference
                 handles.doseDiff = CalcDoseDifference(...
                     handles.referenceDose, handles.dqaDose);
