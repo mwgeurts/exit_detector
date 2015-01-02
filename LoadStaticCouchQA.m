@@ -47,6 +47,10 @@ try
 Event(['Parsing Static Couch QA data from ', name]);
 tic;
     
+% Initialize empty return variables
+planUID = '';
+rawData = [];
+
 % The patient XML is parsed using xpath class
 import javax.xml.xpath.*
 
@@ -327,12 +331,15 @@ if size(returnDQAData,2) == 0
         Event(['No Static-Couch DQA data was loaded. The data must be ', ...
             'contained in the patient archive or loaded as a Transit ', ...
             'Dose DICOM Exported file'], 'ERROR');
+        return;
     end
     
 %% Otherwise, static couch QA data was found    
 else
+    
     % If only one result was found, assume the user will pick it
     if size(returnDQAData,2) == 1
+        
         % Log event
         Event('Only one static couch QA return data found');
         
@@ -356,6 +363,7 @@ else
         % If the user selected cancel, throw an error
         if ok == 0
             Event('No return data was chosen', 'ERROR');
+            return;
         else
             Event(sprintf('User selected return data %i', plan));
         end
@@ -376,6 +384,7 @@ else
     
     % Loop through results, looking for Static-Couch descriptions
     for i = 1:nodeList.getLength
+        
         % Set a handle to the result
         node = nodeList.item(i-1);
 
@@ -475,6 +484,5 @@ Event(sprintf(['Static Couch QA exit detector data loaded ', ...
 
 % Catch errors, log, and rethrow
 catch err
-    % Log error via Event.m
     Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'ERROR');
 end
