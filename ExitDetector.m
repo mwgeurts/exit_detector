@@ -30,7 +30,7 @@ function varargout = ExitDetector(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Last Modified by GUIDE v2.5 01-Jan-2015 17:32:29
+% Last Modified by GUIDE v2.5 01-Jan-2015 21:24:29
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -319,7 +319,7 @@ Event('Initializing daily qa variables');
 handles.dailyqa = [];
 
 % Initialize all patient data variables
-handles = clear_button_Callback(handles);
+handles = clear_button_Callback(handles.clear_button, '', handles);
 
 %% Complete initialization
 % Attempt to load the atlas
@@ -382,7 +382,7 @@ if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
     if strcmp(choice, 'Yes')
         
         % If patient data exists, clear it
-        handles = clear_button_Callback(handles);
+        handles = clear_button_Callback(handles.clear_button, '', handles);
 
         % Request the user to select the Daily QA DICOM or XML
         Event('UI window opened to select file');
@@ -481,7 +481,7 @@ if ~isequal(name, 0);
     Event(['Default file path updated to ', path]);
 
     % If patient data exists, clear it before continuing
-    handles = clear_button_Callback(handles);
+    handles = clear_button_Callback(handles.clear_button, '', handles);
     
     % Update archive_file text box
     set(handles.archive_file, 'String', fullfile(path, name));
@@ -1019,7 +1019,7 @@ if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
     if strcmp(choice, 'Yes')
         
         % If patient data exists, clear it
-        handles = clear_button_Callback(handles);
+        handles = clear_button_Callback(handles.clear_button, '', handles);
         
         % Log value change
         if get(hObject,'Value') == 1
@@ -1067,7 +1067,7 @@ if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
     if strcmp(choice, 'Yes')
         
         % If patient data exists, clear it
-        handles = clear_button_Callback(handles);
+        handles = clear_button_Callback(handles.clear_button, '', handles);
         
         % Log value change
         if get(hObject,'Value') == 1
@@ -1115,7 +1115,7 @@ if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
     if strcmp(choice, 'Yes')
         
         % If patient data exists, clear it
-        handles = clear_button_Callback(handles);
+        handles = clear_button_Callback(handles.clear_button, '', handles);
         
         % Log value change
         if get(hObject,'Value') == 1

@@ -119,6 +119,7 @@ InitializeViewer(handles.axes4, 'T', 0.4, image1, data.referenceDose);
 
 % If dqaDose data exists
 if isfield(data, 'dqaDose') && isfield(data.dqaDose, 'data')
+    
     % Plot both DVHs
     UpdateDVH(handles.axes5, get(data.dvh_table, 'Data'), ...
         data.referenceImage, data.referenceDose, data.referenceImage, ...
