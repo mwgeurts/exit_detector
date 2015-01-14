@@ -44,6 +44,7 @@ end
 
 % If all new parameters are provided to UpdateViewer
 if nargin > 3
+
     % Persistently store new figure handle
     fig = varargin{4};
     
@@ -55,6 +56,7 @@ if nargin > 3
     
     % If image2 data was also provided
     if nargin == 7
+    
         % Persistently store new image2 data
         image2 = varargin{7};
         
@@ -75,6 +77,7 @@ switch tcsview
     
 % If orientation is Transverse
 case 'T'
+
     % Set imageA data based on the image1 IEC-x and IEC-z dimensions
     imageA = image1.data(:,:,varargin{1});
     
@@ -86,12 +89,14 @@ case 'T'
     
     % If image2 data exists
     if isstruct(image2)
+    
         % Set imageB data based on the image2 IEC-x and IEC-z dimensions
         imageB = image2.data(:,:,varargin{1});
     end
     
 % If orientation is Coronal
 case 'C'
+
     % Set imageA data based on the image1 IEC-x and IEC-y dimensions
     imageA = image1.data(:,varargin{1},:);
     
@@ -103,12 +108,14 @@ case 'C'
     
     % If image2 data exists
     if isstruct(image2)
+    
         % Set imageB data based on the image2 IEC-x and IEC-y dimensions
         imageB = image2.data(:,varargin{1},:);
     end
     
 % If orientation is Sagittal
 case 'S'    
+
     % Set imageA data based on the image1 IEC-y and IEC-z dimensions
     imageA = image1.data(varargin{1},:,:);
     
@@ -120,6 +127,7 @@ case 'S'
     
     % If image2 data exists
     if isstruct(image2)
+    
         % Set imageB data based on the image2 IEC-y and IEC-z dimensions
         imageB = image2.data(varargin{1},:,:);
     end
@@ -130,6 +138,7 @@ imageA = squeeze(imageA)';
 
 % If image2 data exists
 if isstruct(image2)
+
     % Remove the extra dimension for imageB
     imageB = squeeze(imageB)';
 end
@@ -145,8 +154,10 @@ reference = imref2d(size(imageA),[start(1) start(1) + size(imageA,2) * ...
 
 % If a secondary dataset was provided
 if isstruct(image2)
+
     % If the minimum imageA value is greater than zero (CT data)
     if min(min(min(imageA))) >= 0
+    
         % For two datasets, the reference image is converted to an RGB 
         % image prior to display.  This will allow a non-grayscale colormap 
         % for the secondary dataset while leaving the underlying CT image 
@@ -157,6 +168,7 @@ if isstruct(image2)
         
     % Otherwise, if the reference dataset is image difference
     else
+    
         % For two datasets, the reference image is converted to an RGB
         % image prior to display.  This will allow a non-grayscale colormap 
         % for the secondary dataset while leaving the underlying CT image 
@@ -183,6 +195,7 @@ if isstruct(image2)
         
     % Otherwise, the secondary dataset is RGB
     else
+    
         % Plot the secondary dataset over the reference dataset
         handle = imshow(imageB, reference);
     end
@@ -199,8 +212,10 @@ if isstruct(image2)
     
 % Otherwise, only a primary dataset was provided
 else
+
     % If the minimum imageA value is greater than zero (CT data)
     if min(min(min(imageA))) >= 0
+    
         % Cast the imageA data as 16-bit unsigned integer
         imageA = int16(imageA);
     
@@ -211,6 +226,7 @@ else
         
     % Otherwise, if the reference dataset is image difference
     else
+    
         % Display the imageA data using a range of -1000 to +1000 and a
         % winter colormap
         imshow(imageA, reference, 'DisplayRange', [-1000 1000], ...
@@ -237,6 +253,7 @@ if isfield(image1,'structures')
                 
                 % If orientation is Transverse
                 case 'T'
+                
                     % Use bwboundaries to generate X/Y contour points based
                     % on structure mask
                     B = bwboundaries(squeeze(...
@@ -244,6 +261,7 @@ if isfield(image1,'structures')
                     
                 % If orientation is Coronal
                 case 'C'
+                
                     % Use bwboundaries to generate X/Y contour points based
                     % on structure mask
                     B = bwboundaries(squeeze(...
@@ -251,6 +269,7 @@ if isfield(image1,'structures')
                     
                 % If orientation is Sagittal
                 case 'S'
+                
                     % Use bwboundaries to generate X/Y contour points based
                     % on structure mask
                     B = bwboundaries(squeeze(...
@@ -265,6 +284,7 @@ if isfield(image1,'structures')
                     
                     % If orientation is Transverse
                     case 'T'
+                    
                         % Plot the contour points given the structure color
                         plot((B{k}(:,2) - 1) * image1.width(1) + ...
                             image1.start(1), (B{k}(:,1) - 1) * ...
@@ -274,6 +294,7 @@ if isfield(image1,'structures')
                        
                     % If orientation is Coronal
                     case 'C'
+                    
                         % Plot the contour points given the structure color
                         plot((B{k}(:,2) - 1) * image1.width(1) + ...
                             image1.start(1), (B{k}(:,1) - 1) * ...
@@ -283,6 +304,7 @@ if isfield(image1,'structures')
                        
                     % If orientation is Sagittal
                     case 'S'
+                    
                         % Plot the contour points given the structure color
                         plot((B{k}(:,2) - 1) * image1.width(2) + ...
                             image1.start(2), (B{k}(:,1) - 1) * ...
