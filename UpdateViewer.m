@@ -303,7 +303,7 @@ hold off;
 
 %% Finalize figure
 % Default zoom
-zoom(1.5);
+zoom(1.0);
 
 % Display the x/y axis on the images
 axis off
