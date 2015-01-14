@@ -49,7 +49,7 @@ if nargin >= 1; stats = varargin{1}; end
 if nargin >= 3; referenceDVH = varargin{3}; end
 
 % If a new DQA DVH is provided, persistently store it
-if nargin == 4; dqaDVH = varargin{3}; end
+if nargin == 4; dqaDVH = varargin{4}; end
 
 % If an incorrect number of inputs were provided
 if nargin == 0 || nargin > 4
