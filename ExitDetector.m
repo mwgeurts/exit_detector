@@ -15,7 +15,7 @@ function varargout = ExitDetector(varargin)
 % algorithm details.
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
-% Copyright (C) 2014 University of Wisconsin Board of Regents
+% Copyright (C) 2015 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  
@@ -97,6 +97,61 @@ string = sprintf('%s\n', separator, string{:}, separator);
 
 % Log information
 Event(string, 'INIT');
+
+%% Add Tomo archive extraction tools submodule
+% Add archive extraction tools submodule to search path
+addpath('./tomo_extract');
+
+% Check if MATLAB can find CalcDose.m
+if exist('CalcDose', 'file') ~= 2
+    
+    % If not, throw an error
+    Event(['The Archive Extraction Tools submodule does not exist in the ', ...
+        'search path. Use git clone --recursive or git submodule init ', ...
+        'followed by git submodule update to fetch all submodules'], ...
+        'ERROR');
+end
+
+%% Add DICOM tools submodule
+% Add DICOM tools submodule to search path
+addpath('./dicom_tools');
+
+% Check if MATLAB can find LoadDICOMImages.m
+if exist('LoadDICOMImages', 'file') ~= 2
+    
+    % If not, throw an error
+    Event(['The DICOM Tools submodule does not exist in the ', ...
+        'search path. Use git clone --recursive or git submodule init ', ...
+        'followed by git submodule update to fetch all submodules'], ...
+        'ERROR');
+end
+
+%% Add Structure Atlas submodule
+% Add structure atlas submodule to search path
+addpath('./structure_atlas');
+
+% Check if MATLAB can find LoadDICOMImages.m
+if exist('LoadAtlas', 'file') ~= 2
+    
+    % If not, throw an error
+    Event(['The Structure Atlas submodule does not exist in the ', ...
+        'search path. Use git clone --recursive or git submodule init ', ...
+        'followed by git submodule update to fetch all submodules'], ...
+        'ERROR');
+end
+
+%% Add CalcGamma submodule
+% Add gamma submodule to search path
+addpath('./gamma');
+
+% Check if MATLAB can find CalcGamma.m
+if exist('CalcGamma', 'file') ~= 2
+    
+    % If not, throw an error
+    Event(['The CalcGamma submodule does not exist in the search path. Use ', ...
+        'git clone --recursive or git submodule init followed by git ', ...
+        'submodule update to fetch all submodules'], 'ERROR');
+end
 
 %% Initialize UI
 % Set version UI text
@@ -242,75 +297,29 @@ else
 end
 
 %% Configure Dose Calculation
-% Start with the handles.calcDose flag set to 1 (dose calculation enabled)
-handles.calcDose = 1;
+% Check for presence of dose calculator
+handles.calcDose = CalcDose();
 
-% Check for gpusadose
-[~, cmdout] = system('which gpusadose');
+% Set sadose flag
+handles.sadose = 0;
 
-% If gpusadose exists
-if ~strcmp(cmdout,'')
+% If calc dose was successful and sadose flag is set
+if handles.calcDose == 1 && handles.sadose == 1
     
-    % Log gpusadose version
-    [~, str] = system('gpusadose -V');
-    cellarr = textscan(str, '%s', 'delimiter', '\n');
-    Event(sprintf('Found %s at %s', char(cellarr{1}(1)), cmdout));d
+    % Log dose calculation status
+    Event('CPU Dose calculation enabled');
     
-    % Clear temporary variables
-    clear str cellarr;
+% If calc dose was successful and sadose flag is not set
+elseif handles.calcDose == 1 && handles.sadose == 0
+    
+    % Log dose calculation status
+    Event('GPU Dose calculation enabled');
+   
+% Otherwise, calc dose was not successful
 else
     
-    % Warn the user that gpusadose was not found
-    Event(['Linked application gpusadose not found, will now check for ', ...
-        'remote computation server'], 'WARN');
-
-    % A try/catch statement is used in case Ganymed-SSH2 is not available
-    try
-        % Load Ganymed-SSH2 javalib
-        Event('Adding Ganymed-SSH2 javalib');
-        addpath('../ssh2_v2_m1_r6/'); 
-        Event('Ganymed-SSH2 javalib added successfully');
-
-        % Establish connection to computation server.  The ssh2_config
-        % parameters below should be set to the DNS/IP address of the
-        % computation server, user name, and password with SSH/SCP and
-        % read/write access, respectively.  See the README for more 
-        % infomation
-        Event('Connecting to tomo-research via SSH2');
-        handles.ssh2 = ssh2_config('tomo-research', 'tomo', 'hi-art');
-
-        % Test the SSH2 connection.  If this fails, catch the error below.
-        [handles.ssh2, ~] = ssh2_command(handles.ssh2, 'ls');
-        Event('SSH2 connection successfully established');
-
-    % addpath, ssh2_config, or ssh2_command may all fail if ganymed is not
-    % available or if the remote server is not responding
-    catch err
-
-        % Log failure
-        Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'WARN');
-
-        % If either the addpath or ssh2_command calls fails, set 
-        % handles.calcDose flag to zero (dose calculation will be disabled)
-        Event('Dose calculation will be disabled', 'WARN');
-        handles.calcDose = 0;
-
-    end
-end
-
-% Clear temporary variables
-clear cmdout;
-
-%% Add CalcGamma submodule
-% Add gamma submodule to search path
-addpath('./gamma');
-
-% Check if MATLAB can find CalcGamma.m
-if exist('CalcGamma', 'file') ~= 2
-    % If not, throw an error
-    Event(['The CalcGamma submodule does not exist in the search path. Use ', ...
-        'git clone --recursive or git submodule init followed by git ', ...
-        'submodule update to fetch all submodules'], 'ERROR');
+    % Log dose calculation status
+    Event('Dose calculation disabled', 'WARN');
 end
 
 %% Initialize data handles
@@ -396,8 +405,8 @@ if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
 else
     % Request the user to select the Daily QA DICOM or XML
     Event('UI window opened to select file');
-    [name, path] = uigetfile({'*.dcm', 'Transit Dose File (*.dcm)'; ...
-        '*_patient.xml', 'Patient Archive (*.xml)'}, ...
+    [name, path] = uigetfile({'*_patient.xml', 'Patient Archive (*.xml)'; ...
+        '*.dcm', 'Transit Dose File (*.dcm)'}, ...
         'Select the Daily QA File', handles.path);
 end
 
@@ -527,21 +536,19 @@ if ~isequal(name, 0);
         waitbar(0.3, progress, 'Loading reference CT...');
         
         % Load reference image
-        handles.referenceImage = ...
-            LoadReferenceImage(path, name, handles.planUID);
+        handles.referenceImage = LoadImage(path, name, handles.planUID);
 
         % Update progress bar
         waitbar(0.4, progress, 'Loading reference dose...');
         
         % Load reference dose
-        handles.referenceDose = ...
-            LoadReferenceDose(path, name, handles.planUID);
+        handles.referenceDose = LoadPlanDose(path, name, handles.planUID);
         
         % Update progress bar
         waitbar(0.5, progress, 'Loading structure set...');
         
         % Load structures
-        handles.referenceImage.structures = LoadReferenceStructures(...
+        handles.referenceImage.structures = LoadStructures(...
             path, name, handles.referenceImage, handles.atlas);
 
         % Initialize statistics table
@@ -583,25 +590,12 @@ if ~isequal(name, 0);
                     
                     % Log action
                     Event('Calculating reference dose');
-                    
-                    % If an ssh2 connection is set (remote calculation)
-                    if isfield(handles, 'ssh2')
-                    
-                        % Calculate reference dose using image, plan, 
-                        % directory, & SSH2 connection
-                        handles.referenceDose = CalcDose(...
-                            handles.referenceImage, handles.planData, ...
-                            handles.modeldir, handles.ssh2);
-                       
-                    % Otherwise calculate dose locally
-                    else
-                        
-                        % Calculate reference dose using image, plan, 
-                        % and directory
-                        handles.referenceDose = CalcDose(...
-                            handles.referenceImage, handles.planData, ...
-                            handles.modeldir);
-                    end
+
+                    % Calculate reference dose using image, plan, 
+                    % directory, & sadose flag
+                    handles.referenceDose = CalcDose(...
+                        handles.referenceImage, handles.planData, ...
+                        handles.modeldir, handles.sadose);
                 end
                 
                 % Adjust delivery plan sinogram by measured differences
@@ -619,22 +613,10 @@ if ~isequal(name, 0);
                 % Execute CalcDose
                 Event('Calculating DQA dose');
                 
-                % If an ssh2 connection is set (remote calculation)
-                if isfield(handles, 'ssh2')
-                    
-                    % Calculate DQA dose using image, plan, directory, & 
-                    % SSH2 connection
-                    handles.dqaDose = CalcDose(handles.referenceImage, ...
-                        handles.dqaPlanData, handles.modeldir, ...
-                        handles.ssh2);
-                
-                % Otherwise calculate dose locally
-                else
-                    
-                    % Calculate DQA dose using image, plan, & directory
-                    handles.dqaDose = CalcDose(handles.referenceImage, ...
-                        handles.dqaPlanData, handles.modeldir);
-                end
+                % Calculate DQA dose using image, plan, directory, & 
+                % sadose flag
+                handles.dqaDose = CalcDose(handles.referenceImage, ...
+                    handles.dqaPlanData, handles.modeldir, handles.sadose);
                 
                 % Calculate dose difference
                 handles.doseDiff = CalcDoseDifference(...
@@ -1221,11 +1203,11 @@ handles.planUID = [];
 handles.planData = [];
 
 % referenceImage stores the planning CT and structure set as a structure.
-% See LoadReferenceImage.m and LoadReferenceStructures.m
+% See LoadImage.m and LoadStructures.m
 handles.referenceImage = [];
 
 % referenceDose stores the optimized plan dose as a structure. See
-% LoadReferenceDose.m and UpdateDVH.m
+% LoadDose.m and UpdateDVH.m
 handles.referenceDose = [];
 
 % dqaDose stores the recomputed dose (using the measured sinogram) as a

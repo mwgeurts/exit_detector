@@ -1,3 +1,12 @@
 [submodule "gamma"]
 	path = gamma
 	url = https://github.com/mwgeurts/gamma
+[submodule "tomo_extract"]
+	path = tomo_extract
+	url = https://github.com/mwgeurts/tomo_extract
+[submodule "dicom_tools"]
+	path = dicom_tools
+	url = https://github.com/mwgeurts/dicom_tools
+[submodule "structure_atlas"]
+	path = structure_atlas
+	url = https://github.com/mwgeurts/structure_atlas

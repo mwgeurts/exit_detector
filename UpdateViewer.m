@@ -17,7 +17,7 @@ function UpdateViewer(varargin)
 %   varargin{7} (optional): image data structure (just data, as width/start 
 %       are assumed equal) for the secondary dataset
 %
-% Copyright (C) 2014 University of Wisconsin Board of Regents
+% Copyright (C) 2015 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  

@@ -15,7 +15,7 @@ function widths = CalcFieldWidth(plan)
 %       positions of the front jaw, widths(2,:) the back jaw, and
 %       widths(3,:) are the the field widths
 % 
-% Copyright (C) 2014 University of Wisconsin Board of Regents
+% Copyright (C) 2015 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  

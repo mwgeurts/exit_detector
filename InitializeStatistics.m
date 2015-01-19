@@ -19,7 +19,7 @@ function stats = InitializeStatistics(varargin)
 %   stats: cell array of structures containing the following columns:
 %       structure name (colored), view flag, vx, plan dx, and DQA dx
 %
-% Copyright (C) 2014 University of Wisconsin Board of Regents
+% Copyright (C) 2015 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  

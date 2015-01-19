@@ -41,7 +41,7 @@ function [exitData, diff, errors] = CalcSinogramDiff(background, ...
 %   errors: contains a vector of diff, with non-meaningful differences 
 %       removed 
 %
-% Copyright (C) 2014 University of Wisconsin Board of Regents
+% Copyright (C) 2015 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  

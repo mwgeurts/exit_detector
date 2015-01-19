@@ -1,11 +1,11 @@
 ## TomoTherapy Exit Detector Analysis
 
 by Mark Geurts <mark.w.geurts@gmail.com>
-<br>Copyright &copy; 2014, University of Wisconsin Board of Regents
+<br>Copyright &copy; 2015, University of Wisconsin Board of Regents
 
 The TomoTherapy&reg; Exit Detector Analysis Tool is a GUI based standalone application written in MATLAB that parses [TomoTherapy](http://www.accuray.com) patient archives and DICOM RT Exit Dose files and uses the MVCT response collected during a Static Couch DQA procedure to estimate the fluence delivered through each MLC leaf during treatment delivery.  By comparing the measured fluence to an expected fluence (calculated during optimization of the treatment plan), the treatment delivery performance of the TomoTherapy Treatment System can be observed.
 
-In addition, this project includes a module `CalcDose()`, which uses the Standalone GPU TomoTherapy Dose Calculator to calculate the effect of fluence errors (measured above) on the optimized dose distribution and dose volume histogram for the patient. The module `CalcGamma()` is also included, and performs a 3D [gamma analysis](http://www.ncbi.nlm.nih.gov/pubmed/9608475) between the reference and DQA dose distributions using global 3%/3mm (or otherwise specified) criteria.
+In addition, this project includes the submodule `CalcDose()`, which uses the Standalone GPU TomoTherapy Dose Calculator to calculate the effect of fluence errors (measured above) on the optimized dose distribution and dose volume histogram for the patient. The submodule `CalcGamma()` is also included, and performs a 3D [gamma analysis](README.md#gamma-computation-methods) between the reference and DQA dose distributions using global 3%/3mm (or otherwise specified) criteria.
 
 The user interface provides graphic and quantitative analysis of the comparison of the measured and expected fluence delivered, as well as a graphical display of the planned dose, recomputed dose, and 3D gamma.  Finally a graphical and tabular comparison of structure dose volume histograms is included to investigate the clinical impact of the measured differences.  A report function is included to generate a PDF report of the results for documentation in the patient's medical record.
 
@@ -20,24 +20,12 @@ TomoTherapy is a registered trademark of Accuray Incorporated.
   * [Exit Detector Fluence Computation Methods](README.md#exit-detector-fluence-computation-methods)
   * [Dose Calculation Methods](README.md#dose-calculation-methods)
   * [Gamma Computation Methods](README.md#gamma-computation-methods)
-* [Third Party Statements](README.md#third-party-statements)
 
 ## Installation and Use
 
-To install the TomoTherapy Exit Detector Analysis Tool, copy all MATLAB .m and .fig and DICOM .dcm files into a directory with read/write access and then copy the [CalcGamma.m submodule from the gamma repository](https://github.com/mwgeurts/gamma) into the `gamma` subfolder.  If using git, execute `git clone --recursive https://github.com/mwgeurts/exit_detector`.
+To install the TomoTherapy Exit Detector Analysis Tool, copy all MATLAB .m, .fig files, and submodules ([dicom_tools](https://github.com/mwgeurts/dicom_tools), [tomo_extract](https://github.com/mwgeurts/tomo_extract), [structure_atlas](https://github.com/mwgeurts/structure_atlas), and [gamma](https://github.com/mwgeurts/gamma)) into a directory with read/write access. If using git, execute `git clone --recursive https://github.com/mwgeurts/exit_detector`.
 
-To enable dose recalculation based on the measured leaf open times, the TomoTherapy Exit Detector Analysis Tool must be configured to communicate with a dose calculation server.  Open ExitDetector.m and find the following lines in the function `ExitDetector_OpeningFcn()` (note each line is separated by several lines of comments and `Event()` calls in the actual file):
-
-```
-addpath('../ssh2_v2_m1_r6/');
-handles.ssh2 = ssh2_config('tomo-research','tomo','hi-art');
-```
-
-This application uses the [SSH/SFTP/SCP for Matlab (v2)] (http://www.mathworks.com/matlabcentral/fileexchange/35409-sshsftpscp-for-matlab-v2) interface based on the Ganymed-SSH2 javalib for communication with the dose calculation server.  If performing dose calculation, this interface must be downloaded/extracted and the `ExitDetector_OpeningFcn()` statement `addpath('../ssh2_v2_m1_r6/')` modified to reflect its location.  If this interface is not available, use of the TomoTherapy Exit Detector Analysis application is still available for sinogram comparison, but all dose and Gamma computation and evaluation functionality will be automatically disabled.
-
-Next, edit `ssh2_config()` with the the IP/DNS address of the dose computation server (tomo-research, for example), a user account on the server (tomo), and password (hi-art).  This user account must have SSH access rights, rights to execute `gpusadose`, and finally read/write acces to the temp directory.  See Accuray Incorporated to see if your research workstation includes this feature.
-
-Finally, for dose calculation copy the following beam model files in a folder named `GPU` in the MATLAB directory.  These files will be copied to the computation server along with the plan files at the time of program execution.  To change this directory, edit the line `[status, cmdout] = system(['cp GPU/*.* ', folder, '/']);` in `CalcDose()`.
+To enable dose calculation, first copy the following beam model files in a folder named `GPU` in the MATLAB directory.  These files will be copied to the computation server along with the plan files at the time of program execution.  To change the location of this folder, edit the line `handles.modeldir = './GPU';` in the function `ExitDetector_OpeningFcn()`.
 
 * dcom.header
 * lft.img
@@ -45,7 +33,11 @@ Finally, for dose calculation copy the following beam model files in a folder na
 * kernel.img
 * fat.img
 
+Next, the TomoTherapy Exit Detector Analysis Tool must be configured to either calculate dose locally or communicate with a dose calculation server.  If using local calculation, `gpusadose` must be installed in an execution path available to MATLAB. If using a remote server, open `CalcDose()`, find the statement `ssh2 = ssh2_config('tomo-research', 'tomo', 'hi-art');`, and enter the IP/DNS address of the dose computation server (tomo-research, for example), a user account on the server (tomo), and password (hi-art).  This user account must have SSH access rights, rights to execute `gpusadose`, and finally read/write acces to the temp directory.  See Accuray Incorporated to see if your research workstation includes this feature.  For additional information, see the [tomo_extract](https://github.com/mwgeurts/tomo_extract) submodule.
+
 For Gamma calculation, if the Parallel Computing Toolbox is enabled, `CalcGamma()` will attempt to compute the three-dimensional computation using a compatible CUDA device.  To test whether the local system has a GPU compatible device installed, run `gpuDevice(1)` in MATLAB.  All GPU calls in this application are executed in a try-catch statement, and automatically revert to an equivalent (albeit longer) CPU based computation if not available or if the available memory is insufficient.
+
+To run this application, call `ExitDetector` from MATLAB.  Once the application interface loads, select browse under inputs to load the daily QA and static couch QA patient archive inputs.  Once all data is loaded, the application will automatically process and display the results. If dose calculation is enabled, the user will be prompted whether to calculate dose, and if successful, whether to calculate Gamma.
 
 ## Compatibility and Requirements
 
@@ -110,32 +102,3 @@ where:
 The absolute criterion is typically given in percent and can refer to a percent of the maximum dose (commonly called the global method) or a percentage of the voxel *Rm* being evaluated (commonly called the local method).  The application is capable of computing gamma using either approach, and can be set in `ExitDetector_OpeningFcn()` by editing the line `handles.local = 0;` from 0 to 1.  By default, the global method (0) is applied.
 
 The computation applied in the TomoTherapy Exit Detector Analysis Tool is a 3D algorithm, in that the distance to agreement criterion is evaluated in all three dimensions when determining *min{&Gamma;(Rm,Rc}&forall;{Rc}*. To accomplish this, the modified dose volume is shifted along all three dimensions relative to the reference dose using linear 3D interpolation.  For each shift, *&Gamma;(Rm,Rc}* is computed, and the minimum value *&gamma;* is determined.  To improve computation efficiency, the computation space *&forall;{Rc}* is limited to twice the distance to agreement parameter.  Thus, the maximum "real" Gamma index returned by the application is 2.
-
-## Third Party Statements
-
-SSH/SFTP/SCP for Matlab (v2)
-<br>Copyright &copy; 2014, David S. Freedman
-<br>All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
-
-* Redistributions of source code must retain the above copyright
-  notice, this list of conditions and the following disclaimer.
-* Redistributions in binary form must reproduce the above copyright
-  notice, this list of conditions and the following disclaimer in
-  the documentation and/or other materials provided with the distribution
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-POSSIBILITY OF SUCH DAMAGE.
-
