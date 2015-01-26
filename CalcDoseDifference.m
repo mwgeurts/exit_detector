@@ -56,6 +56,11 @@ elseif nargin == 1 || nargin > 3
         'ERROR');
 end
 
+% Check that inputs are formatted correctly
+if ~isfield(varargin{1}, 'data') || ~isfield(varargin{2}, 'data')
+    Event('Dose inputs to CalcDoseDifference are invalid', 'ERROR');  
+end
+
 %% Align secondary data
 % If the image size, pixel size, or start differs between datasets, or
 % a registration adjustment exists
