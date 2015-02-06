@@ -20,6 +20,7 @@ function stats = UpdateDoseStatistics(varargin)
 %   stats: an updated cell array of structures based on the new Dx and DVH
 %       inputs
 %
+% Author: Mark Geurts, mark.w.geurts@gmail.com
 % Copyright (C) 2015 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
