@@ -66,7 +66,7 @@ warning('off','all');
 handles.output = hObject;
 
 % Set version handle
-handles.version = '1.1.1';
+handles.version = '1.1.2';
 
 % Determine path of current application
 [path, ~, ~] = fileparts(mfilename('fullpath'));
@@ -213,7 +213,7 @@ Event(sprintf('Hide fluence delivery plan flag set to %i', ...
 % if the beam model differs significantly from the actual TPS, as dose
 % difference/gamma comparison will now compare two dose distributions
 % computed using the same model
-handles.calcRefDose = 0;
+handles.calcRefDose = 1;
 Event(sprintf('Recalculate reference dose flag set to %i', ...
     handles.calcRefDose));
 
