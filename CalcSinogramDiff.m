@@ -1,16 +1,15 @@
 function [exitData, diff, errors] = CalcSinogramDiff(background, ...
     leafSpread, leafMap, rawData, sinogram, autoShift, dynamicJaw, ...
     planData)
-% CalcSinogramDiff calculates a measured exit detector sinogram
-%   CalcSinogramDiff reads in a raw MVCT detector signal and computes a
-%   "measured" fluence sinogram given a channel to MLC leaf map, leaf
-%   spread function, and background.  If a planned sinogram is provided,
-%   this function also computes the difference and stores it as a two
-%   dimensional sinogram and error vector (with null values removed).
+% CalcSinogramDiff reads in a raw MVCT detector signal and computes a
+% "measured" fluence sinogram given a channel to MLC leaf map, leaf
+% spread function, and background.  If a planned sinogram is provided,
+% this function also computes the difference and stores it as a two
+% dimensional sinogram and error vector (with null values removed).
 %
-%   This function uses Fourier Transforms to deconvolve a leaf spread
-%   function from the measured raw data to estimate the measured fluence.
-%   See the README for additional details on the algorithm.
+% This function uses Fourier Transforms to deconvolve a leaf spread
+% function from the measured raw data to estimate the measured fluence.
+% See the README for additional details on the algorithm.
 %
 % The following handle structures are read by CalcSinogramDiff and are 
 % required for proper execution:
@@ -31,7 +30,6 @@ function [exitData, diff, errors] = CalcSinogramDiff(background, ...
 %   planData: delivery plan data including scale, tau, lower leaf index,
 %       number of projections, number of leaves, sync/unsync actions, 
 %       leaf sinogram, and planTrialUID. See LoadPlan.m for more detail.
-%
 %
 % The following handles are returned upon succesful completion:
 %   exitData: a 2D sinogram representing the de-convolved, extracted 
@@ -121,7 +119,7 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
     % identical to the maximum planned sinogram value (typically 1).
     % This is necessary in lieu of determining an absolute calibration
     % factor for the MVCT exit detector
-    Event('Normalizing exit detectr data');
+    Event('Normalizing exit detector data');
     exitData = exitData / max(max(exitData)) * max(max(sinogram));
 
     % Clip values less than 1% of the maximum leaf open time to zero.
