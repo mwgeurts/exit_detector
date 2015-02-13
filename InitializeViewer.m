@@ -30,7 +30,8 @@ function InitializeViewer(varargin)
 %       during initialization.
 %   varargin{6} (optional): handle to slider UI component for slice 
 %       selection
-
+%
+% Author: Mark Geurts, mark.w.geurts@gmail.com
 % Copyright (C) 2015 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
