@@ -77,8 +77,17 @@ for i = 1:length(varargin)
     end
 end
 
+% Set logo
+axes(handles.logo);
+rgb = imread('UWCrest_4c.png', 'BackgroundColor', [1 1 1]);
+image(rgb);
+axis equal;
+axis off;
+clear rgb;
+
 % Set version
-set(handles.text3, 'String', sprintf('Version %s', data.version));
+set(handles.text22, 'String', sprintf('%s (%s)', data.version, ...
+    data.versionInfo{6}));
 
 % Set report date/time
 set(handles.text12, 'String', datestr(now,'yyyy-mm-dd HH:MM:SS'));
@@ -101,6 +110,9 @@ set(handles.text14, 'String', data.planData.patientID);
 
 % Set plan name
 set(handles.text9, 'String', data.planData.planLabel);
+
+% Set machine name
+set(handles.text24, 'String', 'Unknown');
 
 % Plot sinograms
 UpdateSinogramDisplay(handles.axes1, data.planData.sinogram, handles.axes2, ...
