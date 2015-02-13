@@ -273,7 +273,7 @@ handles.tcsview = 'T';
 Event('Default dose view set to Transverse');
 
 % Set the default transparency
-set(handles.alpha, 'String', '40%');
+set(handles.alpha, 'String', '30%');
 Event(['Default dose view transparency set to ', ...
     get(handles.alpha, 'String')]);
 
