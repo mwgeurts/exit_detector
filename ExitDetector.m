@@ -499,15 +499,15 @@ if ~isequal(name, 0);
     progress = waitbar(0.1, 'Loading static couch QA data...');
     
     % Search archive for static couch QA procedures
-    [handles.planUID, handles.rawData] = ...
+    [handles.machine, handles.planUID, handles.rawData] = ...
         LoadStaticCouchQA(path, name, handles.leftTrim, ...
         handles.dailyqa.channelCal, handles.detectorRows);
     
     % If LoadStaticCouchQA was successful
     if ~strcmp(handles.planUID, '')
         
-        % DEBUG testing, see planUID to UNKNOWN
-        % Event('PlanUID set to UNKNOWN', 'DEBUG');
+        % UNIT testing, see planUID to UNKNOWN
+        % Event('PlanUID set to UNKNOWN', 'UNIT');
         % handles.planUID = 'UNKNOWN';
         
         % If the planUID is not known
