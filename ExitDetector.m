@@ -30,7 +30,7 @@ function varargout = ExitDetector(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Last Modified by GUIDE v2.5 01-Jan-2015 21:24:29
+% Last Modified by GUIDE v2.5 12-Feb-2015 21:59:30
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -66,7 +66,7 @@ warning('off','all');
 handles.output = hObject;
 
 % Set version handle
-handles.version = '1.1.2';
+handles.version = '1.1.3';
 
 % Determine path of current application
 [path, ~, ~] = fileparts(mfilename('fullpath'));
@@ -102,7 +102,7 @@ Event(string, 'INIT');
 % Add archive extraction tools submodule to search path
 addpath('./tomo_extract');
 
-% Check if MATLAB can find CalcDose.m
+% Check if MATLAB can find CalcDose
 if exist('CalcDose', 'file') ~= 2
     
     % If not, throw an error
@@ -116,7 +116,7 @@ end
 % Add DICOM tools submodule to search path
 addpath('./dicom_tools');
 
-% Check if MATLAB can find LoadDICOMImages.m
+% Check if MATLAB can find LoadDICOMImages
 if exist('LoadDICOMImages', 'file') ~= 2
     
     % If not, throw an error
@@ -130,7 +130,7 @@ end
 % Add structure atlas submodule to search path
 addpath('./structure_atlas');
 
-% Check if MATLAB can find LoadDICOMImages.m
+% Check if MATLAB can find LoadDICOMImages
 if exist('LoadAtlas', 'file') ~= 2
     
     % If not, throw an error
@@ -144,7 +144,7 @@ end
 % Add gamma submodule to search path
 addpath('./gamma');
 
-% Check if MATLAB can find CalcGamma.m
+% Check if MATLAB can find CalcGamma
 if exist('CalcGamma', 'file') ~= 2
     
     % If not, throw an error
@@ -171,8 +171,9 @@ set(handles.archive_browse, 'Enable', 'off');
 % Disable raw data button (Daily QA or patient data must be loaded first)
 set(handles.rawdata_button, 'Enable', 'off');
 
-% Disable print button (Patient data must be loaded first)
+% Disable print and export buttons (Patient data must be loaded first)
 set(handles.print_button, 'Enable', 'off');
+set(handles.export_button, 'Enable', 'off');
 
 % Set auto-select checkbox default
 set(handles.autoselect_box, 'Enable', 'on');
@@ -323,7 +324,7 @@ else
 end
 
 %% Initialize data handles
-% dailyqa stores all dailyqa data as a structure. See LoadDailyQA.m
+% dailyqa stores all dailyqa data as a structure. See LoadDailyQA
 Event('Initializing daily qa variables');
 handles.dailyqa = [];
 
@@ -622,6 +623,9 @@ if ~isequal(name, 0);
                 handles.doseDiff = CalcDoseDifference(...
                     handles.referenceDose, handles.dqaDose);
 
+                % Enable export button
+                set(handles.export_button, 'Enable', 'on');
+    
                 % Ask user if they want to calculate dose
                 choice = questdlg('Continue to Calculate Gamma?', ...
                     'Calculate Gamma', 'Yes', 'No', 'Yes');
@@ -1199,50 +1203,51 @@ end
 % planUID stores the UID of the analyzed patient plan as a string
 handles.planUID = [];
 
-% planData stores the delivery plan info as a structure. See LoadPlan.m
+% planData stores the delivery plan info as a structure. See LoadPlan
 handles.planData = [];
 
 % referenceImage stores the planning CT and structure set as a structure.
-% See LoadImage.m and LoadStructures.m
+% See LoadImage and LoadStructures
 handles.referenceImage = [];
 
 % referenceDose stores the optimized plan dose as a structure. See
-% LoadDose.m and UpdateDVH.m
+% LoadDose and UpdateDVH
 handles.referenceDose = [];
 
 % dqaDose stores the recomputed dose (using the measured sinogram) as a
-% structure. See CalcDose.m and UpdateDVH.m
+% structure. See CalcDose and UpdateDVH
 handles.dqaDose = [];
 
 % doseDiff stores the absolute difference between the dqaDose and
-% referenceDose as an array.  See CalcDoseDifference.m
+% referenceDose as an array.  See CalcDoseDifference
 handles.doseDiff = [];
 
 % gamma stores the gamma comparison between the planned and recomputed 
-% dose as an array. See CalcGamma.m
+% dose as an array. See CalcGamma
 handles.gamma = [];
 
 % rawData is a 643 x n array of compressed exit detector data.  See
-% LoadStaticCouchQA.m
+% LoadStaticCouchQA
 handles.rawData = [];
 
 % exitData is a 64 x n array of measured de-convolved exit detector
-% response for the patient plan. See CalcSinogramDiff.m
+% response for the patient plan. See CalcSinogramDiff
 handles.exitData = [];
 
 % diff is a 64 x n array of differences between the planned and measured
-% sinogram data. See CalcSinogramDiff.m
+% sinogram data. See CalcSinogramDiff
 handles.diff = [];
 
 % errors is a vector of sinogram errors for all active leaves, used to
-% compute statistics. See CalcSinogramDiff.m
+% compute statistics. See CalcSinogramDiff
 handles.errors = [];
 
 % Clear patient file string
 set(handles.archive_file, 'String', '');
 
-% Disable print button while patient data is unloaded
+% Disable print and export buttons while patient data is unloaded
 set(handles.print_button, 'Enable', 'off');
+set(handles.export_button, 'Enable', 'off');
 
 % Hide plots
 set(handles.dose_display, 'Value', 1);
@@ -1284,3 +1289,15 @@ else
     % Otherwise return the modified handles
     varargout{1} = handles;
 end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function export_button_Callback(~, ~, handles)
+% hObject    handle to export_button (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Log event
+Event('Export button selected');
+
+% DO SOMETHING
