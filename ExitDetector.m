@@ -195,6 +195,9 @@ Event('Dynamic jaw compensation enabled by default');
 handles.path = userpath;
 Event(['Default file path set to ', handles.path]);
 
+% Initialize unit test flag to false (don't run in Unit Test mode)
+handles.unitflag = 0;
+
 % Flags used by LoadDailyQA.  Set to 1 to enable auto-alignment of the gold 
 % standard reference profile.
 handles.shiftGold = 1;
@@ -365,8 +368,7 @@ function daily_file_CreateFcn(hObject, ~, ~)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
+% Edit controls usually have a white background on Windows.
 if ispc && isequal(get(hObject,'BackgroundColor'), ...
         get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
@@ -427,6 +429,7 @@ if ~isequal(name, 0)
     
     % If LoadDailyQA was successful
     if isfield(handles.dailyqa, 'channelCal')
+        
         % Enable raw data
         set(handles.rawdata_button, 'Enable', 'on');
 
@@ -462,8 +465,7 @@ function archive_file_CreateFcn(hObject, ~, ~)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
+% Edit controls usually have a white background on Windows.
 if ispc && isequal(get(hObject,'BackgroundColor'), ...
         get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
@@ -752,8 +754,7 @@ function dose_display_CreateFcn(hObject, ~, ~)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
+% Popupmenu controls usually have a white background on Windows.
 if ispc && isequal(get(hObject,'BackgroundColor'), ...
         get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
@@ -823,7 +824,7 @@ function alpha_CreateFcn(hObject, ~, ~)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
-% Hint: edit controls usually have a white background on Windows.
+% Edit controls usually have a white background on Windows.
 if ispc && isequal(get(hObject, 'BackgroundColor'), ...
         get(0, 'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor', 'white');
@@ -1150,7 +1151,7 @@ function results_display_CreateFcn(hObject, ~, ~)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
-% Hint: popupmenu controls usually have a white background on Windows.
+% Popupmenu controls usually have a white background on Windows.
 if ispc && isequal(get(hObject, 'BackgroundColor'), ...
         get(0, 'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor', 'white');
