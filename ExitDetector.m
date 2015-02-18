@@ -1157,35 +1157,37 @@ if ispc && isequal(get(hObject, 'BackgroundColor'), ...
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function figure1_SizeChangedFcn(hObject, ~, handles)
-% hObject    handle to figure1 (see GCBO)
+function export_button_Callback(~, ~, handles)
+% hObject    handle to export_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Set units to pixels
-set(hObject,'Units','pixels') 
+% Log event
+Event('Dose export button selected');
 
-% Get table width
-pos = get(handles.dvh_table, 'Position') .* ...
-    get(handles.uipanel3, 'Position') .* ...
-    get(hObject, 'Position');
+% Prompt user to select save location
+Event('UI window opened to select save file location');
+[name, path] = uiputfile('*.dcm', 'Save Dose As');
 
-% Update column widths to scale to new table size
-set(handles.dvh_table, 'ColumnWidth', ...
-    {floor(0.46*pos(3)) - 39 20 floor(0.18*pos(3)) ...
-    floor(0.18*pos(3)) floor(0.18*pos(3))});
-
-% Get table width
-pos = get(handles.stats_table, 'Position') .* ...
-    get(handles.uipanel4, 'Position') .* ...
-    get(hObject, 'Position');
-
-% Update column widths to scale to new table size
-set(handles.stats_table, 'ColumnWidth', ...
-    {floor(0.7*pos(3)) - 4 floor(0.3*pos(3))});
+% If the user provided a file location
+if ~isequal(name, 0) && isfield(handles, 'referenceImage') && ...
+        isfield(handles, 'dqaDose')
+     
+    % Set series description 
+    handles.referenceImage.seriesDescription = ...
+        'Exit Detector DQA Calculated Dose';
+    
+    % Execute WriteDICOMDose
+    WriteDICOMDose(handles.dqaDose, fullfile(path, name), ...
+        handles.referenceImage);
+    
+% Otherwise no file was selected
+else
+    Event('No file was selected, or supporting data is not present');
+end
 
 % Clear temporary variables
-clear pos;
+clear name path;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function varargout = clear_button_Callback(hObject, ~, handles)
@@ -1290,14 +1292,33 @@ else
     varargout{1} = handles;
 end
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function export_button_Callback(~, ~, handles)
-% hObject    handle to export_button (see GCBO)
+function figure1_SizeChangedFcn(hObject, ~, handles)
+% hObject    handle to figure1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Log event
-Event('Export button selected');
+% Set units to pixels
+set(hObject,'Units','pixels') 
 
-% DO SOMETHING
+% Get table width
+pos = get(handles.dvh_table, 'Position') .* ...
+    get(handles.uipanel3, 'Position') .* ...
+    get(hObject, 'Position');
+
+% Update column widths to scale to new table size
+set(handles.dvh_table, 'ColumnWidth', ...
+    {floor(0.46*pos(3)) - 39 20 floor(0.18*pos(3)) ...
+    floor(0.18*pos(3)) floor(0.18*pos(3))});
+
+% Get table width
+pos = get(handles.stats_table, 'Position') .* ...
+    get(handles.uipanel4, 'Position') .* ...
+    get(hObject, 'Position');
+
+% Update column widths to scale to new table size
+set(handles.stats_table, 'ColumnWidth', ...
+    {floor(0.7*pos(3)) - 4 floor(0.3*pos(3))});
+
+% Clear temporary variables
+clear pos;
