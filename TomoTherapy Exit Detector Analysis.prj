@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="4177711808" file="/Users/mwgeurts/Box Sync/TomoTherapy/Exit Dose Analysis Project/Version_Latest/TomoTherapy Exit Detector Analysis.prj" location="/Users/mwgeurts/Box Sync/TomoTherapy/Exit Dose Analysis Project/Version_Latest" name="TomoTherapy Exit Detector Analysis" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="692093987" file="/Users/mwgeurts/Box Sync/TomoTherapy/Exit Dose Analysis Project/Version_Latest/TomoTherapy Exit Detector Analysis.prj" location="/Users/mwgeurts/Box Sync/TomoTherapy/Exit Dose Analysis Project/Version_Latest" name="TomoTherapy Exit Detector Analysis" target="target.mlapps" target-name="Package App">
     <param.appname>TomoTherapy Exit Detector Analysis</param.appname>
     <param.authnamewatermark>Mark Geurts</param.authnamewatermark>
     <param.email>mark.w.geurts@gmail.com</param.email>
@@ -91,6 +91,9 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
       <file>${PROJECT_ROOT}/GPU</file>
       <file>${PROJECT_ROOT}/LICENSE.md</file>
       <file>${PROJECT_ROOT}/README.md</file>
+      <file>${PROJECT_ROOT}/UWCrest_4c.png</file>
+      <file>${PROJECT_ROOT}/structure_atlas/atlas.xml</file>
+      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/ganymed-ssh2-build250.zip</file>
     </fileset.resources>
     <fileset.package />
     <build-deliverables>
