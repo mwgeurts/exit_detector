@@ -112,7 +112,7 @@ set(handles.text14, 'String', data.planData.patientID);
 set(handles.text9, 'String', data.planData.planLabel);
 
 % Set machine name
-set(handles.text24, 'String', 'Unknown');
+set(handles.text24, 'String', data.machine);
 
 % Plot sinograms
 UpdateSinogramDisplay(handles.axes1, data.planData.sinogram, handles.axes2, ...
@@ -128,6 +128,7 @@ clear table;
 image1 = data.referenceImage;
 image1.stats = get(data.dvh_table, 'Data');
 InitializeViewer(handles.axes4, 'T', 0.4, image1, data.referenceDose);
+title('Planned Dose (Gy)');
 
 % If dqaDose data exists
 if isfield(data, 'dqaDose') && isfield(data.dqaDose, 'data')
