@@ -416,7 +416,8 @@ if version >= 010100
     if nargin == 3
         
         % If current value equals the reference
-        if isequal(data.dailyqa.channelCal, varargin{3}.channelCalUnshifted)
+        if isequal(data.dailyqa.channelCal, ...
+                varargin{3}.channelCalUnshifted)
             
             pf = 'Pass';
         else
