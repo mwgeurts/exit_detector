@@ -117,7 +117,7 @@ end
 addpath('./dicom_tools');
 
 % Check if MATLAB can find LoadDICOMImages
-if exist('LoadDICOMImages', 'file') ~= 2
+if exist('WriteDICOMDose', 'file') ~= 2
     
     % If not, throw an error
     Event(['The DICOM Tools submodule does not exist in the ', ...
