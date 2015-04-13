@@ -119,6 +119,7 @@ end
 % If the event varargin{2} was error, also throw error
 if strcmp(varargin{2},'ERROR') 
      errordlg(varargin{1});
+     error(varargin{1});
 end
 
 % Clear temporary variables
