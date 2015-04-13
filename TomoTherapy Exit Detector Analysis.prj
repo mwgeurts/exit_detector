@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="692093987" file="/Users/mwgeurts/Box Sync/TomoTherapy/Exit Dose Analysis Project/Version_Latest/TomoTherapy Exit Detector Analysis.prj" location="/Users/mwgeurts/Box Sync/TomoTherapy/Exit Dose Analysis Project/Version_Latest" name="TomoTherapy Exit Detector Analysis" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="1251142464" file="/Users/mwgeurts/Box Sync/TomoTherapy/Exit Dose Analysis Project/exit_detector/TomoTherapy Exit Detector Analysis.prj" location="/Users/mwgeurts/Box Sync/TomoTherapy/Exit Dose Analysis Project/exit_detector" name="TomoTherapy Exit Detector Analysis" target="target.mlapps" target-name="Package App">
     <param.appname>TomoTherapy Exit Detector Analysis</param.appname>
     <param.authnamewatermark>Mark Geurts</param.authnamewatermark>
     <param.email>mark.w.geurts@gmail.com</param.email>
@@ -97,7 +97,7 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
     </fileset.resources>
     <fileset.package />
     <build-deliverables>
-      <file location="/Users/mwgeurts/Box Sync/TomoTherapy/Exit Dose Analysis Project/Version_Latest" name="TomoTherapy Exit Detector Analysis.mlappinstall" optional="false">/Users/mwgeurts/Box Sync/TomoTherapy/Exit Dose Analysis Project/Version_Latest/TomoTherapy Exit Detector Analysis.mlappinstall</file>
+      <file location="/Users/mwgeurts/Box Sync/TomoTherapy/Exit Dose Analysis Project/exit_detector" name="TomoTherapy Exit Detector Analysis.mlappinstall" optional="false">/Users/mwgeurts/Box Sync/TomoTherapy/Exit Dose Analysis Project/exit_detector/TomoTherapy Exit Detector Analysis.mlappinstall</file>
     </build-deliverables>
     <workflow />
     <matlab>
@@ -113,7 +113,7 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
       <vista>false</vista>
       <linux>false</linux>
       <solaris>false</solaris>
-      <osver>10.10.2</osver>
+      <osver>10.10.3</osver>
       <os32>false</os32>
       <os64>true</os64>
       <arch>maci64</arch>
