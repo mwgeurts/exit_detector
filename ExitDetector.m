@@ -277,6 +277,32 @@ set(handles.alpha, 'String', '30%');
 Event(['Default dose view transparency set to ', ...
     get(handles.alpha, 'String')]);
 
+%% Configure Dose Calculation
+% Check for presence of dose calculator
+handles.calcDose = CalcDose();
+
+% Set sadose flag
+handles.sadose = 0;
+
+% If calc dose was successful and sadose flag is set
+if handles.calcDose == 1 && handles.sadose == 1
+    
+    % Log dose calculation status
+    Event('CPU Dose calculation available');
+    
+% If calc dose was successful and sadose flag is not set
+elseif handles.calcDose == 1 && handles.sadose == 0
+    
+    % Log dose calculation status
+    Event('GPU Dose calculation available');
+   
+% Otherwise, calc dose was not successful
+else
+    
+    % Log dose calculation status
+    Event('Dose calculation server not available', 'WARN');
+end
+
 %% Verify beam model
 % Declare path to beam model folder
 handles.modeldir = './GPU';
@@ -289,38 +315,16 @@ if exist(fullfile(handles.modeldir, 'dcom.header'), 'file') == 2 && ...
         exist(fullfile(handles.modeldir, 'penumbra.img'), 'file') == 2
 
     % Log name
-    Event('Beam model files verified');
+    Event('Beam model files verified, dose calculation enabled');
 else
 
-    % Otherwise throw an error
-    Event(sprintf(['Beam model not found. Verify that %s exists and ', ...
-        'contains the necessary model files'], handles.modeldir), 'ERROR');
-end
+    % Disable dose calculation
+    handles.calcDose == 0;
 
-%% Configure Dose Calculation
-% Check for presence of dose calculator
-handles.calcDose = CalcDose();
-
-% Set sadose flag
-handles.sadose = 0;
-
-% If calc dose was successful and sadose flag is set
-if handles.calcDose == 1 && handles.sadose == 1
-    
-    % Log dose calculation status
-    Event('CPU Dose calculation enabled');
-    
-% If calc dose was successful and sadose flag is not set
-elseif handles.calcDose == 1 && handles.sadose == 0
-    
-    % Log dose calculation status
-    Event('GPU Dose calculation enabled');
-   
-% Otherwise, calc dose was not successful
-else
-    
-    % Log dose calculation status
-    Event('Dose calculation disabled', 'WARN');
+    % Otherwise throw a warning
+    Event(sprintf(['Dose calculation disabled, beam model not found. ', ...
+        ' Verify that %s exists and contains the necessary model files'], ...
+        handles.modeldir), 'WARN');
 end
 
 %% Initialize data handles
