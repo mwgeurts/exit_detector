@@ -153,6 +153,36 @@ if exist('CalcGamma', 'file') ~= 2
         'submodule update to fetch all submodules'], 'ERROR');
 end
 
+%% Load configuration settings
+% Open file handle to config.txt file
+fid = fopen('config.txt', 'r');
+
+% Verify that file handle is valid
+if fid < 3
+    
+    % If not, throw an error
+    Event(['The config.txt file could not be opened. Verify that this ', ...
+        'file exists in the working directory. See documentation for ', ...
+        'more information.'], 'ERROR');
+end
+
+% Scan config file contents
+c = textscan(fid, '%s', 'Delimiter', '=');
+
+% Close file handle
+fclose(fid);
+
+% Loop through textscan array, separating key/value pairs into array
+for i = 1:2:length(c{1})
+    handles.config.(strtrim(c{1}{i})) = strtrim(c{1}{i+1});
+end
+
+% Clear temporary variables
+clear c i fid;
+
+% Log completion
+Event('Loaded config.txt parameters');
+
 %% Initialize UI
 % Set version UI text
 set(handles.version_text, 'String', sprintf('Version %s', handles.version));
@@ -177,76 +207,89 @@ set(handles.export_button, 'Enable', 'off');
 
 % Set auto-select checkbox default
 set(handles.autoselect_box, 'Enable', 'on');
-set(handles.autoselect_box, 'Value', 1);
-Event('Delivery plan auto-selection enabled by default');
+set(handles.autoselect_box, 'Value', ...
+    str2double(handles.config.AUTO_SELECT_PLAN));
+Event(['Default delivery plan auto-selection set to ', ...
+    handles.config.AUTO_SELECT_PLAN]);
 
 % Set auto-align checkbox default
 set(handles.autoshift_box, 'Enable', 'on');
-set(handles.autoshift_box, 'Value', 1);
-Event('Delivery plan auto-alignment enabled by default');
+set(handles.autoshift_box, 'Value', ...
+    str2double(handles.config.AUTO_ALIGN_PROJECTIONS));
+Event(['Default delivery plan auto-alignment set to ', ...
+    handles.config.AUTO_ALIGN_PROJECTIONS]);
 
 % Set dynamic jaw compensation checkbox default
 set(handles.dynamicjaw_box, 'Enable', 'on');
-set(handles.dynamicjaw_box, 'Value', 1);
-Event('Dynamic jaw compensation enabled by default');
+set(handles.dynamicjaw_box, 'Value', ...
+    str2double(handles.config.DYNAMIC_JAW_COMPENSATION));
+Event(['Default dynamic jaw compensation set to ', ...
+    handles.config.DYNAMIC_JAW_COMPENSATION]);
 
 %% Initialize global variables
 % Default folder path when selecting input files
-handles.path = userpath;
+if strcmpi(handles.config.DEFAULT_PATH, 'userpath')
+    handles.path = userpath;
+else
+    handles.path = handles.config.DEFAULT_PATH;
+end
 Event(['Default file path set to ', handles.path]);
 
 % Flags used by LoadDailyQA.  Set to 1 to enable auto-alignment of the gold 
 % standard reference profile.
-handles.shiftGold = 1;
-Event(sprintf('Auto shift gold standard flag set to %i', ...
-    handles.shiftGold));
+handles.shiftGold = str2double(handles.config.AUTO_SHIFT_GOLD);
+Event(['Auto shift gold standard flag set to ', ...
+    handles.config.AUTO_SHIFT_GOLD]);
 
 % Flags used by MatchDeliveryPlan.  Set to 1 to hide machine specific and 
 % fluence delivery plans from delivery plan selection
-handles.hideMachSpecific = 1;
-Event(sprintf('Hide machine specific delivery plan flag set to %i', ...
-    handles.hideMachSpecific));
-handles.hideFluence = 1;
-Event(sprintf('Hide fluence delivery plan flag set to %i', ...
-    handles.hideFluence));
+handles.hideMachSpecific = ...
+    str2double(handles.config.HIDE_MACHINE_SPECIFIC_PLANS);
+Event(['Hide machine specific delivery plan flag set to ', ...
+    handles.config.HIDE_MACHINE_SPECIFIC_PLANS]);
+handles.hideFluence = ...
+    str2double(handles.config.HIDE_FLUENCE_PLANS);
+Event(['Hide fluence delivery plan flag set to ', ...
+    handles.config.HIDE_FLUENCE_PLANS]);
 
 % Flag to recalculate reference dose using gpusadose.  Should be set to 1
 % if the beam model differs significantly from the actual TPS, as dose
 % difference/gamma comparison will now compare two dose distributions
 % computed using the same model
-handles.calcRefDose = 1;
-Event(sprintf('Recalculate reference dose flag set to %i', ...
-    handles.calcRefDose));
+handles.calcRefDose = str2double(handles.config.CALCULATE_REFERENCE_DOSE);
+Event(['Recalculate reference dose flag set to ', ...
+    handles.config.CALCULATE_REFERENCE_DOSE]);
 
 % The daily QA is 9000 projections long.  If the sinogram data is
 % different, the data will be manipulated below to fit
-handles.dailyqaProjections = 9000;
-Event(sprintf('Daily QA expected projections set to %i', ...
-    handles.dailyqaProjections));
+handles.dailyqaProjections = ...
+    str2double(handles.config.DAILY_QA_PROJECTIONS);
+Event(['Daily QA expected projections set to ', ...
+    handles.config.DAILY_QA_PROJECTIONS]);
 
 % Set the number of detector channels included in the DICOM file. For gen4 
 % (TomoDetectors), this should be 643
-handles.detectorRows = 643;
-Event(sprintf('Number of expected exit detector channels set to %i', ...
-    handles.detectorRows));
+handles.detectorRows = str2double(handles.config.DETECTOR_ROWS);
+Event(['Number of expected exit detector channels set to ', ...
+    handles.config.DETECTOR_ROWS]);
 
 % Set the number of detector channels included in the DICOM file. For gen4 
 % (TomoDetectors), this should be 531 (detectorChanSelection is set to 
 % KEEP_OPEN_FIELD_CHANNELS for the Daily QA XML)
-handles.openRows = 531;
-Event(sprintf('Number of KEEP_OPEN_FIELD_CHANNELS set to %i', ...
-    handles.openRows));
+handles.openRows = str2double(handles.config.KEEP_OPEN_FIELD_CHANNELS);
+Event(['Number of KEEP_OPEN_FIELD_CHANNELS set to ', ...
+    KEEP_OPEN_FIELD_CHANNELS]);
 
 % Set the number of active MVCT data channels. Typically the last three 
 % channels are monitor chamber data
-handles.mvctRows = 528;
-Event(sprintf('Number of active MVCT channels set to %i', ...
-    handles.mvctRows));
+handles.mvctRows = str2double(handles.config.ACTIVE_MVCT_ROWS);
+Event(['Number of active MVCT channels set to ', ...
+    handles.config.ACTIVE_MVCT_ROWS]);
 
-% Gamma criteria
-handles.percent = 3.0; % percent
-handles.dta = 3.0; % mm
-handles.local = 0; % boolean, 0 (global) or 1 (local)
+% Set Gamma criteria
+handles.percent = str2double(handles.config.GAMMA_PERCENT); % percent
+handles.dta = str2double(handles.config.GAMMA_DTA_MM); % mm
+handles.local = str2double(handles.config.GAMMA_LOCAL); % boolean
 if handles.local == 0
     Event(sprintf('Gamma criteria set to %0.1f%%/%0.1f mm global', ...
         handles.percent, handles.dta));
@@ -257,7 +300,7 @@ end
 
 % Scalar representing the threshold (dose relative to the maximum dose)
 % below which the Gamma index will not be reported. 
-handles.doseThreshold = 0.2;
+handles.doseThreshold = str2double(handles.config.GAMMA_THRESHOLD);
 Event(sprintf('Dose threshold set to %0.1f%% of maximum dose', ...
     handles.doseThreshold * 100));
 
@@ -265,24 +308,24 @@ Event(sprintf('Dose threshold set to %0.1f%% of maximum dose', ...
 % corresponds to the first channel in the channel calibration array. For  
 % gen4 (TomoDetectors), this should be 27, as detectorChanSelection is set
 % to KEEP_OPEN_FIELD_CHANNELS for the Daily QA XML)
-handles.leftTrim = 27;
-Event(sprintf('Left trim channel set to %i', handles.leftTrim));
+handles.leftTrim = str2double(handles.config.DETECTOR_LEFT_TRIM);
+Event(['Left trim channel set to ', handles.config.DETECTOR_LEFT_TRIM]);
 
 % Set the initial image view orientation to Transverse (T)
-handles.tcsview = 'T';
-Event('Default dose view set to Transverse');
+handles.tcsview = handles.config.DEFAULT_IMAGE_VIEW;
+Event(['Default dose view set to ', handles.config.DEFAULT_IMAGE_VIEW]);
 
 % Set the default transparency
-set(handles.alpha, 'String', '30%');
+set(handles.alpha, 'String', handles.config.DEFAULT_TRANSPARENCY);
 Event(['Default dose view transparency set to ', ...
-    get(handles.alpha, 'String')]);
+    handles.config.DEFAULT_TRANSPARENCY]);
 
 %% Configure Dose Calculation
 % Check for presence of dose calculator
 handles.calcDose = CalcDose();
 
 % Set sadose flag
-handles.sadose = 0;
+handles.sadose = str2double(handles.config.CALC_SADOSE);
 
 % If calc dose was successful and sadose flag is set
 if handles.calcDose == 1 && handles.sadose == 1
@@ -319,7 +362,7 @@ if exist(fullfile(handles.modeldir, 'dcom.header'), 'file') == 2 && ...
 else
 
     % Disable dose calculation
-    handles.calcDose == 0;
+    handles.calcDose = 0;
 
     % Otherwise throw a warning
     Event(sprintf(['Dose calculation disabled, beam model not found. ', ...
