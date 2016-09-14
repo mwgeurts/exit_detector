@@ -74,7 +74,7 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
     % enough delivery plan for this function to compute correctly
     if size(sinogram,2) > size(rawData,2)
         Event(['The selected delivery plan is shorter than the return ', ...
-            'data. Select a different delivery plan.']);
+            'data. Select a different delivery plan.'], 'ERROR');
     end
 
     % Trim rawData to size of DQA data using size(sinogram,2), 
@@ -83,46 +83,50 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
         size(rawData,1), size(rawData,2), size(sinogram,1), ...
         size(sinogram,2)));
     exitData = rawData(leafMap(1:64), size(rawData,2) - ...
-        size(sinogram,2) + 1:size(rawData, 2)) - background;  
-
+        size(sinogram,2) + 1:size(rawData, 2)) - background; 
+    
     % Compute the Forier Transform of the leaf spread function.  The
     % leaf spread function padded by zeros to be 64 elements long + the  
     % size of the leaf spread function (the exitData is padded to the 
     % same size).  The leafSpread function is also mirrored, as it is 
-    % stored as only a right-sided function.  
+    % stored as only a right-sided function. 
     Event('Mirroring and computing Fourier Transform of LSF');
     filter = fft([fliplr(leafSpread(2:size(leafSpread,2))) ...
         leafSpread], 64 + size(leafSpread,2))';
 
     % Loop through the number of projections in the exitData
     Event('Performing deconvolution of exit data');
-    for i = 1:size(exitData,2)
+    for i = 1:size(exitData, 2)
+        
         % Deconvolve leaf spread function from the exitData by
         % computing the Fourier Transform the current exitData
         % projection (padded to be the same size as filter), then
         % divided by the Fourier Transform of the leaf spread function,
         % and computing the inverse Fourier Transform.
-        arr = ifft(fft(exitData(:,i),64+size(leafSpread,2))./filter);
+        arr = ifft(fft(exitData(:, i), 64 + size(leafSpread, 2)) ./ filter);
 
         % The new, deconvolved exit data is saved back to the input
         % variable (trimming the padded values).  The trim starts from
         % the size of the original leaf spread function to account for
         % the fact that the filter was not centered, causing a
         % translational shift in the deconvolution.
-        exitData(:, i) = arr(size(leafSpread, 2):63 + ...
-            size(leafSpread, 2));
+        exitData(:, i) = arr(size(leafSpread, 2):63 + size(leafSpread, 2));
     end
 
     % Clear temporary variables used during deconvolution
     clear i arr filter;
 
+    % Compute jaw widths
+    widths = CalcFieldWidth(planData);
+    
     % Normalize the exit detector data such that the maximum value is
     % identical to the maximum planned sinogram value (typically 1).
     % This is necessary in lieu of determining an absolute calibration
-    % factor for the MVCT exit detector
+    % factor for the MVCT exit detector. Note that regions where the jaws
+    % are closing (during dynamic jaw plans) are excluded
     Event('Normalizing exit detector data');
     exitData = exitData / max(max(exitData)) * max(max(sinogram));
-
+    
     % Clip values less than 1% of the maximum leaf open time to zero.
     % As the MLC is not capable of opening this short, values less than
     % 1% are the result of noise and deconvolution error, so can be
@@ -132,6 +136,7 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
 
     % If autoShift is enabled
     if autoShift == 1
+        
         % Log event
         Event('Auto-shift is enabled');
         
@@ -144,6 +149,7 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
 
         % Shift the exitData +/- 1 projection relative the sinogram
         for i = -1:1
+            
             % Compute the 2D correlation of the sinogram and shifted
             % exitData (in the projection dimension)
             j = corr2(sinogram, circshift(exitData, [0 i]));
@@ -153,6 +159,7 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
             
             % If the current shift yields the highest correlation
             if j > maxcorr
+                
                 % Update the maximum correlation variable 
                 maxcorr = j;
 
@@ -163,6 +170,7 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
         
     % Otherwise, auto-shift is disabled  
     else
+        
         % Log event
         Event('Auto-shift disabled, circshift = 0');
         
@@ -180,6 +188,7 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
     % circshifted data) by the sinogram data to yield a zero difference
     % for these projections.
     if shift > 0
+        
         % Log event
         Event(sprintf('Circshift = %i, lead projections ignored', shift));
         
@@ -187,6 +196,7 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
         exitData(:,1:shift) = sinogram(:,1:shift);
 
     elseif shift < 0
+        
         % Log event
         Event(sprintf('Circshift = %i, trail projections ignored', shift));
         
@@ -207,12 +217,10 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
 
     % If dynamic jaw compensation is enabled
     if dynamicJaw == 1 && isfield(planData, 'events')
+        
         % Log event
         Event('Dynamic jaw compensation is enabled');
         
-        % Compute jaw widths
-        widths = CalcFieldWidth(planData);
-
         % Model relationship between sinogram difference vs. field
         % width in dynamic jaw areas
         p = polyfit(widths(3, planData.startTrim:...
