@@ -21,5 +21,5 @@ CALC_SADOSE					=	0
 REMOTE_CALC_SERVER			=	144.92.219.35
 REMOTE_CALC_USER			=	tomo
 REMOTE_CALC_PASS			=	hi-art
-
+ALLOW_MVCT_CALC             =   1
 
