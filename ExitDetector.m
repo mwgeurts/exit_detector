@@ -30,7 +30,7 @@ function varargout = ExitDetector(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Last Modified by GUIDE v2.5 12-Feb-2015 21:59:30
+% Last Modified by GUIDE v2.5 15-Sep-2016 20:37:59
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -321,34 +321,52 @@ Event(['Default dose view transparency set to ', ...
     handles.config.DEFAULT_TRANSPARENCY]);
 
 %% Configure Dose Calculation
-% Check for presence of dose calculator
-handles.calcDose = CalcDose();
+% If dose calculation was enabled
+if handles.config.CALC_DOSE == 1
+    
+    % Check for presence of dose calculator
+    handles.calcDose = CalcDose();
 
-% Set sadose flag
-handles.sadose = str2double(handles.config.CALC_SADOSE);
+    % Set sadose flag
+    handles.sadose = str2double(handles.config.CALC_SADOSE);
 
-% If calc dose was successful and sadose flag is set
-if handles.calcDose == 1 && handles.sadose == 1
+    % If calc dose was successful and sadose flag is set
+    if handles.calcDose == 1 && handles.sadose == 1
+
+        % Log dose calculation status
+        Event('CPU Dose calculation available');
+
+    % If calc dose was successful and sadose flag is not set
+    elseif handles.calcDose == 1 && handles.sadose == 0
+
+        % Log dose calculation status
+        Event('GPU Dose calculation available');
+
+    % Otherwise, calc dose was not successful
+    else
+
+        % Log dose calculation status
+        Event('Dose calculation server not available', 'WARN');
+    end
     
-    % Log dose calculation status
-    Event('CPU Dose calculation available');
-    
-% If calc dose was successful and sadose flag is not set
-elseif handles.calcDose == 1 && handles.sadose == 0
-    
-    % Log dose calculation status
-    Event('GPU Dose calculation available');
-   
-% Otherwise, calc dose was not successful
+% Otherwise dose calculation was disabled from config.txt
 else
     
     % Log dose calculation status
-    Event('Dose calculation server not available', 'WARN');
+    Event('Dose calculation disabled');
+    
+    % Set flag to false
+    handles.calcDose = 0;
 end
 
 %% Verify beam model
-% Declare path to beam model folder
-handles.modeldir = './GPU';
+% Declare path to beam model folder (if not specified in config file, use
+% default path of ./GPU)
+if isfield(handles.config, 'MODEL_PATH')
+    handles.modeldir = handles.config.MODEL_PATH;
+else
+    handles.modeldir = './GPU';
+end
 
 % Check for beam model files
 if exist(fullfile(handles.modeldir, 'dcom.header'), 'file') == 2 && ...
@@ -379,18 +397,40 @@ handles.dailyqa = [];
 handles = clear_button_Callback(handles.clear_button, '', handles);
 
 %% Complete initialization
-% Attempt to load the atlas
-handles.atlas = LoadAtlas('atlas.xml');
+% If an atlas file is specified in the config file
+if isfield(handles.config, 'ATLAS_FILE')
+    
+    % Attempt to load the atlas
+    handles.atlas = LoadAtlas(handles.config.ATLAS_FILE);
+    
+% Otherwise, declare an empty atlas
+else
+    handles.atlas = cell(0);
+end
 
 % Check for MVCT calculation flag
 if isfield(handles.config, 'ALLOW_MVCT_CALC') && ...
         str2double(handles.config.ALLOW_MVCT_CALC) == 1
+    
+    % Log status
     Event('MVCT dose calculation enabled');
+    
+    % Enable MVCT dose calculation
     handles.mvctcalc = 1;
+
+% If dose calc flag does not exist or is disabled
 else
+    
+    % Log status
     Event('MVCT dose calculation disabled');
+    
+    % Disable MVCT dose calculation
     handles.mvctcalc = 0;
 end
+
+% Update MVCT dose calulation UI box
+set(handles.mvctcalc_box, 'Enable', 'on');
+set(handles.mvctcalc_box, 'Value', handles.mvctcalc);
 
 % Report initilization status
 Event(['Initialization completed successfully. Start by selecting a ', ...
@@ -1476,3 +1516,56 @@ set(handles.stats_table, 'ColumnWidth', ...
 
 % Clear temporary variables
 clear pos;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function mvctcalc_box_Callback(hObject, ~, handles)
+% hObject    handle to mvctcalc_box (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Warn the user that existing data will be deleted
+if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
+    
+    % Ask user if they want to calculate dose
+    choice = questdlg(['Existing Static Couch QA data exists and will ', ...
+        'be deleted. Continue?'], 'Calculate Gamma', 'Yes', 'No', 'Yes');
+
+    % If the user chose yes
+    if strcmp(choice, 'Yes')
+        
+        % If patient data exists, clear it
+        handles = clear_button_Callback(handles.clear_button, '', handles);
+        
+        % Log value change
+        if get(hObject,'Value') == 1
+            Event('MVCT calculation enabled');
+            handles.mvctcalc = 1;
+        else
+            Event('MVCT calculation disabled');
+            handles.mvctcalc = 0;
+        end
+    else
+        % Log choice
+        Event('User chose not to continue changing MVCT calculation');
+        
+        % Revert value
+        if get(hObject, 'Value') == 1
+            set(hObject, 'Value', 0);
+        else
+            set(hObject, 'Value', 1);
+        end
+    end
+else
+    % Log value change
+    if get(hObject, 'Value') == 1
+        Event('MVCT calculation enabled');
+        handles.mvctcalc = 1;
+    else
+        Event('MVCT calculation disabled');
+        handles.mvctcalc = 0;
+    end
+end
+
+% Update handles structure
+guidata(hObject, handles);
