@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="2172616937" file="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector/TomoTherapy Exit Detector Analysis.prj" location="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector" name="TomoTherapy Exit Detector Analysis" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="3251071857" file="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector/TomoTherapy Exit Detector Analysis.prj" location="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector" name="TomoTherapy Exit Detector Analysis" target="target.mlapps" target-name="Package App">
     <param.appname>TomoTherapy Exit Detector Analysis</param.appname>
     <param.authnamewatermark>Mark Geurts</param.authnamewatermark>
     <param.email>mark.w.geurts@gmail.com</param.email>
@@ -56,6 +56,11 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
       <file>${PROJECT_ROOT}/CalcSinogramDiff.m</file>
       <file>${PROJECT_ROOT}/Event.m</file>
       <file>${PROJECT_ROOT}/ExitDetector.fig</file>
+      <file>${PROJECT_ROOT}/GPU/dcom.header</file>
+      <file>${PROJECT_ROOT}/GPU/fat.img</file>
+      <file>${PROJECT_ROOT}/GPU/kernel.img</file>
+      <file>${PROJECT_ROOT}/GPU/lft.img</file>
+      <file>${PROJECT_ROOT}/GPU/penumbra.img</file>
       <file>${PROJECT_ROOT}/InitializeStatistics.m</file>
       <file>${PROJECT_ROOT}/InitializeViewer.m</file>
       <file>${PROJECT_ROOT}/LoadVersionInfo.m</file>

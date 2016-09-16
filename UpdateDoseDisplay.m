@@ -131,10 +131,23 @@ switch get(handles.dose_display, 'Value')
             set(handles.tcs_button, 'visible', 'on'); 
             set(handles.alpha, 'visible', 'on');
             
+            % If a merged MVCT was generated
+            if handles.mvctcalc == 1 && isfield(handles, 'mergedImage') && ...
+                    isfield(handles.mergedImage, 'data')
+                
+                % Use merged MVCT
+                image1.data = handles.mergedImage.data;
+                image1.width = handles.mergedImage.width;
+                image1.start = handles.mergedImage.start;
+            else
+                
+                % Use plan CT
+                image1.data = handles.referenceImage.data;
+                image1.width = handles.referenceImage.width;
+                image1.start = handles.referenceImage.start;
+            end
+            
             % Set references to currently displayed data
-            image1.data = handles.referenceImage.data;
-            image1.width = handles.referenceImage.width;
-            image1.start = handles.referenceImage.start;
             image1.structures = handles.referenceImage.structures;
             image1.stats = get(handles.dvh_table, 'Data');
             image2.data = handles.dqaDose.data;
@@ -169,10 +182,23 @@ switch get(handles.dose_display, 'Value')
             set(handles.tcs_button, 'visible', 'on'); 
             set(handles.alpha, 'visible', 'on');
             
+            % If a merged MVCT was generated
+            if handles.mvctcalc == 1 && isfield(handles, 'mergedImage') && ...
+                    isfield(handles.mergedImage, 'data')
+                
+                % Use merged MVCT
+                image1.data = handles.mergedImage.data;
+                image1.width = handles.mergedImage.width;
+                image1.start = handles.mergedImage.start;
+            else
+                
+                % Use plan CT
+                image1.data = handles.referenceImage.data;
+                image1.width = handles.referenceImage.width;
+                image1.start = handles.referenceImage.start;
+            end
+            
             % Set references to currently displayed data
-            image1.data = handles.referenceImage.data;
-            image1.width = handles.referenceImage.width;
-            image1.start = handles.referenceImage.start;
             image1.structures = handles.referenceImage.structures;
             image1.stats = get(handles.dvh_table, 'Data');
             image2.data = handles.doseDiff ./ image1.data .* ...
@@ -208,10 +234,23 @@ switch get(handles.dose_display, 'Value')
             set(handles.tcs_button, 'visible', 'on'); 
             set(handles.alpha, 'visible', 'on');
             
+            % If a merged MVCT was generated
+            if handles.mvctcalc == 1 && isfield(handles, 'mergedImage') && ...
+                    isfield(handles.mergedImage, 'data')
+                
+                % Use merged MVCT
+                image1.data = handles.mergedImage.data;
+                image1.width = handles.mergedImage.width;
+                image1.start = handles.mergedImage.start;
+            else
+                
+                % Use plan CT
+                image1.data = handles.referenceImage.data;
+                image1.width = handles.referenceImage.width;
+                image1.start = handles.referenceImage.start;
+            end
+            
             % Set references to currently displayed data
-            image1.data = handles.referenceImage.data;
-            image1.width = handles.referenceImage.width;
-            image1.start = handles.referenceImage.start;
             image1.structures = handles.referenceImage.structures;
             image1.stats = get(handles.dvh_table, 'Data');
             image2.data = handles.doseDiff;
@@ -246,10 +285,23 @@ switch get(handles.dose_display, 'Value')
             set(handles.tcs_button, 'visible', 'on'); 
             set(handles.alpha, 'visible', 'on');
             
+            % If a merged MVCT was generated
+            if handles.mvctcalc == 1 && isfield(handles, 'mergedImage') && ...
+                    isfield(handles.mergedImage, 'data')
+                
+                % Use merged MVCT
+                image1.data = handles.mergedImage.data;
+                image1.width = handles.mergedImage.width;
+                image1.start = handles.mergedImage.start;
+            else
+                
+                % Use plan CT
+                image1.data = handles.referenceImage.data;
+                image1.width = handles.referenceImage.width;
+                image1.start = handles.referenceImage.start;
+            end
+            
             % Set references to currently displayed data
-            image1.data = handles.referenceImage.data;
-            image1.width = handles.referenceImage.width;
-            image1.start = handles.referenceImage.start;
             image1.structures = handles.referenceImage.structures;
             image1.stats = get(handles.dvh_table, 'Data');
             image2.data = handles.gamma;

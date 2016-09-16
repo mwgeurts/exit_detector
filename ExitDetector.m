@@ -30,7 +30,7 @@ function varargout = ExitDetector(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Last Modified by GUIDE v2.5 15-Sep-2016 20:37:59
+% Last Modified by GUIDE v2.5 16-Sep-2016 10:50:24
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -321,93 +321,6 @@ Event(['Default dose view transparency set to ', ...
     handles.config.DEFAULT_TRANSPARENCY]);
 
 %% Configure Dose Calculation
-% If dose calculation was enabled
-if str2double(handles.config.CALC_DOSE) == 1
-    
-    % Check for presence of dose calculator
-    handles.calcDose = CalcDose();
-
-    % Set sadose flag
-    handles.sadose = str2double(handles.config.CALC_SADOSE);
-
-    % If calc dose was successful and sadose flag is set
-    if handles.calcDose == 1 && handles.sadose == 1
-
-        % Log dose calculation status
-        Event('CPU Dose calculation available');
-
-    % If calc dose was successful and sadose flag is not set
-    elseif handles.calcDose == 1 && handles.sadose == 0
-
-        % Log dose calculation status
-        Event('GPU Dose calculation available');
-
-    % Otherwise, calc dose was not successful
-    else
-
-        % Log dose calculation status
-        Event('Dose calculation server not available', 'WARN');
-    end
-    
-% Otherwise dose calculation was disabled from config.txt
-else
-    
-    % Log dose calculation status
-    Event('Dose calculation disabled');
-    
-    % Set flag to false
-    handles.calcDose = 0;
-end
-
-%% Verify beam model
-% Declare path to beam model folder (if not specified in config file, use
-% default path of ./GPU)
-if isfield(handles.config, 'MODEL_PATH')
-    handles.modeldir = handles.config.MODEL_PATH;
-else
-    handles.modeldir = './GPU';
-end
-
-% Check for beam model files
-if exist(fullfile(handles.modeldir, 'dcom.header'), 'file') == 2 && ...
-        exist(fullfile(handles.modeldir, 'fat.img'), 'file') == 2 && ...
-        exist(fullfile(handles.modeldir, 'kernel.img'), 'file') == 2 && ...
-        exist(fullfile(handles.modeldir, 'lft.img'), 'file') == 2 && ...
-        exist(fullfile(handles.modeldir, 'penumbra.img'), 'file') == 2
-
-    % Log name
-    Event('Beam model files verified, dose calculation enabled');
-else
-
-    % Disable dose calculation
-    handles.calcDose = 0;
-
-    % Otherwise throw a warning
-    Event(sprintf(['Dose calculation disabled, beam model not found. ', ...
-        ' Verify that %s exists and contains the necessary model files'], ...
-        handles.modeldir), 'WARN');
-end
-
-%% Initialize data handles
-% dailyqa stores all dailyqa data as a structure. See LoadDailyQA
-Event('Initializing daily qa variables');
-handles.dailyqa = [];
-
-% Initialize all patient data variables
-handles = clear_button_Callback(handles.clear_button, '', handles);
-
-%% Complete initialization
-% If an atlas file is specified in the config file
-if isfield(handles.config, 'ATLAS_FILE')
-    
-    % Attempt to load the atlas
-    handles.atlas = LoadAtlas(handles.config.ATLAS_FILE);
-    
-% Otherwise, declare an empty atlas
-else
-    handles.atlas = cell(0);
-end
-
 % Check for MVCT calculation flag
 if isfield(handles.config, 'ALLOW_MVCT_CALC') && ...
         str2double(handles.config.ALLOW_MVCT_CALC) == 1
@@ -431,6 +344,120 @@ end
 % Update MVCT dose calulation UI box
 set(handles.mvctcalc_box, 'Enable', 'on');
 set(handles.mvctcalc_box, 'Value', handles.mvctcalc);
+
+% If dose calculation was enabled
+if isfield(handles.config, 'CALC_DOSE') && ...
+        str2double(handles.config.CALC_DOSE) == 1
+    
+    % Check for presence of dose calculator
+    handles.calcDose = CalcDose();
+
+    % Set sadose flag
+    handles.sadose = str2double(handles.config.CALC_SADOSE);
+
+    % If calc dose was successful and sadose flag is set
+    if handles.calcDose == 1 && handles.sadose == 1
+
+        % Log dose calculation status
+        Event('CPU Dose calculation available');
+        
+        % Update calculation status
+        set(handles.calcstatus, 'String', 'Dose Engine: Connected'); 
+
+    % If calc dose was successful and sadose flag is not set
+    elseif handles.calcDose == 1 && handles.sadose == 0
+
+        % Log dose calculation status
+        Event('GPU Dose calculation available');
+        
+        % Update calculation status
+        set(handles.calc_status, 'String', 'Dose Engine: Connected');
+
+    % Otherwise, calc dose was not successful
+    else
+
+        % Log dose calculation status
+        Event('Dose calculation server not available', 'WARN');
+        
+        % Update calculation status
+        set(handles.calc_status, 'String', 'Dose Engine: Disconnected');
+    end
+    
+% Otherwise dose calculation was disabled from config.txt
+else
+    
+    % Log dose calculation status
+    Event('Dose calculation disabled');
+    
+    % Update calculation status
+    set(handles.calc_status, 'String', 'Dose Engine: Disabled');
+        
+    % Set flag to false
+    handles.calcDose = 0;
+end
+
+%% Verify beam model
+% If dose calculation is enabled
+if handles.calcDose == 1
+
+    % Declare path to beam model folder (if not specified in config file, use
+    % default path of ./GPU)
+    if isfield(handles.config, 'MODEL_PATH')
+        handles.modeldir = handles.config.MODEL_PATH;
+    else
+        handles.modeldir = './GPU';
+    end
+
+    % Check for beam model files
+    if exist(fullfile(handles.modeldir, 'dcom.header'), 'file') == 2 && ...
+            exist(fullfile(handles.modeldir, 'fat.img'), 'file') == 2 && ...
+            exist(fullfile(handles.modeldir, 'kernel.img'), 'file') == 2 && ...
+            exist(fullfile(handles.modeldir, 'lft.img'), 'file') == 2 && ...
+            exist(fullfile(handles.modeldir, 'penumbra.img'), 'file') == 2
+
+        % Log name
+        Event('Beam model files verified, dose calculation enabled');
+    else
+
+        % Disable dose calculation
+        handles.calcDose = 0;
+        
+        % Update calculation status
+        set(handles.calc_status, 'String', 'Dose Engine: No beam model');
+
+        % Otherwise throw a warning
+        Event(sprintf(['Dose calculation disabled, beam model not found. ', ...
+            ' Verify that %s exists and contains the necessary model files'], ...
+            handles.modeldir), 'WARN');
+    end
+end
+
+% If dose calculation didn't pass all checks
+if handles.calcDose == 0
+    
+    % Disabled dose calculation UI controls
+    set(handles.mvctcalc_box, 'Enable', 'off'); 
+end
+
+%% Initialize data handles
+% dailyqa stores all dailyqa data as a structure. See LoadDailyQA
+Event('Initializing daily qa variables');
+handles.dailyqa = [];
+
+% Initialize all patient data variables
+handles = clear_button_Callback(handles.clear_button, '', handles);
+
+%% Complete initialization
+% If an atlas file is specified in the config file
+if isfield(handles.config, 'ATLAS_FILE')
+    
+    % Attempt to load the atlas
+    handles.atlas = LoadAtlas(handles.config.ATLAS_FILE);
+    
+% Otherwise, declare an empty atlas
+else
+    handles.atlas = cell(0);
+end
 
 % Report initilization status
 Event(['Initialization completed successfully. Start by selecting a ', ...
@@ -669,197 +696,22 @@ if ~isequal(name, 0);
             handles.planData.agnostic, handles.sino2_axes, ...
             handles.exitData, handles.sino3_axes, handles.diff);
         
-        % Store temporary dqa dose flag
-        dqa = 0;
-        
-        %% Calculate dose
-        if handles.calcDose == 1
-            
-            % Ask user if they want to calculate dose
-            choice = questdlg('Continue to Calculate DQA Dose?', ...
-                'Calculate Dose', 'Yes', 'No', 'Yes');
-
-            % If the user chose yes
-            if strcmp(choice, 'Yes')
-                
-                % Update flag
-                dqa = 1;
-                
-                % If the user enabled MVCT based dose calculation
-                if handles.mvctcalc == 1
-                    
-                    % Find all MVCT scans
-                    handles.mvcts = FindMVCTScans(path, name);
-                    
-                    % Initialize flag
-                    foundmvcts = 0;
-                    
-                    % Loop through the plans
-                    for i = 1:length(handles.mvcts)
-                        
-                        % If the MVCT list matches the current plan
-                        if handles.mvcts{i}.planUID == handles.planUID
-                           
-                            % Update flag
-                            foundmvcts = 1;
-                            
-                            % Initialize selection list
-                            handles.mvctlist = cell(1, ...
-                                length(handles.mvcts{i}.scanUIDs));
-                            
-                            % Loop through the scans
-                            for j = 1:length(handles.mvcts{i}.scanUIDs)
-                            
-                                % Add list selection option
-                                handles.mvctlist{j} = ...
-                                    sprintf('MVCT %s-%s: %0.1f cm to %0.1f cm', ...
-                                    handles.mvcts{i}.date{j}, ...
-                                    handles.mvcts{i}.time{j}, ...
-                                    handles.mvcts{i}.scanLengths(j,1), ...
-                                    handles.mvcts{i}.scanLengths(j,2));
-                            end
-                            
-                            % Break the loop
-                            break;
-                        end
-                    end
-                    
-                    % If no MVCT scans were found
-                    if foundmvcts == 0
-                        
-                        % Log event
-                        Event(['No MVCT scans were found, continuing ', ...
-                            'calculation with planning CT'], 'WARN');
-                    
-                    % Otherwise, scans were found
-                    else
-                        
-                        % Prompt user to select which image to calculate QA
-                        [s, ok] = listdlg('PromptString', ['Select which ', ...
-                            'image to calculate the QA dose on:'], ...
-                            'SelectionMode', 'single', 'ListString', ...
-                            horzcat('Planning Image', handles.mvctlist), ...
-                            'ListSize', [270 200]);
-                        
-                        % If the user selected an MVCT
-                        if ok == 1 && s > 1
-                        
-                            % Log event
-                            Event(['User chose to calculate on scan UID ', ...
-                                handles.mvcts{i}.scanUIDs{s-1}]);
-                            
-                            % Update progress bar
-                            waitbar(0.6, progress, 'Loading MVCT...');
-                            
-                            % Load MVCT (keeping structures)
-                            handles.dailyImage = LoadDailyImage(path, ...
-                                'ARCHIVE', name, handles.mvcts{i}.scanUIDs{s-1});
-                           
-                            % Update waitbar
-                            waitbar(0.65, progress, 'Merging daily image...');
-                            
-                            % Merge MVCT with kVCT
-                            handles.mergedImage = ...
-                                MergeImages(handles.referenceImage, ...
-                                handles.dailyImage, ...
-                                handles.dailyImage.registration);
-                            
-                            % Set reference image to merged image
-                            handles.referenceImage.data = ...
-                                handles.mergedImage.data;
-                            
-                            % Set reference IVDT to merged IVDT
-                            handles.referenceImage.ivdt = ...
-                                handles.mergedImage.ivdt;
-                       
-                        % Log choice
-                        else
-                            Event('User chose to continue with plannig CT');
-                        end
-                    end
-                    
-                    % Clear temporary variables
-                    clear foundmvcts i j s ok merged;
-                end
-                
-                % Update progress bar
-                waitbar(0.7, progress, 'Calculating dose...');
-                
-                % Execute CalcDose on reference plan 
-                if handles.calcRefDose == 1
-                    
-                    % Log action
-                    Event('Calculating reference dose');
-
-                    % Calculate reference dose using image, plan, 
-                    % directory, & sadose flag
-                    handles.referenceDose = CalcDose(...
-                        handles.referenceImage, handles.planData, ...
-                        handles.modeldir, handles.sadose);
-                end
-                
-                % Adjust delivery plan sinogram by measured differences
-                Event('Modifying delivery plan using difference array');
-                handles.dqaPlanData = handles.planData;
-                handles.dqaPlanData.sinogram = ...
-                    handles.planData.sinogram + handles.diff;
-                
-                % Trim any sinogram projection values outside of [0 1]
-                handles.dqaPlanData.sinogram = ...
-                    max(0, handles.dqaPlanData.sinogram);
-                handles.dqaPlanData.sinogram = ...
-                    min(1, handles.dqaPlanData.sinogram);
-                
-                % Execute CalcDose
-                Event('Calculating DQA dose');
-                
-                % Calculate DQA dose using image, plan, directory, & 
-                % sadose flag
-                handles.dqaDose = CalcDose(handles.referenceImage, ...
-                    handles.dqaPlanData, handles.modeldir, handles.sadose);
-                
-                % Calculate dose difference
-                handles.doseDiff = CalcDoseDifference(...
-                    handles.referenceDose, handles.dqaDose);
-
-                % Enable export button
-                set(handles.export_button, 'Enable', 'on');
-    
-                % Ask user if they want to calculate dose
-                choice = questdlg('Continue to Calculate Gamma?', ...
-                    'Calculate Gamma', 'Yes', 'No', 'Yes');
-
-                % If the user chose yes
-                if strcmp(choice, 'Yes')
-
-                    % Update progress bar
-                    waitbar(0.8, progress, 'Calculating gamma...');
-
-                    % Execute CalcGamma using restricted 3D search
-                    handles.gamma = CalcGamma(handles.referenceDose, ...
-                        handles.dqaDose, handles.percent, handles.dta, ...
-                        'local', handles.local, 'refval', max(max(max(...
-                        handles.referenceDose.data))), 'restrict', 1);
-                    
-                    % Eliminate gamma values below dose treshold
-                    handles.gamma = handles.gamma .* ...
-                        (handles.referenceDose.data > handles.doseThreshold * ...
-                        max(max(max(handles.referenceDose.data))));
-                else
-                    % Log choice
-                    Event('User chose not to compute gamma');
-                end
-            else
-                % Log choice
-                Event('User chose not to compute dose');
-            end
-
-            % Clear temporary variables
-            clear choice;
-        end
-        
         % Update progress bar
-        waitbar(0.9, progress, 'Updating results...');
+        waitbar(0.65, progress, 'Updating statistics...');
+        
+        % Update dose plot with planned dose
+        set(handles.dose_display, 'Value', 2);
+        handles = UpdateDoseDisplay(handles);
+
+        % Update DVH plot
+        [handles.referenceDose.dvh] = ...
+            UpdateDVH(handles.dvh_axes, get(handles.dvh_table, 'Data'), ...
+            handles.referenceImage, handles.referenceDose);
+
+        % Update Dx/Vx statistics
+        set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
+            get(handles.dvh_table, 'Data'), [], ...
+            handles.referenceDose.dvh));
         
         % Update results display
         set(handles.results_display, 'Value', 9);
@@ -868,52 +720,52 @@ if ~isequal(name, 0);
         % Update results statistics
         set(handles.stats_table, 'Data', UpdateResultsStatistics(handles));
         
-        % If DQA dose was calculated
-        if dqa == 1
-            
-            % Update dose plot with dose difference
-            set(handles.dose_display, 'Value', 4);
-            handles = UpdateDoseDisplay(handles);
+        % Close progress bar
+        close(progress);
         
-            % Update DVH plot
-            [handles.referenceDose.dvh, handles.dqaDose.dvh] = ...
-                UpdateDVH(handles.dvh_axes, get(handles.dvh_table, 'Data'), ...
-                handles.referenceImage, handles.referenceDose, ...
-                handles.referenceImage, handles.dqaDose);
+        %% Calculate dose
+        if handles.calcDose == 1
             
-            % Update Dx/Vx statistics
-            set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
-                get(handles.dvh_table, 'Data'), [], ...
-                handles.referenceDose.dvh, handles.dqaDose.dvh));
-        
-        % Otherwise, only reference dose exists
-        else
+            % Enable UI controls
+            set(handles.calcdose_button, 'Enable', 'on');
             
-            % Update dose plot with planned dose
-            set(handles.dose_display, 'Value', 2);
-            handles = UpdateDoseDisplay(handles);
-            
-            % Update DVH plot
-            [handles.referenceDose.dvh] = ...
-                UpdateDVH(handles.dvh_axes, get(handles.dvh_table, 'Data'), ...
-                handles.referenceImage, handles.referenceDose);
-            
-            % Update Dx/Vx statistics
-            set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
-                get(handles.dvh_table, 'Data'), [], ...
-                handles.referenceDose.dvh));
+            % Ask user if they want to calculate dose
+            choice = questdlg('Continue to Calculate DQA Dose?', ...
+                'Calculate Dose', 'Yes', 'No', 'Yes');
+
+            % If the user chose yes
+            if strcmp(choice, 'Yes')
+
+                % Calculate dose
+                handles.path = path;
+                handles.name = name;
+                handles = calcdose_button_Callback([], [], handles);
+                
+                % Ask user if they want to calculate dose
+                choice = questdlg('Continue to Calculate Gamma?', ...
+                    'Calculate Gamma', 'Yes', 'No', 'Yes');
+
+                % If the user chose yes
+                if strcmp(choice, 'Yes')
+
+                    % Calculate dose
+                    handles = calcgamma_button_Callback([], [], handles);
+                else
+                    
+                    % Log choice
+                    Event('User chose not to compute gamma');
+                end
+            else
+                
+                % Log choice
+                Event('User chose not to compute dose');
+            end
+
+            % Clear temporary variables
+            clear choice;
         end
-        
-        % Clear temporary variables
-        clear dvh dqa;
     end
 
-    % Update progress bar
-    waitbar(1.0, progress, 'Done!');
-                
-    % Close progress bar
-    close(progress);
-    
     % Enable print button
     set(handles.print_button, 'Enable', 'on');
     
@@ -1406,6 +1258,10 @@ handles.planData = [];
 % See LoadImage and LoadStructures
 handles.referenceImage = [];
 
+% mergedImage stores the merged MVCT/kVCT for MVCT based calculation
+% See MergeImages
+handles.mergedImage = [];
+
 % referenceDose stores the optimized plan dose as a structure. See
 % LoadDose and UpdateDVH
 handles.referenceDose = [];
@@ -1444,6 +1300,10 @@ set(handles.archive_file, 'String', '');
 % Disable print and export buttons while patient data is unloaded
 set(handles.print_button, 'Enable', 'off');
 set(handles.export_button, 'Enable', 'off');
+
+% Disabled dose calculation buttons
+set(handles.calcdose_button, 'Enable', 'off'); 
+set(handles.calcgamma_button, 'Enable', 'off'); 
 
 % Hide plots
 set(handles.dose_display, 'Value', 1);
@@ -1569,3 +1429,244 @@ end
 
 % Update handles structure
 guidata(hObject, handles);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function varargout = calcdose_button_Callback(hObject, ~, handles)
+% hObject    handle to calcdose_button (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Initialize progress bar
+progress = waitbar(0.7, 'Calculating reference dose...');
+
+% If the user enabled MVCT based dose calculation
+if handles.mvctcalc == 1
+
+    % Update progress bar
+    waitbar(0.6, progress, 'Finding MVCT scans...');
+    
+    % Find all MVCT scans
+    handles.mvcts = FindMVCTScans(handles.path, handles.name);
+
+    % Initialize flag
+    foundmvcts = 0;
+
+    % Loop through the plans
+    for i = 1:length(handles.mvcts)
+
+        % If the MVCT list matches the current plan
+        if strcmp(handles.mvcts{i}.planUID, handles.planUID) && ...
+                ~isempty(handles.mvcts{i}.scanUIDs)
+
+            % Update flag
+            foundmvcts = 1;
+
+            % Initialize selection list
+            handles.mvctlist = cell(1, ...
+                length(handles.mvcts{i}.scanUIDs));
+
+            % Loop through the scans
+            for j = 1:length(handles.mvcts{i}.scanUIDs)
+
+                % Add list selection option
+                handles.mvctlist{j} = ...
+                    sprintf('MVCT %s-%s: %0.1f cm to %0.1f cm', ...
+                    handles.mvcts{i}.date{j}, ...
+                    handles.mvcts{i}.time{j}, ...
+                    handles.mvcts{i}.scanLengths(j,1), ...
+                    handles.mvcts{i}.scanLengths(j,2));
+            end
+
+            % Break the loop
+            break;
+        end
+    end
+
+    % If no MVCT scans were found
+    if foundmvcts == 0
+
+        % Log event
+        Event(['No MVCT scans were found, continuing ', ...
+            'calculation with planning CT'], 'WARN');
+
+    % Otherwise, scans were found
+    else
+
+        % Prompt user to select which image to calculate QA
+        [s, ok] = listdlg('PromptString', ['Select which ', ...
+            'image to calculate the QA dose on:'], ...
+            'SelectionMode', 'single', 'ListString', ...
+            horzcat('Planning Image', handles.mvctlist), ...
+            'ListSize', [270 200]);
+
+        % If the user selected an MVCT
+        if ok == 1 && s > 1
+
+            % Log event
+            Event(['User chose to calculate on scan UID ', ...
+                handles.mvcts{i}.scanUIDs{s-1}]);
+            
+            % Update progress bar
+            waitbar(0.72, progress, 'Loading MVCT...');
+
+            % Load MVCT (keeping structures)
+            handles.dailyImage = LoadDailyImage(handles.path, ...
+                'ARCHIVE', handles.name, handles.mvcts{i}.scanUIDs{s-1});
+
+            % Update progress bar
+            waitbar(0.74, progress, 'Merging MVCT...');
+            
+            % Merge MVCT with kVCT
+            handles.mergedImage = ...
+                MergeImages(handles.referenceImage, ...
+                handles.dailyImage, ...
+                handles.dailyImage.registration);
+            
+        % Log choice
+        else
+            Event('User chose to continue with plan CT');
+        end
+    end
+
+    % Clear temporary variables
+    clear foundmvcts i j s ok;
+end
+
+% Execute CalcDose on reference plan 
+if handles.calcRefDose == 1
+
+    % Log action
+    Event('Calculating reference dose on plan CT');
+    
+    % Update progress bar
+    waitbar(0.76, progress, 'Calculating reference dose...');
+
+    % Calculate reference dose using image, plan, 
+    % directory, & sadose flag
+    handles.referenceDose = CalcDose(...
+        handles.referenceImage, handles.planData, ...
+        handles.modeldir, handles.sadose);
+end
+
+% Adjust delivery plan sinogram by measured differences
+Event('Modifying delivery plan using difference array');
+handles.dqaPlanData = handles.planData;
+handles.dqaPlanData.sinogram = ...
+    handles.planData.sinogram + handles.diff;
+
+% Trim any sinogram projection values outside of [0 1]
+handles.dqaPlanData.sinogram = ...
+    max(0, handles.dqaPlanData.sinogram);
+handles.dqaPlanData.sinogram = ...
+    min(1, handles.dqaPlanData.sinogram);
+
+% If a merged MVCT was generated
+if handles.mvctcalc == 1 && isfield(handles, 'mergedImage') && ...
+        isfield(handles.mergedImage, 'data')
+    
+    % Execute CalcDose
+    Event('Calculating DQA dose on merged MVCT');
+
+    % Update progress bar
+    waitbar(0.78, progress, 'Calculating DQA dose...');
+        
+    % Calculate DQA dose using image, plan, directory, & 
+    % sadose flag
+    handles.dqaDose = CalcDose(handles.mergedImage, ...
+        handles.dqaPlanData, handles.modeldir, handles.sadose);
+else
+
+    % Execute CalcDose
+    Event('Calculating DQA dose on plan CT');
+    
+    % Update progress bar
+    waitbar(0.78, progress, 'Calculating DQA dose...');
+
+    % Calculate DQA dose using image, plan, directory, & 
+    % sadose flag
+    handles.dqaDose = CalcDose(handles.referenceImage, ...
+        handles.dqaPlanData, handles.modeldir, handles.sadose);
+end
+
+% Update progress bar
+waitbar(0.8, progress, 'Updating statistics...');
+
+% Calculate dose difference
+handles.doseDiff = CalcDoseDifference(...
+    handles.referenceDose, handles.dqaDose);
+
+% Update dose plot with dose difference
+set(handles.dose_display, 'Value', 4);
+handles = UpdateDoseDisplay(handles);
+
+% Update DVH plot
+[handles.referenceDose.dvh, handles.dqaDose.dvh] = ...
+    UpdateDVH(handles.dvh_axes, get(handles.dvh_table, 'Data'), ...
+    handles.referenceImage, handles.referenceDose, ...
+    handles.referenceImage, handles.dqaDose);
+
+% Update Dx/Vx statistics
+set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
+    get(handles.dvh_table, 'Data'), [], ...
+    handles.referenceDose.dvh, handles.dqaDose.dvh));
+
+% Enable UI controls
+set(handles.export_button, 'Enable', 'on');
+set(handles.calcgamma_button, 'Enable', 'on');
+
+% Close progress bar
+close(progress);
+
+% If a return argument is set
+if nargout == 1
+    
+    % Return handles structure
+    varargout{1} = handles;
+else
+    
+    % Update handles structure
+    guidata(hObject, handles);
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function varargout = calcgamma_button_Callback(hObject, ~, handles)
+% hObject    handle to calcgamma_button (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Update progress bar
+progress = waitbar(0.9, 'Calculating Gamma...');
+
+% Execute CalcGamma using restricted 3D search
+handles.gamma = CalcGamma(handles.referenceDose, ...
+    handles.dqaDose, handles.percent, handles.dta, ...
+    'local', handles.local, 'refval', max(max(max(...
+    handles.referenceDose.data))), 'restrict', 1);
+
+% Eliminate gamma values below dose treshold
+handles.gamma = handles.gamma .* ...
+    (handles.referenceDose.data > handles.doseThreshold * ...
+    max(max(max(handles.referenceDose.data))));
+
+% Update progress bar
+waitbar(0.98, progress, 'Updating statistics...');
+
+% Update results statistics
+set(handles.stats_table, 'Data', UpdateResultsStatistics(handles));
+
+% Update progress bar
+waitbar(1.0, progress, 'Done!');
+
+% Close progress bar
+close(progress);
+
+% If a return argument is set
+if nargout == 1
+    
+    % Return handles structure
+    varargout{1} = handles;
+else
+    
+    % Update handles structure
+    guidata(hObject, handles);
+end
