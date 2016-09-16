@@ -322,7 +322,7 @@ Event(['Default dose view transparency set to ', ...
 
 %% Configure Dose Calculation
 % If dose calculation was enabled
-if handles.config.CALC_DOSE == 1
+if str2double(handles.config.CALC_DOSE) == 1
     
     % Check for presence of dose calculator
     handles.calcDose = CalcDose();
