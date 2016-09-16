@@ -1,5 +1,5 @@
 function varargout = ExitDetector(varargin)
-% The TomoTherapy® Exit Detector Analysis project is a GUI based standalone 
+% The TomoTherapy Exit Detector Analysis project is a GUI based standalone 
 % application written in MATLAB that parses TomoTherapy patient archives 
 % and DICOM RT Exit Dose files and uses the MVCT response collected during 
 % a Static Couch DQA procedure to estimate the fluence delivered through 
@@ -15,7 +15,7 @@ function varargout = ExitDetector(varargin)
 % algorithm details.
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
-% Copyright (C) 2015 University of Wisconsin Board of Regents
+% Copyright (C) 2016 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  
@@ -66,7 +66,7 @@ warning('off','all');
 handles.output = hObject;
 
 % Set version handle
-handles.version = '1.1.5';
+handles.version = '1.2.0';
 
 % Determine path of current application
 [path, ~, ~] = fileparts(mfilename('fullpath'));
@@ -278,7 +278,7 @@ Event(['Number of expected exit detector channels set to ', ...
 % KEEP_OPEN_FIELD_CHANNELS for the Daily QA XML)
 handles.openRows = str2double(handles.config.KEEP_OPEN_FIELD_CHANNELS);
 Event(['Number of KEEP_OPEN_FIELD_CHANNELS set to ', ...
-    KEEP_OPEN_FIELD_CHANNELS]);
+    handles.config.KEEP_OPEN_FIELD_CHANNELS]);
 
 % Set the number of active MVCT data channels. Typically the last three 
 % channels are monitor chamber data
@@ -382,6 +382,16 @@ handles = clear_button_Callback(handles.clear_button, '', handles);
 % Attempt to load the atlas
 handles.atlas = LoadAtlas('atlas.xml');
 
+% Check for MVCT calculation flag
+if isfield(handles.config, 'ALLOW_MVCT_CALC') && ...
+        str2double(handles.config.ALLOW_MVCT_CALC) == 1
+    Event('MVCT dose calculation enabled');
+    handles.mvctcalc = 1;
+else
+    Event('MVCT dose calculation disabled');
+    handles.mvctcalc = 0;
+end
+
 % Report initilization status
 Event(['Initialization completed successfully. Start by selecting a ', ...
     'patient archive or exit detector DICOM export containing the ', ...
@@ -443,8 +453,8 @@ if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
 
         % Request the user to select the Daily QA DICOM or XML
         Event('UI window opened to select file');
-        [name, path] = uigetfile({'*.dcm', 'Transit Dose File (*.dcm)'; ...
-            '*_patient.xml', 'Patient Archive (*.xml)'}, ...
+        [name, path] = uigetfile({'*_patient.xml', ...
+            'Patient Archive (*.xml)'; '*.dcm', 'Transit Dose File (*.dcm)'}, ...
             'Select the Daily QA File', handles.path);
     else
         Event('User chose not to select new Daily QA data');
@@ -614,6 +624,11 @@ if ~isequal(name, 0);
             get(handles.autoshift_box, 'Value'), ...
             get(handles.dynamicjaw_box, 'Value'), handles.planData);
         
+        % Update sinogram plots
+        UpdateSinogramDisplay(handles.sino1_axes, ...
+            handles.planData.agnostic, handles.sino2_axes, ...
+            handles.exitData, handles.sino3_axes, handles.diff);
+        
         % Store temporary dqa dose flag
         dqa = 0;
         
@@ -629,6 +644,103 @@ if ~isequal(name, 0);
                 
                 % Update flag
                 dqa = 1;
+                
+                % If the user enabled MVCT based dose calculation
+                if handles.mvctcalc == 1
+                    
+                    % Find all MVCT scans
+                    handles.mvcts = FindMVCTScans(path, name);
+                    
+                    % Initialize flag
+                    foundmvcts = 0;
+                    
+                    % Loop through the plans
+                    for i = 1:length(handles.mvcts)
+                        
+                        % If the MVCT list matches the current plan
+                        if handles.mvcts{i}.planUID == handles.planUID
+                           
+                            % Update flag
+                            foundmvcts = 1;
+                            
+                            % Initialize selection list
+                            handles.mvctlist = cell(1, ...
+                                length(handles.mvcts{i}.scanUIDs));
+                            
+                            % Loop through the scans
+                            for j = 1:length(handles.mvcts{i}.scanUIDs)
+                            
+                                % Add list selection option
+                                handles.mvctlist{j} = ...
+                                    sprintf('MVCT %s-%s: %0.1f cm to %0.1f cm', ...
+                                    handles.mvcts{i}.date{j}, ...
+                                    handles.mvcts{i}.time{j}, ...
+                                    handles.mvcts{i}.scanLengths(j,1), ...
+                                    handles.mvcts{i}.scanLengths(j,2));
+                            end
+                            
+                            % Break the loop
+                            break;
+                        end
+                    end
+                    
+                    % If no MVCT scans were found
+                    if foundmvcts == 0
+                        
+                        % Log event
+                        Event(['No MVCT scans were found, continuing ', ...
+                            'calculation with planning CT'], 'WARN');
+                    
+                    % Otherwise, scans were found
+                    else
+                        
+                        % Prompt user to select which image to calculate QA
+                        [s, ok] = listdlg('PromptString', ['Select which ', ...
+                            'image to calculate the QA dose on:'], ...
+                            'SelectionMode', 'single', 'ListString', ...
+                            horzcat('Planning Image', handles.mvctlist), ...
+                            'ListSize', [270 200]);
+                        
+                        % If the user selected an MVCT
+                        if ok == 1 && s > 1
+                        
+                            % Log event
+                            Event(['User chose to calculate on scan UID ', ...
+                                handles.mvcts{i}.scanUIDs{s-1}]);
+                            
+                            % Update progress bar
+                            waitbar(0.6, progress, 'Loading MVCT...');
+                            
+                            % Load MVCT (keeping structures)
+                            handles.dailyImage = LoadDailyImage(path, ...
+                                'ARCHIVE', name, handles.mvcts{i}.scanUIDs{s-1});
+                           
+                            % Update waitbar
+                            waitbar(0.65, progress, 'Merging daily image...');
+                            
+                            % Merge MVCT with kVCT
+                            handles.mergedImage = ...
+                                MergeImages(handles.referenceImage, ...
+                                handles.dailyImage, ...
+                                handles.dailyImage.registration);
+                            
+                            % Set reference image to merged image
+                            handles.referenceImage.data = ...
+                                handles.mergedImage.data;
+                            
+                            % Set reference IVDT to merged IVDT
+                            handles.referenceImage.ivdt = ...
+                                handles.mergedImage.ivdt;
+                       
+                        % Log choice
+                        else
+                            Event('User chose to continue with plannig CT');
+                        end
+                    end
+                    
+                    % Clear temporary variables
+                    clear foundmvcts i j s ok merged;
+                end
                 
                 % Update progress bar
                 waitbar(0.7, progress, 'Calculating dose...');
@@ -753,12 +865,7 @@ if ~isequal(name, 0);
         end
         
         % Clear temporary variables
-        clear dvh;
-
-        % Update sinogram plots
-        UpdateSinogramDisplay(handles.sino1_axes, ...
-            handles.planData.agnostic, handles.sino2_axes, ...
-            handles.exitData, handles.sino3_axes, handles.diff);
+        clear dvh dqa;
     end
 
     % Update progress bar
