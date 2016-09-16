@@ -1,7 +1,7 @@
 ## TomoTherapy Exit Detector Analysis
 
 by Mark Geurts <mark.w.geurts@gmail.com>
-<br>Copyright &copy; 2015, University of Wisconsin Board of Regents
+<br>Copyright &copy; 2016, University of Wisconsin Board of Regents
 
 The TomoTherapy&reg; Exit Detector Analysis Tool is a GUI based standalone application written in MATLAB that parses [TomoTherapy](http://www.accuray.com) patient archives and DICOM RT Exit Dose files and uses the MVCT response collected during a Static Couch DQA procedure to estimate the fluence delivered through each MLC leaf during treatment delivery.  By comparing the measured fluence to an expected fluence (calculated during optimization of the treatment plan), the treatment delivery performance of the TomoTherapy Treatment System can be observed.
 
@@ -23,21 +23,13 @@ TomoTherapy is a registered trademark of Accuray Incorporated.
 
 ## Installation and Use
 
-To install the TomoTherapy Exit Detector Analysis Tool, copy all MATLAB .m, .fig files, and submodules ([dicom_tools](https://github.com/mwgeurts/dicom_tools), [tomo_extract](https://github.com/mwgeurts/tomo_extract), [structure_atlas](https://github.com/mwgeurts/structure_atlas), and [gamma](https://github.com/mwgeurts/gamma)) into a directory with read/write access. If using git, execute `git clone --recursive https://github.com/mwgeurts/exit_detector`.
+To install the TomoTherapy Exit Detector Analysis Tool as a MATLAB App, download and execute the `TomoTherapy Exit Detector Analysis.mlappinstall` file from this directory. If downloading the repository via git, make sure to download all submodules by running  `git clone --recursive https://github.com/mwgeurts/exit_detector`.
 
-To enable dose calculation, first copy the following beam model files in a folder named `GPU` in the MATLAB directory.  These files will be copied to the computation server along with the plan files at the time of program execution.  To change the location of this folder, edit the line `handles.modeldir = './GPU';` in the function `ExitDetector_OpeningFcn()`.
-
-* dcom.header
-* lft.img
-* penumbra.img
-* kernel.img
-* fat.img
-
-Next, the TomoTherapy Exit Detector Analysis Tool must be configured to either calculate dose locally or communicate with a dose calculation server.  If using local calculation, `gpusadose` must be installed in an execution path available to MATLAB. If using a remote server, open `CalcDose()`, find the statement `ssh2 = ssh2_config('tomo-research', 'tomo', 'hi-art');`, and enter the IP/DNS address of the dose computation server (tomo-research, for example), a user account on the server (tomo), and password (hi-art).  This user account must have SSH access rights, rights to execute `gpusadose`, and finally read/write acces to the temp directory.  See Accuray Incorporated to see if your research workstation includes this feature.  For additional information, see the [tomo_extract](https://github.com/mwgeurts/tomo_extract) submodule.
+Next, the TomoTherapy Exit Detector Analysis Tool must be configured to either calculate dose locally or communicate with a TomoTherapy research workstation.  If using local calculation, `gpusadose` must be installed in an execution path available to MATLAB. If using a remote server, edit the server name and access credentials in the `config.txt` file. The user account must have SSH access rights, rights to execute `gpusadose`, and finally read/write acces to the temp directory.  See Accuray Incorporated to see if your research workstation includes this feature.  For additional information, see the [tomo_extract](https://github.com/mwgeurts/tomo_extract) submodule.
 
 For Gamma calculation, if the Parallel Computing Toolbox is enabled, `CalcGamma()` will attempt to compute the three-dimensional computation using a compatible CUDA device.  To test whether the local system has a GPU compatible device installed, run `gpuDevice(1)` in MATLAB.  All GPU calls in this application are executed in a try-catch statement, and automatically revert to an equivalent (albeit longer) CPU based computation if not available or if the available memory is insufficient.
 
-To run this application, call `ExitDetector` from MATLAB.  Once the application interface loads, select browse under inputs to load the daily QA and static couch QA patient archive inputs.  Once all data is loaded, the application will automatically process and display the results. If dose calculation is enabled, the user will be prompted whether to calculate dose, and if successful, whether to calculate Gamma.
+To run this application, run the App or call `ExitDetector` from MATLAB.  Once the application interface loads, select browse under inputs to load the daily QA and static couch QA patient archive inputs.  Once all data is loaded, the application will automatically process and display the results. If dose calculation is enabled, the user will be prompted whether to calculate dose, and if successful, whether to calculate Gamma.
 
 ## Compatibility and Requirements
 
