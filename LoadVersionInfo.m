@@ -94,4 +94,4 @@ cellarr{5} = version('-java');
 
 % List current working folder contents, finding most recent date
 d = struct2table(dir([pwd, '/*.m']));
-cellarr{6} = datestr(max(cell2mat(table2cell(d(:,5)))));
+cellarr{6} = datestr(max(cell2mat(table2cell(d(:,end)))));
