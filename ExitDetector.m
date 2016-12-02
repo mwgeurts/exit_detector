@@ -821,6 +821,9 @@ Event(sprintf('Dose viewer slice set to %i', get(hObject,'Value')));
 UpdateViewer(get(hObject,'Value'), ...
     sscanf(get(handles.alpha, 'String'), '%f%%')/100);
 
+% Update handles structure
+guidata(hObject, handles);
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function dose_slider_CreateFcn(hObject, ~, ~)
 % hObject    handle to dose_slider (see GCBO)
@@ -862,6 +865,9 @@ UpdateViewer(get(handles.dose_slider,'Value'), value/100);
 
 % Clear temporary variable
 clear value;
+
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function alpha_CreateFcn(hObject, ~, ~)
