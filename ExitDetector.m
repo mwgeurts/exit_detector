@@ -66,7 +66,7 @@ warning('off','all');
 handles.output = hObject;
 
 % Set version handle
-handles.version = '1.2.0';
+handles.version = '1.2.1';
 
 % Determine path of current application
 [path, ~, ~] = fileparts(mfilename('fullpath'));
@@ -608,10 +608,11 @@ Event('UI window opened to select file');
     'Select the Patient Archive', handles.path);
 
 % If the user selected a file
-if ~isequal(name, 0);
+if ~isequal(name, 0)
     
-    % Update default path
+    % Update default path and name
     handles.path = path;
+    handles.name = name;
     Event(['Default file path updated to ', path]);
 
     % If patient data exists, clear it before continuing

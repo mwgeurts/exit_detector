@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="3251071857" file="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector/TomoTherapy Exit Detector Analysis.prj" location="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector" name="TomoTherapy Exit Detector Analysis" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="2937850828" file="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector/TomoTherapy Exit Detector Analysis.prj" location="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector" name="TomoTherapy Exit Detector Analysis" target="target.mlapps" target-name="Package App">
     <param.appname>TomoTherapy Exit Detector Analysis</param.appname>
     <param.authnamewatermark>Mark Geurts</param.authnamewatermark>
     <param.email>mark.w.geurts@gmail.com</param.email>
@@ -15,27 +15,21 @@ The user interface provides graphic and quantitative analysis of the comparison 
 
 TomoTherapy is a registered trademark of Accuray Incorporated.</param.description>
     <param.screenshot />
-    <param.version>1.2.0</param.version>
+    <param.version>1.2.1</param.version>
     <param.products.name>
       <item>Image Processing Toolbox</item>
       <item>MATLAB</item>
-      <item>Parallel Computing Toolbox</item>
-      <item>MATLAB Distributed Computing Server</item>
     </param.products.name>
     <param.products.id>
-      <item>'17'</item>
-      <item>'1'</item>
-      <item>'80'</item>
-      <item>'94'</item>
+      <item>17</item>
+      <item>1</item>
     </param.products.id>
     <param.products.version>
-      <item>9.2</item>
-      <item>8.5</item>
-      <item>6.6</item>
-      <item>6.6</item>
+      <item>9.5</item>
+      <item>9.1</item>
     </param.products.version>
     <param.platforms />
-    <param.output>${PROJECT_ROOT}/TomoTherapy Exit Detector Analysis.mlappinstall</param.output>
+    <param.output>/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector</param.output>
     <param.guid>fd6d1111-4ada-477b-a8a1-01dd6b283017</param.guid>
     <unset>
       <param.authnamewatermark />
@@ -45,6 +39,7 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
       <param.icons />
       <param.screenshot />
       <param.platforms />
+      <param.output />
     </unset>
     <fileset.main>
       <file>${PROJECT_ROOT}/ExitDetector.m</file>
@@ -109,11 +104,11 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
     </fileset.resources>
     <fileset.package />
     <build-deliverables>
-      <file location="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector" name="TomoTherapy Exit Detector Analysis.mlappinstall" optional="false">/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector/TomoTherapy Exit Detector Analysis.mlappinstall</file>
+      <file location="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project" name="exit_detector" optional="false">/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector</file>
     </build-deliverables>
     <workflow />
     <matlab>
-      <root>/Applications/MATLAB_R2015a.app</root>
+      <root>/Applications/MATLAB_R2016b.app</root>
       <toolboxes />
     </matlab>
     <platform>
@@ -125,7 +120,7 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
       <vista>false</vista>
       <linux>false</linux>
       <solaris>false</solaris>
-      <osver>10.10.5</osver>
+      <osver>10.12.2</osver>
       <os32>false</os32>
       <os64>true</os64>
       <arch>maci64</arch>
