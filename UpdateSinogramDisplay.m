@@ -49,11 +49,11 @@ if nargin >= 2
     imagesc(varargin{2} * 100)
 
     % Set plot options
-    set(gca,'YTickLabel', [])
-    set(gca,'XTickLabel', [])
+    set(varargin{1},'YTickLabel', [])
+    set(varargin{1},'XTickLabel', [])
     title('Planned Fluence (%)')
     colormap(varargin{1}, 'default')
-    colorbar
+    colorbar(varargin{1})
 end
 
 % Update exit data plot
@@ -71,15 +71,16 @@ if nargin >= 4
     imagesc(varargin{4} * 100)
 
     % Set plot options
-    set(gca,'YTickLabel', [])
-    set(gca,'XTickLabel', [])
+    set(varargin{3},'YTickLabel', [])
+    set(varargin{3},'XTickLabel', [])
     title('Deconvolved Measured Fluence (%)')
     colormap(varargin{3}, 'default')
-    colorbar
+    colorbar(varargin{3})
 end
 
 % Update difference plot
 if nargin >= 6
+    
     % Log event
     Event('Updating difference plot');
 
@@ -92,11 +93,11 @@ if nargin >= 6
     imagesc(varargin{6} * 100)
 
     % Set plot options
-    set(gca,'YTickLabel', [])
+    set(varargin{5},'YTickLabel', [])
     title('Difference (%)')
     xlabel('Projection')
     colormap(varargin{5}, 'default')
-    colorbar
+    colorbar(varargin{5})
 end
 
 % Log completion

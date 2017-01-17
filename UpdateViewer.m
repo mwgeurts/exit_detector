@@ -18,7 +18,7 @@ function UpdateViewer(varargin)
 %       are assumed equal) for the secondary dataset
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
-% Copyright (C) 2015 University of Wisconsin Board of Regents
+% Copyright (C) 2016 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  
@@ -35,7 +35,7 @@ function UpdateViewer(varargin)
 
 %% Initialize variables
 % Declare persistent variables
-persistent fig tcsview image1 image2 minval maxval stats;
+persistent fig tcsview image1 image2 minval1 maxval1 minval2 maxval2 stats;
 
 % If a new structures cell array is provided
 if nargin > 2
@@ -55,6 +55,10 @@ if nargin > 3
     % Persistently store new image1 data
     image1 = varargin{6};
     
+    % Calculate new min/max values
+    minval1 = min(min(min(image1.data)));
+    maxval1 = max(max(max(image1.data)));
+    
     % If image2 data was also provided
     if nargin == 7
     
@@ -62,8 +66,8 @@ if nargin > 3
         image2 = varargin{7};
         
         % Calculate new min/max values
-        minval = min(min(min(image2.data)));
-        maxval = max(max(max(image2.data)));
+        minval2 = min(min(min(image2.data)));
+        maxval2 = max(max(max(image2.data)));
         
     % Otherwise, just image1 data was provided
     else
@@ -150,32 +154,43 @@ axes(fig)
 
 % Create reference object based on the start and width inputs (used for POI
 % reporting)
-reference = imref2d(size(imageA),[start(1) start(1) + size(imageA,2) * ...
-    width(1)], [start(2) start(2) + size(imageA,1) * width(2)]);
+switch tcsview
+case 'T'
+    reference = imref2d(size(imageA),[start(1) start(1) + size(imageA,2) * ...
+        width(1)], [-(start(2) + size(imageA,1) * width(2)) -start(2)]);
+case 'C'
+    reference = imref2d(size(imageA),[start(1) start(1) + size(imageA,2) * ...
+        width(1)], [start(2) start(2) + size(imageA,1) * width(2)]);
+case 'S'
+    reference = imref2d(size(imageA),[-(start(1) + size(imageA,2) * ...
+        width(1)) -start(1)], [start(2) start(2) + size(imageA,1) * ...
+        width(2)]);
+end
 
 % If a secondary dataset was provided
 if isstruct(image2)
 
-    % If the minimum imageA value is greater than zero (CT data)
-    if min(min(min(imageA))) >= 0
+    % If the image is an MR
+    if isfield(image1, 'type') && strcmpi(image1.type, 'MR')
     
         % For two datasets, the reference image is converted to an RGB 
-        % image prior to display.  This will allow a non-grayscale colormap 
+        % image prior to display. This will allow a non-grayscale colormap 
         % for the secondary dataset while leaving the underlying CT image 
-        % grayscale.  The image is divided by 2048 to set the grayscale
+        % grayscale. 
+        imshow(ind2rgb(gray2ind((imageA) / maxval1, 64), colormap('gray')), ...
+            reference);
+    
+    % Otherwise, if CT, or no image type is provided
+    else
+    
+        % For two datasets, the reference image is converted to an RGB 
+        % image prior to display. This will allow a non-grayscale colormap 
+        % for the secondary dataset while leaving the underlying CT image 
+        % grayscale. The image is divided by 2048 to set the grayscale
         % window from -1024 to +1024.
         imshow(ind2rgb(gray2ind((imageA) / 2048, 64), colormap('gray')), ...
             reference);
-        
-    % Otherwise, if the reference dataset is image difference
-    else
-    
-        % For two datasets, the reference image is converted to an RGB
-        % image prior to display.  This will allow a non-grayscale colormap 
-        % for the secondary dataset while leaving the underlying CT image 
-        % grayscale.
-        imshow(ind2rgb(gray2ind(imageA, 64), colormap('winter')), ...
-            reference);
+       
     end
     
     % Hold the axes to allow an overlapping plot
@@ -186,12 +201,12 @@ if isstruct(image2)
         
         % If the image is flat, slightly increase the maxval to prevent an
         % error from occurring when calling DisplayRange
-        if maxval == minval; maxval = minval + 1e-6; end
+        if maxval2 == minval2; maxval2 = minval2 + 1e-6; end
         
         % Plot the secondary dataset over the reference dataset, using the
         % display range [minval maxval] and a jet colormap.  The secondary
         % image handle is stored to the variable handle.
-        handle = imshow(imageB, reference, 'DisplayRange', [minval maxval], ...
+        handle = imshow(imageB, reference, 'DisplayRange', [minval2 maxval2], ...
             'ColorMap', colormap('jet'));
         
     % Otherwise, the secondary dataset is RGB
@@ -209,13 +224,24 @@ if isstruct(image2)
     set(handle, 'AlphaData', varargin{2});
     
     % Enable colorbar
-    colorbar;
+    colorbar(fig);
     
 % Otherwise, only a primary dataset was provided
 else
 
-    % If the minimum imageA value is greater than zero (CT data)
-    if min(min(min(imageA))) >= 0
+    % If the image is an MR
+    if isfield(image1, 'type') && strcmpi(image1.type, 'MR')
+        
+        % Cast the imageA data as 16-bit unsigned integer
+        imageA = int16(imageA);
+    
+        % Display the reference image using a gray colormap with the range 
+        % set between the minimum and maximum values in the image
+        imshow(imageA, reference, 'DisplayRange', [minval1 maxval1], ...
+            'ColorMap', colormap('gray'));
+    
+    % Otherwise, if CT, or no image type is provided
+    else
     
         % Cast the imageA data as 16-bit unsigned integer
         imageA = int16(imageA);
@@ -225,13 +251,6 @@ else
         imshow(imageA - 1024, reference, 'DisplayRange', [-1024 1024], ...
             'ColorMap', colormap('gray'));
         
-    % Otherwise, if the reference dataset is image difference
-    else
-    
-        % Display the imageA data using a range of -1000 to +1000 and a
-        % winter colormap
-        imshow(imageA, reference, 'DisplayRange', [-1000 1000], ...
-            'ColorMap', colormap('winter'));
     end
 end
 
@@ -243,7 +262,7 @@ hold on;
 if isfield(image1,'structures')
     
     % Loop through each structure
-    for i = 1:size(image1.structures, 2)
+    for i = 1:length(image1.structures)
         
         % If the statistics display column for this structure is set to
         % true (checked)
@@ -289,8 +308,9 @@ if isfield(image1,'structures')
                         % Plot the contour points given the structure color
                         plot((B{k}(:,2) - 1) * image1.width(1) + ...
                             image1.start(1), (B{k}(:,1) - 1) * ...
-                            image1.width(2) + image1.start(2), ...
-                            'Color', image1.structures{i}.color/255, ...
+                            image1.width(2) - (start(2) + size(imageA,1) * ...
+                            image1.width(2)), 'Color', ...
+                            image1.structures{i}.color/255, ...
                             'LineWidth', 2);
                        
                     % If orientation is Coronal
@@ -307,8 +327,9 @@ if isfield(image1,'structures')
                     case 'S'
                     
                         % Plot the contour points given the structure color
-                        plot((B{k}(:,2) - 1) * image1.width(2) + ...
-                            image1.start(2), (B{k}(:,1) - 1) * ...
+                        plot((B{k}(:,2) - 1) * image1.width(2) ...
+                            - (image1.start(2) + size(imageA,2) * ...
+                            image1.width(2)), (B{k}(:,1) - 1) * ...
                             image1.width(3) + image1.start(3), ...
                            'Color', image1.structures{i}.color/255, ...
                            'LineWidth', 2);
@@ -327,6 +348,9 @@ hold off;
 %% Finalize figure
 % Default zoom
 zoom(1.0);
+
+% Enable zoom
+zoom on
 
 % Display the x/y axis on the images
 axis off

@@ -14,10 +14,6 @@ function InitializeViewer(varargin)
 % image data is persistently stored).  New image data should not be passed 
 % directly to UpdateViewer; instead, this function should be called again.
 %
-% To run correctly, five UI handles must exist, as described below: an
-% axes handle, a slice selection slider and textbox, a transparency slider,
-% and a checkerboard size slider.
-%
 % The following variables are required for proper execution: 
 %   varargin{1}: handle to UI axes
 %   varargin{2}: T, C, or S, referring to which orientation to view
@@ -32,7 +28,7 @@ function InitializeViewer(varargin)
 %       selection
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
-% Copyright (C) 2015 University of Wisconsin Board of Regents
+% Copyright (C) 2016 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  
@@ -128,11 +124,11 @@ if size(varargin{4}.data,1) ~= size(varargin{5}.data,1) ...
         ' (%i %i %i 3)'], size(varargin{4}.data)));
 
     % Generate x, y, and z grids using start and width structure fields
-    [refX, refY, refZ] = meshgrid(varargin{4}.start(1): ...
-        varargin{4}.width(1):varargin{4}.start(1) + ...
-        varargin{4}.width(1) * (size(varargin{4}.data, 1) - 1), ...
-        varargin{4}.start(2):varargin{4}.width(2):varargin{4}.start(2) ...
-        + varargin{4}.width(2) * (size(varargin{4}.data, 2) - 1), ...
+    [refX, refY, refZ] = meshgrid(varargin{4}.start(2) + ...
+        varargin{4}.width(2) * (size(varargin{4}.data, 2) - 1): ...
+        -varargin{4}.width(2):varargin{4}.start(2), ...
+        varargin{4}.start(1):varargin{4}.width(1):varargin{4}.start(1) ...
+        + varargin{4}.width(1) * (size(varargin{4}.data, 1) - 1), ...
         varargin{4}.start(3):varargin{4}.width(3):varargin{4}.start(3) ...
         + varargin{4}.width(3) * (size(varargin{4}.data, 3) - 1));
 
@@ -146,11 +142,11 @@ if size(varargin{4}.data,1) ~= size(varargin{5}.data,1) ...
         ' (%i %i %i 3)'], size(varargin{5}.data)));
 
     % Generate x, y, and z grids using start and width structure fields
-    [secX, secY, secZ] = meshgrid(varargin{5}.start(1): ...
-        varargin{5}.width(1):varargin{5}.start(1) + ...
-        varargin{5}.width(1) * (size(varargin{5}.data, 1) - 1), ...
-        varargin{5}.start(2):varargin{5}.width(2):varargin{5}.start(2) ...
-        + varargin{5}.width(2) * (size(varargin{5}.data, 2) - 1), ...
+    [secX, secY, secZ] = meshgrid(varargin{5}.start(2) + ...
+        varargin{5}.width(2) * (size(varargin{5}.data, 2) - 1): ...
+        -varargin{5}.width(2):varargin{5}.start(2), ...
+        varargin{5}.start(1):varargin{5}.width(1):varargin{5}.start(1) ...
+        + varargin{5}.width(1) * (size(varargin{5}.data, 1) - 1), ...
         varargin{5}.start(3):varargin{5}.width(3):varargin{5}.start(3) ...
         + varargin{5}.width(3) * (size(varargin{5}.data, 3) - 1));
 
@@ -216,8 +212,10 @@ switch varargin{2}
 
 % If set to Transverse view
 case 'T'
+    
     % If a slice selection handle was provided
     if nargin == 6
+        
         % Set the slider range to the dimensions of the reference image
         set(varargin{6}, 'Min', 1);
         set(varargin{6}, 'Max', size(varargin{4}.data,3));
@@ -235,8 +233,10 @@ case 'T'
     
 % If set to Coronal view
 case 'C'
+    
     % If a slice selection handle was provided
     if nargin == 6 
+        
         % Set the slider range to the dimensions of the reference image
         set(varargin{6}, 'Min', 1);
         set(varargin{6}, 'Max', size(varargin{4}.data, 2));
@@ -251,10 +251,13 @@ case 'C'
     
     % Store default slice value
     slice = round(size(varargin{4}.data, 2) / 2);
+    
 % If set to Sagittal view
 case 'S'
+    
     % If a slice selection handle was provided
     if nargin == 6
+        
         % Set the slider range to the dimensions of the reference image
         set(varargin{6}, 'Min', 1);
         set(varargin{6}, 'Max', size(varargin{4}.data, 1));
@@ -269,6 +272,7 @@ case 'S'
     
     % Store default slice value
     slice = round(size(varargin{4}.data, 1) / 2);
+    
 % Otherwise throw an error  
 otherwise
     Event('Incorrect TCS value passed to InitializeViewer', 'ERROR');
@@ -281,6 +285,7 @@ Event(sprintf(['Image viewer initialization completed successfully ', ...
 
 % Check if a statistics array structure field exists
 if ~isfield(varargin{4}, 'stats')
+    
     % If not, initialize empty array to be able to call UpdateViewer
     varargin{4}.stats = [];
 end
