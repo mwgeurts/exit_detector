@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="2937850828" file="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector/TomoTherapy Exit Detector Analysis.prj" location="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector" name="TomoTherapy Exit Detector Analysis" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="151134536" file="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector/TomoTherapy Exit Detector Analysis.prj" location="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector" name="TomoTherapy Exit Detector Analysis" target="target.mlapps" target-name="Package App">
     <param.appname>TomoTherapy Exit Detector Analysis</param.appname>
     <param.authnamewatermark>Mark Geurts</param.authnamewatermark>
     <param.email>mark.w.geurts@gmail.com</param.email>
@@ -15,7 +15,7 @@ The user interface provides graphic and quantitative analysis of the comparison 
 
 TomoTherapy is a registered trademark of Accuray Incorporated.</param.description>
     <param.screenshot />
-    <param.version>1.2.1</param.version>
+    <param.version>1.2.2</param.version>
     <param.products.name>
       <item>Image Processing Toolbox</item>
       <item>MATLAB</item>
@@ -120,7 +120,7 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
       <vista>false</vista>
       <linux>false</linux>
       <solaris>false</solaris>
-      <osver>10.12.2</osver>
+      <osver>10.12.3</osver>
       <os32>false</os32>
       <os64>true</os64>
       <arch>maci64</arch>
