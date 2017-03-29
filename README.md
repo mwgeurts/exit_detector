@@ -20,6 +20,7 @@ TomoTherapy is a registered trademark of Accuray Incorporated.
   * [Exit Detector Fluence Computation Methods](README.md#exit-detector-fluence-computation-methods)
   * [Dose Calculation Methods](README.md#dose-calculation-methods)
   * [Gamma Computation Methods](README.md#gamma-computation-methods)
+* [License](README.md#license) 
 
 ## Installation and Use
 
