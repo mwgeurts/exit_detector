@@ -259,25 +259,34 @@ switch varargin{2}
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
 
+            % Remove trimmed areas of jaw positions
+            jaws = zeros(2, sum(handles.planData.stopTrim - ...
+                handles.planData.startTrim));
+            trimmedLengths(2:(length(handles.planData.startTrim)+1)) = ...
+                handles.planData.stopTrim - handles.planData.startTrim;
+            for i = 2:length(trimmedLengths)
+                jaws(1:2, (sum(trimmedLengths(1:i-1))+1):...
+                    (sum(trimmedLengths(1:i)))+1) = widths(1:2, ...
+                    handles.planData.startTrim(i-1):...
+                    handles.planData.stopTrim(i-1));
+            end
+            
             % Plot jaw positions
-            plot(widths(1, handles.planData.startTrim:...
-                handles.planData.stopTrim));
+            plot(jaws(1, :));
             hold on;
-            plot(widths(2, handles.planData.startTrim:...
-                handles.planData.stopTrim));
+            plot(jaws(2, :));
             hold off;
             
             % Set plot options
             colormap(handles.results_axes, 'default')
-            xlim([0 handles.planData.stopTrim - ...
-                handles.planData.startTrim])
+            xlim([1 size(jaws, 2)])
             xlabel('Projection')
             ylabel('Jaw Position (cm)')
             grid on
             zoom on
             
             % Clear temporary variables
-            clear widths;
+            clear i jaws trimmedLengths widths;
         end
         
     % Field width profile
@@ -297,21 +306,31 @@ switch varargin{2}
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
 
+            % Remove trimmed areas of field widths
+            plotwidths = zeros(1, sum(handles.planData.stopTrim - ...
+                handles.planData.startTrim));
+            trimmedLengths(2:(length(handles.planData.startTrim)+1)) = ...
+                handles.planData.stopTrim - handles.planData.startTrim;
+            for i = 2:length(trimmedLengths)
+                plotwidths((sum(trimmedLengths(1:i-1))+1):...
+                    (sum(trimmedLengths(1:i)))+1) = widths(3, ...
+                    handles.planData.startTrim(i-1):...
+                    handles.planData.stopTrim(i-1));
+            end
+            
             % Plot jaw widths
-            plot(widths(3, handles.planData.startTrim:...
-                handles.planData.stopTrim));
+            plot(plotwidths);
             
             % Set plot options
             colormap(handles.results_axes, 'default')
-            xlim([0 handles.planData.stopTrim - ...
-                handles.planData.startTrim])
+            xlim([1 length(plotwidths)])
             xlabel('Projection')
             ylabel('Field Width (cm)')
             grid on
             zoom on
             
             % Clear temporary variables
-            clear widths;
+            clear i trimmedLengths plotwidths widths;
         end
         
     % Planned vs. Measured sinogram error histogram

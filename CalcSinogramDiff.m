@@ -73,10 +73,38 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
     % throw an error and stop.  The user will need to select a long
     % enough delivery plan for this function to compute correctly
     if size(sinogram,2) > size(rawData,2)
-        Event(['The selected delivery plan is shorter than the return ', ...
+        Event(['The selected delivery plan is longer than the return ', ...
             'data. Select a different delivery plan.'], 'ERROR');
     end
 
+    % If the size of the rawData input is significantly greater than
+    % size(sinogram,2), and this is a Fixed_Angle plan, downsample using
+    % the cumulative value in each range
+    if size(sinogram,2) * 1.1 < size(rawData,2) && ...
+            strcmp(planData.planType, 'Fixed_Angle')
+        Event(sprintf(['Downsampling raw data to %i projections for ', ...
+            'fixed angle plan.'], size(sinogram,2)));
+        
+        % Initialize temporary array
+        small = zeros(size(rawData,1), size(sinogram,2));
+        
+        % Calculate downsample factor
+        f = size(rawData,2)/size(sinogram,2);
+        
+        % Loop through sinogram projections
+        for i = 1:size(sinogram,2)
+            small(:, i) = sum(rawData(:, max(1, ceil((i-0.5)*f)):...
+                min(floor((i+0.5)*f), size(rawData,2))), 2);
+            
+        end
+        
+        % Update rawData
+        rawData = small;
+        
+        % Clear temporary variables
+        clear i f small;
+    end
+    
     % Trim rawData to size of DQA data using size(sinogram,2), 
     % assuming the last projections are aligned
     Event(sprintf('Trimming raw data (%i x %i) to sinogram (%i x %i)', ...
@@ -147,8 +175,8 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
         % results in the maximum correlation
         shift = 0;
 
-        % Shift the exitData +/- 1 projection relative the sinogram
-        for i = -1:1
+        % Shift the exitData +/- 3 projection relative the sinogram
+        for i = -3:3
             
             % Compute the 2D correlation of the sinogram and shifted
             % exitData (in the projection dimension)
