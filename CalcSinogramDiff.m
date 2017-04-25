@@ -77,41 +77,28 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
             'data. Select a different delivery plan.'], 'ERROR');
     end
 
-    % If the size of the rawData input is significantly greater than
-    % size(sinogram,2), and this is a Fixed_Angle plan, downsample using
-    % the cumulative value in each range
-    if size(sinogram,2) * 1.1 < size(rawData,2) && ...
-            strcmp(planData.planType, 'Fixed_Angle')
-        Event(sprintf(['Downsampling raw data to %i projections for ', ...
-            'fixed angle plan.'], size(sinogram,2)));
+    % Initialize exitData
+    exitData = zeros(size(sinogram));
+    
+    % Loop through each beam
+    for i = 1:length(planData.trimmedLengths)
+       
+        % Log beam
+        Event(sprintf('Trimming leading warmup projections for beam %i', i));
         
-        % Initialize temporary array
-        small = zeros(size(rawData,1), size(sinogram,2));
-        
-        % Calculate downsample factor
-        f = size(rawData,2)/size(sinogram,2);
-        
-        % Loop through sinogram projections
-        for i = 1:size(sinogram,2)
-            small(:, i) = sum(rawData(:, max(1, ceil((i-0.5)*f)):...
-                min(floor((i+0.5)*f), size(rawData,2))), 2);
-            
-        end
-        
-        % Update rawData
-        rawData = small;
-        
-        % Clear temporary variables
-        clear i f small;
+        % Align last projection corresponding raw data projection
+        exitData(:,(sum(planData.trimmedLengths(1:i-1))+1):...
+            sum(planData.trimmedLengths(1:i))) = rawData(leafMap(1:64), ...
+            (-planData.trimmedLengths(i)+1:0) + ceil(size(rawData,2) / ...
+            size(sinogram,2) * sum(planData.trimmedLengths(1:i))));
     end
     
-    % Trim rawData to size of DQA data using size(sinogram,2), 
-    % assuming the last projections are aligned
-    Event(sprintf('Trimming raw data (%i x %i) to sinogram (%i x %i)', ...
-        size(rawData,1), size(rawData,2), size(sinogram,1), ...
-        size(sinogram,2)));
-    exitData = rawData(leafMap(1:64), size(rawData,2) - ...
-        size(sinogram,2) + 1:size(rawData, 2)) - background; 
+    % Subtract background
+    Event('Subtracting background');
+    exitData = exitData - background;
+    
+    % Clear temporary variables
+    clear i; 
     
     % Compute the Forier Transform of the leaf spread function.  The
     % leaf spread function padded by zeros to be 64 elements long + the  
@@ -175,7 +162,7 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
         % results in the maximum correlation
         shift = 0;
 
-        % Shift the exitData +/- 3 projection relative the sinogram
+        % Shift the exitData +/- 1 projection relative the sinogram
         for i = -3:3
             
             % Compute the 2D correlation of the sinogram and shifted
