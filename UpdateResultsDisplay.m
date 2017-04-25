@@ -262,13 +262,11 @@ switch varargin{2}
             % Remove trimmed areas of jaw positions
             jaws = zeros(2, sum(handles.planData.stopTrim - ...
                 handles.planData.startTrim));
-            trimmedLengths(2:(length(handles.planData.startTrim)+1)) = ...
-                handles.planData.stopTrim - handles.planData.startTrim;
-            for i = 2:length(trimmedLengths)
-                jaws(1:2, (sum(trimmedLengths(1:i-1))+1):...
-                    (sum(trimmedLengths(1:i)))+1) = widths(1:2, ...
-                    handles.planData.startTrim(i-1):...
-                    handles.planData.stopTrim(i-1));
+            for i = 1:length(handles.planData.trimmedLengths)
+                jaws(1:2, (sum(handles.planData.trimmedLengths(1:i-1))+1):...
+                    sum(handles.planData.trimmedLengths(1:i))) = widths(1:2, ...
+                    handles.planData.startTrim(i):...
+                    handles.planData.stopTrim(i));
             end
             
             % Plot jaw positions
@@ -286,7 +284,7 @@ switch varargin{2}
             zoom on
             
             % Clear temporary variables
-            clear i jaws trimmedLengths widths;
+            clear i jaws widths;
         end
         
     % Field width profile
@@ -309,13 +307,11 @@ switch varargin{2}
             % Remove trimmed areas of field widths
             plotwidths = zeros(1, sum(handles.planData.stopTrim - ...
                 handles.planData.startTrim));
-            trimmedLengths(2:(length(handles.planData.startTrim)+1)) = ...
-                handles.planData.stopTrim - handles.planData.startTrim;
-            for i = 2:length(trimmedLengths)
-                plotwidths((sum(trimmedLengths(1:i-1))+1):...
-                    (sum(trimmedLengths(1:i)))+1) = widths(3, ...
-                    handles.planData.startTrim(i-1):...
-                    handles.planData.stopTrim(i-1));
+            for i = 1:length(handles.planData.trimmedLengths)
+                plotwidths((sum(handles.planData.trimmedLengths(1:i-1))+1):...
+                    sum(handles.planData.trimmedLengths(1:i))) = widths(3, ...
+                    handles.planData.startTrim(i):...
+                    handles.planData.stopTrim(i));
             end
             
             % Plot jaw widths
@@ -330,7 +326,7 @@ switch varargin{2}
             zoom on
             
             % Clear temporary variables
-            clear i trimmedLengths plotwidths widths;
+            clear i plotwidths widths;
         end
         
     % Planned vs. Measured sinogram error histogram
