@@ -230,31 +230,80 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
     Event('Computing sinogram difference map');
     diff = exitData - sinogram;
 
-    % If dynamic jaw compensation is enabled
-    if dynamicJaw == 1 && isfield(planData, 'events')
+    % If dynamic jaw compensation is enabled and there is motion
+    if dynamicJaw == 1 && max(widths(3,:)) > min(widths(3,:))
         
         % Log event
         Event('Dynamic jaw compensation is enabled');
         
-        % Model relationship between sinogram difference vs. field
-        % width in dynamic jaw areas
-        p = polyfit(widths(3, planData.startTrim:...
-            planData.stopTrim), min(diff), 2);
+        % Loop through each beam
+        for i = 1:length(planData.startTrim)
+            
+            % Compute end of leading jaw motion
+            [~, idx] = max(widths(3, planData.startTrim(i):end));
+            
+            % Store starting tau
+            start = sum(planData.trimmedLengths(1:i-1));
+            
+            % Compute mean non-zero difference for each field width
+            diffs = zeros(1, idx);
+            for j = 1:idx
+                diffs(j) = mean(nonzeros(diff(:,start+j)));
+                if isnan(diffs(j))
+                    diffs(j) = 0;
+                end
+            end
+            
+            % Model relationship between sinogram difference vs. field
+            % width in dynamic jaw areas
+            [p, S] = polyfit(widths(3, planData.startTrim(i):...
+                planData.startTrim(i)+idx-1), diffs, max(1, min(idx-2, 3)));
         
-        % Log model results
-        Event(sprintf('Dynamic jaw model parameters [%e %e %e]', p));
+            % Log model results
+            Event(sprintf('Beam %i leading jaw model norm resid = %0.4f', ...
+                i, S.normr));
 
-        % Adjust all dynamic jaw projections
-        for i = 1:size(diff,2)
-            if widths(3, planData.startTrim+i) < max(widths(3,:) * 0.9)
-                diff(:,i) = min(diff(:,i) - polyval(p, ...
-                    widths(3, planData.startTrim+i)) .* ...
-                    ceil(sinogram(:,i)), 0);
+            % Adjust projections using model
+            for j = 1:idx-1
+                diff(:, start+j) = diff(:, start+j) - repmat(polyval(p, ...
+                    widths(3, planData.startTrim(i)+j-1)), 64, 1) .* ...
+                    ceil(abs(diff(:,start+j)));
+            end
+            
+            % Compute start of trailing jaw motion
+            [~, idx] = max(flip(widths(3, 1:planData.stopTrim(i))));
+            
+            % Store ending tau
+            stop = sum(planData.trimmedLengths(1:i));
+            
+            % Compute mean non-zero difference for each field width
+            diffs = zeros(1, idx);
+            for j = 1:idx-1
+                diffs(j) = mean(nonzeros(diff(:,stop-j+1)));
+                if isnan(diffs(j))
+                    diffs(j) = 0;
+                end
+            end
+            
+            % Model relationship between sinogram difference vs. field
+            % width in dynamic jaw areas
+            [p, S] = polyfit(widths(3, planData.stopTrim(i):-1:...
+                planData.stopTrim(i)-idx+1), diffs, max(1, min(idx-2, 3)));
+        
+            % Log model results
+            Event(sprintf('Beam %i trailing jaw model norm resid = %0.4f', ...
+                i, S.normr));
+
+            % Adjust projections using model
+            for j = 1:idx-1
+                diff(:, stop-j+1) = diff(:, stop-j+1) - repmat(polyval(p, ...
+                    widths(3, planData.stopTrim(i)-j+1)), 64, 1) .* ...
+                    ceil(abs(diff(:,stop-j+1)));
             end
         end
 
         % Clear temporary variables
-        clear widths p;
+        clear widths p S i j idx diffs;
     end
 
     % Log event
