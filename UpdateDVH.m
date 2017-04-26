@@ -41,7 +41,7 @@ function varargout = UpdateDVH(varargin)
 %       structures where n+1 is the x-axis value (separated into 1001 bins)
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
-% Copyright (C) 2015 University of Wisconsin Board of Regents
+% Copyright (C) 2017 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  

@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="151134536" file="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector/TomoTherapy Exit Detector Analysis.prj" location="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector" name="TomoTherapy Exit Detector Analysis" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="4071965805" file="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector/TomoTherapy Exit Detector Analysis.prj" location="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector" name="TomoTherapy Exit Detector Analysis" target="target.mlapps" target-name="Package App">
     <param.appname>TomoTherapy Exit Detector Analysis</param.appname>
     <param.authnamewatermark>Mark Geurts</param.authnamewatermark>
     <param.email>mark.w.geurts@gmail.com</param.email>
@@ -15,7 +15,7 @@ The user interface provides graphic and quantitative analysis of the comparison 
 
 TomoTherapy is a registered trademark of Accuray Incorporated.</param.description>
     <param.screenshot />
-    <param.version>1.2.2</param.version>
+    <param.version>1.3.0</param.version>
     <param.products.name>
       <item>Image Processing Toolbox</item>
       <item>MATLAB</item>
@@ -51,11 +51,6 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
       <file>${PROJECT_ROOT}/CalcSinogramDiff.m</file>
       <file>${PROJECT_ROOT}/Event.m</file>
       <file>${PROJECT_ROOT}/ExitDetector.fig</file>
-      <file>${PROJECT_ROOT}/GPU/dcom.header</file>
-      <file>${PROJECT_ROOT}/GPU/fat.img</file>
-      <file>${PROJECT_ROOT}/GPU/kernel.img</file>
-      <file>${PROJECT_ROOT}/GPU/lft.img</file>
-      <file>${PROJECT_ROOT}/GPU/penumbra.img</file>
       <file>${PROJECT_ROOT}/InitializeStatistics.m</file>
       <file>${PROJECT_ROOT}/InitializeViewer.m</file>
       <file>${PROJECT_ROOT}/LoadVersionInfo.m</file>
@@ -95,6 +90,11 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
     </fileset.depfun>
     <fileset.resources>
       <file>${PROJECT_ROOT}/GPU</file>
+      <file>${PROJECT_ROOT}/GPU/dcom.header</file>
+      <file>${PROJECT_ROOT}/GPU/fat.img</file>
+      <file>${PROJECT_ROOT}/GPU/kernel.img</file>
+      <file>${PROJECT_ROOT}/GPU/lft.img</file>
+      <file>${PROJECT_ROOT}/GPU/penumbra.img</file>
       <file>${PROJECT_ROOT}/LICENSE.md</file>
       <file>${PROJECT_ROOT}/README.md</file>
       <file>${PROJECT_ROOT}/UWCrest_4c.png</file>
@@ -120,7 +120,7 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
       <vista>false</vista>
       <linux>false</linux>
       <solaris>false</solaris>
-      <osver>10.12.3</osver>
+      <osver>10.12.4</osver>
       <os32>false</os32>
       <os64>true</os64>
       <arch>maci64</arch>

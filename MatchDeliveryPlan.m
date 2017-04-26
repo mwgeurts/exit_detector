@@ -34,7 +34,7 @@ function [planUID, sinogram, maxcorr] = MatchDeliveryPlan(varargin)
 %   maxcorr: if autoSelect is set to 1, the maximum correlation determined
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
-% Copyright (C) 2015 University of Wisconsin Board of Regents
+% Copyright (C) 2017 University of Wisconsin Board of Regents
 %
 % This program is free software: you can redistribute it and/or modify it 
 % under the terms of the GNU General Public License as published by the  
