@@ -86,7 +86,7 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
         % Log beam
         Event(sprintf('Trimming leading warmup projections for beam %i', i));
         
-        % Align last projection corresponding raw data projection
+        % Align last projection to corresponding raw data projection
         exitData(:,(sum(planData.trimmedLengths(1:i-1))+1):...
             sum(planData.trimmedLengths(1:i))) = rawData(leafMap(1:64), ...
             (-planData.trimmedLengths(i)+1:0) + round(size(rawData,2) / ...
@@ -102,7 +102,7 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
     
     % Select which leaf spread function to use, based on leaf distribution
     m = sum(sum(sinogram,2)/sum(sum(sinogram)) .* abs(-31.5:1:31.5)');
-    if m < 12
+    if m < 9
         Event(sprintf('Mean leaf distance = %0.1f, using central LSF', m));
         idx = 1;
     else
@@ -155,12 +155,12 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
     Event('Normalizing exit detector data');
     exitData = exitData / max(max(exitData)) * max(max(sinogram));
     
-    % Clip values less than 1% of the maximum leaf open time to zero.
+    % Clip values less than 3% of the maximum leaf open time to zero.
     % As the MLC is not capable of opening this short, values less than
     % 1% are the result of noise and deconvolution error, so can be
     % safely disregarded
-    Event('Clipping exit detector values less than 1%');
-    exitData = exitData .* ceil(exitData - 0.01);
+    Event('Clipping exit detector values less than 3%');
+    exitData = exitData .* ceil(exitData - 0.03);
 
     % If autoShift is enabled
     if autoShift == 1
@@ -229,8 +229,8 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
         Event(sprintf('Circshift = %i, trail projections ignored', shift));
         
         % Otherwise if the shift is < 0, replace the last projections
-        exitData(:,size(exitData,2)+shift+1:size(exitData,2)) ...
-            = sinogram(:,size(exitData,2)+shift+1:size(exitData,2));
+        exitData(:,size(exitData,2) + shift + 1:size(exitData,2)) ...
+            = sinogram(:,size(exitData,2) + shift + 1:size(exitData,2));
     
     % Otherwise, if 0 shift was the best, log event
     elseif autoShift == 1
@@ -266,7 +266,7 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
             % Compute mean non-zero difference for each field width
             diffs = zeros(1, idx);
             for j = 1:idx
-                diffs(j) = mean(nonzeros(diff(:,start+j)));
+                diffs(j) = mean(nonzeros(diff(:, start+j)));
                 if isnan(diffs(j))
                     diffs(j) = 0;
                 end
@@ -275,7 +275,7 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
             % Model relationship between sinogram difference vs. field
             % width in dynamic jaw areas
             [p, S] = polyfit(widths(3, planData.startTrim(i):...
-                planData.startTrim(i)+idx-1), diffs, max(1, min(idx-2, 3)));
+                planData.startTrim(i)+idx-1), diffs, max(1, min(idx-2, 5)));
         
             % Log model results
             Event(sprintf('Beam %i leading jaw model norm resid = %0.4f', ...
