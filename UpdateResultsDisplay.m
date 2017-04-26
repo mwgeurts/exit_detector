@@ -288,6 +288,7 @@ switch varargin{2}
             xlim([1 size(jaws, 2)])
             xlabel('Projection')
             ylabel('Jaw Position (cm)')
+            legend({'Front', 'Back'})
             grid on
             zoom on
             
