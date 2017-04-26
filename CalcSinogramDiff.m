@@ -73,17 +73,42 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
     % throw an error and stop.  The user will need to select a long
     % enough delivery plan for this function to compute correctly
     if size(sinogram,2) > size(rawData,2)
-        Event(['The selected delivery plan is shorter than the return ', ...
+        Event(['The selected delivery plan is longer than the return ', ...
             'data. Select a different delivery plan.'], 'ERROR');
     end
 
-    % Trim rawData to size of DQA data using size(sinogram,2), 
-    % assuming the last projections are aligned
-    Event(sprintf('Trimming raw data (%i x %i) to sinogram (%i x %i)', ...
-        size(rawData,1), size(rawData,2), size(sinogram,1), ...
-        size(sinogram,2)));
-    exitData = rawData(leafMap(1:64), size(rawData,2) - ...
-        size(sinogram,2) + 1:size(rawData, 2)) - background; 
+    % Initialize exitData
+    exitData = zeros(size(sinogram));
+    
+    % Loop through each beam
+    for i = 1:length(planData.trimmedLengths)
+       
+        % Log beam
+        Event(sprintf('Trimming leading warmup projections for beam %i', i));
+        
+        % Align last projection to corresponding raw data projection
+        exitData(:,(sum(planData.trimmedLengths(1:i-1))+1):...
+            sum(planData.trimmedLengths(1:i))) = rawData(leafMap(1:64), ...
+            (-planData.trimmedLengths(i)+1:0) + round(size(rawData,2) / ...
+            size(sinogram,2) * sum(planData.trimmedLengths(1:i))));
+    end
+    
+    % Subtract background
+    Event('Subtracting background');
+    exitData = exitData - background;
+    
+    % Clear temporary variables
+    clear i; 
+    
+    % Select which leaf spread function to use, based on leaf distribution
+    m = sum(sum(sinogram,2)/sum(sum(sinogram)) .* abs(-31.5:1:31.5)');
+    if m < 9
+        Event(sprintf('Mean leaf distance = %0.1f, using central LSF', m));
+        idx = 1;
+    else
+        Event(sprintf('Mean leaf distance = %0.1f, using edge LSF', m));
+        idx = 2;
+    end
     
     % Compute the Forier Transform of the leaf spread function.  The
     % leaf spread function padded by zeros to be 64 elements long + the  
@@ -91,9 +116,12 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
     % same size).  The leafSpread function is also mirrored, as it is 
     % stored as only a right-sided function. 
     Event('Mirroring and computing Fourier Transform of LSF');
-    filter = fft([fliplr(leafSpread(2:size(leafSpread,2))) ...
-        leafSpread], 64 + size(leafSpread,2))';
-
+    filter = fft([fliplr(leafSpread(idx, 2:size(leafSpread,2))) ...
+        leafSpread(idx, :)], 64 + size(leafSpread,2))';
+    
+    % Clear temporary variables
+    clear idx m;
+    
     % Loop through the number of projections in the exitData
     Event('Performing deconvolution of exit data');
     for i = 1:size(exitData, 2)
@@ -127,12 +155,12 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
     Event('Normalizing exit detector data');
     exitData = exitData / max(max(exitData)) * max(max(sinogram));
     
-    % Clip values less than 1% of the maximum leaf open time to zero.
+    % Clip values less than 3% of the maximum leaf open time to zero.
     % As the MLC is not capable of opening this short, values less than
     % 1% are the result of noise and deconvolution error, so can be
     % safely disregarded
-    Event('Clipping exit detector values less than 1%');
-    exitData = exitData .* ceil(exitData - 0.01);
+    Event('Clipping exit detector values less than 3%');
+    exitData = exitData .* ceil(exitData - 0.03);
 
     % If autoShift is enabled
     if autoShift == 1
@@ -140,73 +168,92 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
         % Log event
         Event('Auto-shift is enabled');
         
-        % Initialize a temporary maximum correlation variable
-        maxcorr = 0;
+        % Loop through each beam
+        for i = 1:length(planData.trimmedLengths)
+        
+            % Initialize a temporary maximum correlation variable
+            maxcorr = 0;
 
-        % Inialize a temporary shift variable to store the shift that
-        % results in the maximum correlation
-        shift = 0;
+            % Inialize a temporary shift variable to store the shift that
+            % results in the maximum correlation
+            shift = 0;
 
-        % Shift the exitData +/- 1 projection relative the sinogram
-        for i = -1:1
+            % Store start and end projections
+            start = sum(planData.trimmedLengths(1:i-1))+1;
+            stop =  sum(planData.trimmedLengths(1:i));
             
-            % Compute the 2D correlation of the sinogram and shifted
-            % exitData (in the projection dimension)
-            j = corr2(sinogram, circshift(exitData, [0 i]));
+            % Shift the exitData +/- 1 projection relative the sinogram
+            for j = -1:1
 
-            % Log result
-            Event(sprintf('Shift %i correlation = %e', i, j));
-            
-            % If the current shift yields the highest correlation
-            if j > maxcorr
-                
-                % Update the maximum correlation variable 
-                maxcorr = j;
+                % Compute the 2D correlation of the sinogram and shifted
+                % exitData (in the projection dimension)
+                k = corr2(sinogram(:,start:stop), ...
+                    circshift(exitData(:,start:stop), [0 j]));
 
-                % Update the shift variable to the current shift
-                shift = i;
+                % Log result
+                Event(sprintf('Beam %i shift %i correlation = %e', ...
+                    i, j, k));
+
+                % If the current shift yields the highest correlation
+                if k > maxcorr
+
+                    % Update the maximum correlation variable 
+                    maxcorr = k;
+
+                    % Update the shift variable to the current shift
+                    shift = j;
+                end
+            end
+        
+            % Unit testing, override shift value
+            % shift = -1;
+
+            % Shift the exitData by the optimal shift value.  Circshift is
+            % used to shift while preserving the array size.
+            exitData(:, start:stop) = ...
+                circshift(exitData(:, start:stop), [0 shift]);
+
+            % If the shift is non-zero, there are projections where no
+            % exitData was measured (or just not correctly stored by the 
+            % DAS). In these cases, replace the missing data (formerly the
+            % circshifted data) by the sinogram data to yield a zero 
+            % difference for these projections.
+            if shift > 0
+
+                % Log event
+                Event(sprintf(['Beam %i optimal circshift is %i, lead ', ...
+                    'projections ignored'], i, shift));
+
+                % If the shift is > 0, replace the first projections
+                exitData(:, start:(start + shift - 1)) = ...
+                    exitData(:, (start + 1):(start + shift));
+
+            elseif shift < 0
+
+                % Log event
+                Event(sprintf(['Beam %i optimal circshift is %i, trail ', ...
+                    'projections ignored'], i, shift));
+
+                % Else if the shift is < 0, replace the last projections
+                exitData(:,(stop + shift + 1):stop) = exitData(:, ...
+                    (stop + shift):(stop - 1));
+
+            % Otherwise, if 0 shift was the best, log event
+            else
+                Event(sprintf('No projection shift identified for beam %i', ...
+                    i));
             end
         end
         
+        % Clear the temporary variables used for shifting
+        clear i j k shift maxcorr start stop;
+        
     % Otherwise, auto-shift is disabled  
     else
-        
+
         % Log event
-        Event('Auto-shift disabled, circshift = 0');
-        
-        % Set the shift variable to 0 (no shift)
-        shift = 0;
+        Event('Auto-shift disabled');
     end
-
-    % Shift the exitData by the optimal shift value.  Circshift is
-    % used to shift while preserving the array size.
-    exitData = circshift(exitData, [0 shift]);
-
-    % If the shift is non-zero, there are projections where no
-    % exitData was measured (or just not correctly stored by the DAS).
-    % In these cases, replace the missing data (formerly the
-    % circshifted data) by the sinogram data to yield a zero difference
-    % for these projections.
-    if shift > 0
-        
-        % Log event
-        Event(sprintf('Circshift = %i, lead projections ignored', shift));
-        
-        % If the shift is > 0, replace the first projections
-        exitData(:,1:shift) = sinogram(:,1:shift);
-
-    elseif shift < 0
-        
-        % Log event
-        Event(sprintf('Circshift = %i, trail projections ignored', shift));
-        
-        % Otherwise if the shift is < 0, replace the last projections
-        exitData(:,size(exitData,2)+shift+1:size(exitData,2)) ...
-            = sinogram(:,size(exitData,2)+shift+1:size(exitData,2));
-    end
-
-    % Clear the temporary variables used for shifting
-    clear i j shift maxcorr;
 
     % Compute the sinogram difference.  This difference is in
     % "absolute" (relative leaf open time) units; during CalcDose this
@@ -215,31 +262,82 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
     Event('Computing sinogram difference map');
     diff = exitData - sinogram;
 
-    % If dynamic jaw compensation is enabled
-    if dynamicJaw == 1 && isfield(planData, 'events')
+    % If dynamic jaw compensation is enabled and there is motion
+    if dynamicJaw == 1 && max(widths(3,:)) > min(widths(3,:))
         
         % Log event
         Event('Dynamic jaw compensation is enabled');
         
-        % Model relationship between sinogram difference vs. field
-        % width in dynamic jaw areas
-        p = polyfit(widths(3, planData.startTrim:...
-            planData.stopTrim), min(diff), 2);
+        % Loop through each beam
+        for i = 1:length(planData.startTrim)
+            
+            % Compute end of leading jaw motion
+            [~, idx] = max(widths(3, ...
+                planData.startTrim(i):planData.stopTrim(i)));
+            
+            % Store starting tau
+            start = sum(planData.trimmedLengths(1:i-1));
+            
+            % Compute mean non-zero difference for each field width
+            diffs = zeros(1, idx);
+            for j = 1:idx
+                diffs(j) = mean(nonzeros(diff(:, start+j)));
+                if isnan(diffs(j))
+                    diffs(j) = 0;
+                end
+            end
+            
+            % Model relationship between sinogram difference vs. field
+            % width in dynamic jaw areas
+            [p, S] = polyfit(widths(3, planData.startTrim(i):...
+                planData.startTrim(i)+idx-1), diffs, max(1, min(idx-2, 3)));
         
-        % Log model results
-        Event(sprintf('Dynamic jaw model parameters [%e %e %e]', p));
+            % Log model results
+            Event(sprintf('Beam %i leading jaw model norm resid = %0.4f', ...
+                i, S.normr));
 
-        % Adjust all dynamic jaw projections
-        for i = 1:size(diff,2)
-            if widths(3, planData.startTrim+i) < max(widths(3,:) * 0.9)
-                diff(:,i) = min(diff(:,i) - polyval(p, ...
-                    widths(3, planData.startTrim+i)) .* ...
-                    ceil(sinogram(:,i)), 0);
+            % Adjust projections using model
+            for j = 1:idx-1
+                diff(:, start+j) = diff(:, start+j) - repmat(polyval(p, ...
+                    widths(3, planData.startTrim(i)+j-1)), 64, 1) .* ...
+                    ceil(abs(diff(:,start+j)));
+            end
+            
+            % Compute start of trailing jaw motion
+            [~, idx] = max(flip(widths(3, ...
+                planData.startTrim(i):planData.stopTrim(i))));
+            
+            % Store ending tau
+            stop = sum(planData.trimmedLengths(1:i));
+            
+            % Compute mean non-zero difference for each field width
+            diffs = zeros(1, idx);
+            for j = 1:idx-1
+                diffs(j) = mean(nonzeros(diff(:,stop-j+1)));
+                if isnan(diffs(j))
+                    diffs(j) = 0;
+                end
+            end
+            
+            % Model relationship between sinogram difference vs. field
+            % width in dynamic jaw areas
+            [p, S] = polyfit(widths(3, planData.stopTrim(i):-1:...
+                planData.stopTrim(i)-idx+1), diffs, max(1, min(idx-2, 3)));
+        
+            % Log model results
+            Event(sprintf('Beam %i trailing jaw model norm resid = %0.4f', ...
+                i, S.normr));
+
+            % Adjust projections using model
+            for j = 1:idx-1
+                diff(:, stop-j+1) = diff(:, stop-j+1) - repmat(polyval(p, ...
+                    widths(3, planData.stopTrim(i)-j+1)), 64, 1) .* ...
+                    ceil(abs(diff(:,stop-j+1)));
             end
         end
 
         % Clear temporary variables
-        clear widths p;
+        clear widths p S i j idx diffs;
     end
 
     % Log event

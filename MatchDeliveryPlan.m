@@ -4,7 +4,8 @@ function [planUID, sinogram, maxcorr] = MatchDeliveryPlan(varargin)
 % selection is enabled, the delivery plan that matches closest to an input
 % sinogram (as computed using the correlation coefficient) is determined.
 % If not, the user is prompted to select a delivery plan via listdlg, and
-% the planUID and sinogram for the selected plan is returned.
+% the planUID and sinogram for the selected plan is returned. Note, this
+% only works with helical plans.
 %
 % The following variables are required for proper execution:
 %   path: path to the patient archive XML
@@ -25,7 +26,7 @@ function [planUID, sinogram, maxcorr] = MatchDeliveryPlan(varargin)
 %       leaf (see ParseFileQA.m)
 %   rawData: n x detector rows of uncorrected exit detector data for a 
 %       delivered static couch DQA plan, where n is the number of 
-%       projections in the plan (see ParseFileQA.m)
+%       projections in the plan (see LoadStaticCouchQA.m)
 %
 % The following variables are returned upon succesful completion:
 %   planUID: UID of the plan selected or optimally determined
@@ -86,7 +87,7 @@ end
 try  
    
 % Log start of matching and start timer
-Event(sprintf('Searching %s for matching delivery plans', name));
+Event(sprintf('Searching %s for matching helical delivery plans', name));
 tic;
     
 % The patient XML is parsed using xpath class
@@ -167,6 +168,7 @@ for i = 1:nodeList.getLength
 
     % Look through the fullPlanDataArrays
     for j = 1:parentnodeList.getLength
+        
         % Set a handle to the current list 
         parentnode = parentnodeList.item(j-1);
 

@@ -111,6 +111,7 @@ switch varargin{2}
             axis tight
             xlabel('Channel')
             ylabel('Signal')
+            legend({'Even Leaves', 'Odd Leaves'})
             grid on
             zoom on
         else
@@ -193,13 +194,19 @@ switch varargin{2}
             set(handles.results_axes,'visible', 'on');
             
             % Plot leaf spread function
-            semilogy(handles.dailyqa.leafSpread)
+            semilogy(0:size(handles.dailyqa.leafSpread, 2)-1, ...
+                handles.dailyqa.leafSpread(1,:))
+            hold on;
+            semilogy(0:size(handles.dailyqa.leafSpread, 2)-1, ...
+                handles.dailyqa.leafSpread(2,:))
+            hold off;
             
             % Set plot options
             colormap(handles.results_axes, 'default')
             axis tight
             xlabel('MLC Leaf')
             ylabel('Normalized Signal')
+            legend({'Central Leaves', 'Edge Leaves'})
             grid on
             zoom on
         else
@@ -229,11 +236,12 @@ switch varargin{2}
             open_times = open_times(open_times > 0) * 100;
             
             % Plot open time histogram with 100 bins
-            hist(open_times, 100)
+            hist(open_times, 0:1:100)
             
             % Set plot options
             colormap(handles.results_axes, 'default')
             xlabel('Open Time (%)')
+            xlim([0 100]);
             grid on
             zoom on
         else
@@ -259,25 +267,33 @@ switch varargin{2}
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
 
+            % Remove trimmed areas of jaw positions
+            jaws = zeros(2, sum(handles.planData.stopTrim - ...
+                handles.planData.startTrim));
+            for i = 1:length(handles.planData.trimmedLengths)
+                jaws(1:2, (sum(handles.planData.trimmedLengths(1:i-1))+1):...
+                    sum(handles.planData.trimmedLengths(1:i))) = widths(1:2, ...
+                    handles.planData.startTrim(i):...
+                    handles.planData.stopTrim(i));
+            end
+            
             % Plot jaw positions
-            plot(widths(1, handles.planData.startTrim:...
-                handles.planData.stopTrim));
+            plot(jaws(1, :));
             hold on;
-            plot(widths(2, handles.planData.startTrim:...
-                handles.planData.stopTrim));
+            plot(jaws(2, :));
             hold off;
             
             % Set plot options
             colormap(handles.results_axes, 'default')
-            xlim([0 handles.planData.stopTrim - ...
-                handles.planData.startTrim])
+            xlim([1 size(jaws, 2)])
             xlabel('Projection')
             ylabel('Jaw Position (cm)')
+            legend({'Front', 'Back'})
             grid on
             zoom on
             
             % Clear temporary variables
-            clear widths;
+            clear i jaws widths;
         end
         
     % Field width profile
@@ -297,21 +313,29 @@ switch varargin{2}
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
 
+            % Remove trimmed areas of field widths
+            plotwidths = zeros(1, sum(handles.planData.stopTrim - ...
+                handles.planData.startTrim));
+            for i = 1:length(handles.planData.trimmedLengths)
+                plotwidths((sum(handles.planData.trimmedLengths(1:i-1))+1):...
+                    sum(handles.planData.trimmedLengths(1:i))) = widths(3, ...
+                    handles.planData.startTrim(i):...
+                    handles.planData.stopTrim(i));
+            end
+            
             % Plot jaw widths
-            plot(widths(3, handles.planData.startTrim:...
-                handles.planData.stopTrim));
+            plot(plotwidths);
             
             % Set plot options
             colormap(handles.results_axes, 'default')
-            xlim([0 handles.planData.stopTrim - ...
-                handles.planData.startTrim])
+            xlim([1 length(plotwidths)])
             xlabel('Projection')
             ylabel('Field Width (cm)')
             grid on
             zoom on
             
             % Clear temporary variables
-            clear widths;
+            clear i plotwidths widths;
         end
         
     % Planned vs. Measured sinogram error histogram
@@ -326,12 +350,13 @@ switch varargin{2}
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
 
-            % Plot error histogram with 100 bins
-            hist(handles.errors*100, 100)
+            % Plot error histogram with 0.2% width bins
+            hist(handles.errors*100, -100:0.2:100)
             
             % Set plot options
             colormap(handles.results_axes, 'default')
             xlabel('LOT Error (%)')
+            xlim([-10 10]);
             grid on
             zoom on
         else
