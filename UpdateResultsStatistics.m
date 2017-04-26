@@ -77,6 +77,20 @@ else
     table{c,2} = '';
 end
 
+% Median LOT error
+c = c + 1;
+table{c,1} = 'Median leaf open time error';
+if isfield(handles, 'errors') && ~isempty(handles.errors)
+    
+    % Store the mean leaf open time error in %
+    table{c,2} = sprintf('%0.2f%%', median(handles.errors) * 100); 
+    
+    % Log result
+    Event(sprintf('Median LOT error = %e', median(handles.errors)));
+else
+    table{c,2} = '';
+end
+
 % St Dev LOT error
 c = c + 1;
 table{c,1} = 'St dev leaf open time error';
@@ -118,10 +132,11 @@ c = c + 1;
 table{c,1} = 'Gamma dose threshold';
 table{c,2} = sprintf('%0.1f%%', handles.doseThreshold * 100);
 
-% Gamma pass rate
+% Mean gamma index
 c = c + 1;
-table{c,1} = 'Gamma pass rate';
+table{c,1} = 'Mean Gamma index';
 if isfield(handles, 'gamma') && size(handles.gamma,1) > 0
+    
     % Initialize the gammahist temporary variable to compute the 
     % gamma pass rate, by reshaping gamma to a 1D vector
     gammahist = reshape(handles.gamma,1,[]);
@@ -131,6 +146,30 @@ if isfield(handles, 'gamma') && size(handles.gamma,1) > 0
     % information)
     gammahist = gammahist(gammahist > 0); 
             
+    % Store pass rate
+    table{c,2} = sprintf('%0.2f', mean(gammahist));
+    
+    % Log result
+    Event(sprintf('Mean Gamma index = %e', mean(gammahist)));
+end
+
+% Median gamma index
+c = c + 1;
+table{c,1} = 'Median Gamma index';
+if isfield(handles, 'gamma') && size(handles.gamma,1) > 0
+         
+    % Store pass rate
+    table{c,2} = sprintf('%0.2f', median(gammahist));
+    
+    % Log result
+    Event(sprintf('Median Gamma index = %e', median(gammahist)));
+end
+
+% Gamma pass rate
+c = c + 1;
+table{c,1} = 'Gamma pass rate';
+if isfield(handles, 'gamma') && size(handles.gamma,1) > 0
+          
     % Store pass rate
     table{c,2} = sprintf('%0.2f%%', ...
         length(gammahist(gammahist <= 1)) / length(gammahist) * 100);
