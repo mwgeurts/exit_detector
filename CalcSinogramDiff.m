@@ -89,7 +89,7 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
         % Align last projection corresponding raw data projection
         exitData(:,(sum(planData.trimmedLengths(1:i-1))+1):...
             sum(planData.trimmedLengths(1:i))) = rawData(leafMap(1:64), ...
-            (-planData.trimmedLengths(i)+1:0) + ceil(size(rawData,2) / ...
+            (-planData.trimmedLengths(i)+1:0) + round(size(rawData,2) / ...
             size(sinogram,2) * sum(planData.trimmedLengths(1:i))));
     end
     
@@ -100,15 +100,28 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
     % Clear temporary variables
     clear i; 
     
+    % Select which leaf spread function to use, based on leaf distribution
+    m = sum(sum(sinogram,2)/sum(sum(sinogram)) .* abs(-31.5:1:31.5)');
+    if m < 12
+        Event(sprintf('Mean leaf distance = %0.1f, using central LSF', m));
+        idx = 1;
+    else
+        Event(sprintf('Mean leaf distance = %0.1f, using edge LSF', m));
+        idx = 2;
+    end
+    
     % Compute the Forier Transform of the leaf spread function.  The
     % leaf spread function padded by zeros to be 64 elements long + the  
     % size of the leaf spread function (the exitData is padded to the 
     % same size).  The leafSpread function is also mirrored, as it is 
     % stored as only a right-sided function. 
     Event('Mirroring and computing Fourier Transform of LSF');
-    filter = fft([fliplr(leafSpread(2:size(leafSpread,2))) ...
-        leafSpread], 64 + size(leafSpread,2))';
-
+    filter = fft([fliplr(leafSpread(idx, 2:size(leafSpread,2))) ...
+        leafSpread(idx, :)], 64 + size(leafSpread,2))';
+    
+    % Clear temporary variables
+    clear idx m;
+    
     % Loop through the number of projections in the exitData
     Event('Performing deconvolution of exit data');
     for i = 1:size(exitData, 2)
@@ -163,7 +176,7 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
         shift = 0;
 
         % Shift the exitData +/- 1 projection relative the sinogram
-        for i = -3:3
+        for i = -1:1
             
             % Compute the 2D correlation of the sinogram and shifted
             % exitData (in the projection dimension)
@@ -218,6 +231,10 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
         % Otherwise if the shift is < 0, replace the last projections
         exitData(:,size(exitData,2)+shift+1:size(exitData,2)) ...
             = sinogram(:,size(exitData,2)+shift+1:size(exitData,2));
+    
+    % Otherwise, if 0 shift was the best, log event
+    elseif autoShift == 1
+        Event('No projection shift found');
     end
 
     % Clear the temporary variables used for shifting
