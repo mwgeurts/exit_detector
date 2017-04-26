@@ -240,7 +240,8 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
         for i = 1:length(planData.startTrim)
             
             % Compute end of leading jaw motion
-            [~, idx] = max(widths(3, planData.startTrim(i):end));
+            [~, idx] = max(widths(3, ...
+                planData.startTrim(i):planData.stopTrim(i)));
             
             % Store starting tau
             start = sum(planData.trimmedLengths(1:i-1));
@@ -271,7 +272,8 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
             end
             
             % Compute start of trailing jaw motion
-            [~, idx] = max(flip(widths(3, 1:planData.stopTrim(i))));
+            [~, idx] = max(flip(widths(3, ...
+                planData.startTrim(i):planData.stopTrim(i))));
             
             % Store ending tau
             stop = sum(planData.trimmedLengths(1:i));
