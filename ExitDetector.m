@@ -712,7 +712,7 @@ if ~isequal(name, 0)
         % Update Dx/Vx statistics
         set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
             get(handles.dvh_table, 'Data'), [], ...
-            handles.referenceDose.dvh));
+            handles.referenceDose.dvh, []));
         
         % Update results display
         set(handles.results_display, 'Value', 9);
@@ -1610,7 +1610,7 @@ handles.doseDiff = CalcDoseDifference(...
     handles.referenceDose, handles.dqaDose);
 
 % Update dose plot with dose difference
-set(handles.dose_display, 'Value', 4);
+set(handles.dose_display, 'Value', 5);
 handles = UpdateDoseDisplay(handles);
 
 % Update DVH plot
