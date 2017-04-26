@@ -111,6 +111,7 @@ switch varargin{2}
             axis tight
             xlabel('Channel')
             ylabel('Signal')
+            legend({'Even Leaves', 'Odd Leaves'})
             grid on
             zoom on
         else
@@ -193,13 +194,19 @@ switch varargin{2}
             set(handles.results_axes,'visible', 'on');
             
             % Plot leaf spread function
-            semilogy(handles.dailyqa.leafSpread)
+            semilogy(0:size(handles.dailyqa.leafSpread, 2)-1, ...
+                handles.dailyqa.leafSpread(1,:))
+            hold on;
+            semilogy(0:size(handles.dailyqa.leafSpread, 2)-1, ...
+                handles.dailyqa.leafSpread(2,:))
+            hold off;
             
             % Set plot options
             colormap(handles.results_axes, 'default')
             axis tight
             xlabel('MLC Leaf')
             ylabel('Normalized Signal')
+            legend({'Central Leaves', 'Edge Leaves'})
             grid on
             zoom on
         else
@@ -347,6 +354,7 @@ switch varargin{2}
             % Set plot options
             colormap(handles.results_axes, 'default')
             xlabel('LOT Error (%)')
+            xlim([-10 10]);
             grid on
             zoom on
         else
