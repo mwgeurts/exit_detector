@@ -1,7 +1,7 @@
 ## TomoTherapy Exit Detector Analysis
 
 by Mark Geurts <mark.w.geurts@gmail.com>
-<br>Copyright &copy; 2016, University of Wisconsin Board of Regents
+<br>Copyright &copy; 2017, University of Wisconsin Board of Regents
 
 The TomoTherapy&reg; Exit Detector Analysis Tool is a GUI based standalone application written in MATLAB that parses [TomoTherapy](http://www.accuray.com) patient archives and DICOM RT Exit Dose files and uses the MVCT response collected during a Static Couch DQA procedure to estimate the fluence delivered through each MLC leaf during treatment delivery.  By comparing the measured fluence to an expected fluence (calculated during optimization of the treatment plan), the treatment delivery performance of the TomoTherapy Treatment System can be observed.
 
@@ -37,7 +37,7 @@ The TomoTherapy Exit Dose Analysis application uses three inputs: MVCT detector 
 
 The MVCT data can be loaded using two different modes.  In DICOM mode, this application reads Transit Dose DICOM RT objects exported from the TomoTherapy version 5.0 treatment system.  In Archive mode, the MVCT data for the TQA Daily QA module can be loaded from a patient archive of the TQA Daily QA patient, while the Static Couch DQA is loaded from the selected XML.  In Archive mode, both TomoTherapy version 4.2 and 5.0 archives have been validated with this application.
 
-For MATLAB, this application has been validated in versions 8.3 through 8.5, Image Processing Toolbox 8.2 through 9.2, and Parallel Computing Toolbox version 6.4 through 6.6 on Macintosh OSX 10.8 (Mountain Lion) through 10.10 (Yosemite).  The Image Processing Toolbox is required for execution.  As discussed above, the Parallel Computing Toolbox is only required if using the Gamma metric plugin with GPU based computation.
+For MATLAB, this application has been validated in versions 8.3 through 9.1, Image Processing Toolbox 8.2 through 9.5, and Parallel Computing Toolbox version 6.4 through 6.9 on macOS 10.8 (Mountain Lion) through 10.12 (Sierra).  The Image Processing Toolbox is required for execution.  As discussed above, the Parallel Computing Toolbox is only required if using the Gamma metric plugin with GPU based computation.
 
 ## Troubleshooting
 
