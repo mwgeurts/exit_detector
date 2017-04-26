@@ -236,11 +236,12 @@ switch varargin{2}
             open_times = open_times(open_times > 0) * 100;
             
             % Plot open time histogram with 100 bins
-            hist(open_times, 100)
+            hist(open_times, 0:1:100)
             
             % Set plot options
             colormap(handles.results_axes, 'default')
             xlabel('Open Time (%)')
+            xlim([0 100]);
             grid on
             zoom on
         else
@@ -348,8 +349,8 @@ switch varargin{2}
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
 
-            % Plot error histogram with 100 bins
-            hist(handles.errors*100, 100)
+            % Plot error histogram with 0.2% width bins
+            hist(handles.errors*100, -100:0.2:100)
             
             % Set plot options
             colormap(handles.results_axes, 'default')
