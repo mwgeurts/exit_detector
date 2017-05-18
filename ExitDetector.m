@@ -66,7 +66,7 @@ warning('off','all');
 handles.output = hObject;
 
 % Set version handle
-handles.version = '1.3.1';
+handles.version = '1.4.0';
 
 % Determine path of current application
 [path, ~, ~] = fileparts(mfilename('fullpath'));
@@ -98,7 +98,7 @@ string = sprintf('%s\n', separator, string{:}, separator);
 % Log information
 Event(string, 'INIT');
 
-%% Add Tomo archive extraction tools submodule
+%% Add submodules
 % Add archive extraction tools submodule to search path
 addpath('./tomo_extract');
 
@@ -112,7 +112,6 @@ if exist('CalcDose', 'file') ~= 2
         'ERROR');
 end
 
-%% Add DICOM tools submodule
 % Add DICOM tools submodule to search path
 addpath('./dicom_tools');
 
@@ -126,7 +125,6 @@ if exist('WriteDICOMDose', 'file') ~= 2
         'ERROR');
 end
 
-%% Add Structure Atlas submodule
 % Add structure atlas submodule to search path
 addpath('./structure_atlas');
 
@@ -140,7 +138,6 @@ if exist('LoadAtlas', 'file') ~= 2
         'ERROR');
 end
 
-%% Add CalcGamma submodule
 % Add gamma submodule to search path
 addpath('./gamma');
 
@@ -151,6 +148,31 @@ if exist('CalcGamma', 'file') ~= 2
     Event(['The CalcGamma submodule does not exist in the search path. Use ', ...
         'git clone --recursive or git submodule init followed by git ', ...
         'submodule update to fetch all submodules'], 'ERROR');
+end
+
+% Add thomas_tomocalc submodule to search path
+addpath('./thomas_tomocalc');
+
+% Check if MATLAB can find CheckTomoDose
+if exist('CheckTomoDose', 'file') ~= 2
+    
+    % If not, throw an error
+    Event(['The thomas_tomocalc submodule does not exist in the search ', ...
+        'path. Use git clone --recursive or git submodule init followed ', ...
+        'by git submodule update to fetch all submodules'], 'ERROR');
+end
+
+% Add ImageViewer submodule to search path
+addpath('./tcs_plots');
+
+% Check if MATLAB can find @ImageViewer
+if exist('ImageViewer', 'class') ~= 8
+    
+    % If not, throw an error
+    Event(['The tcs_plots submodule does not exist in the ', ...
+        'search path. Use git clone --recursive or git submodule init ', ...
+        'followed by git submodule update to fetch all submodules'], ...
+        'ERROR');
 end
 
 %% Load configuration settings
@@ -235,7 +257,7 @@ else
 end
 Event(['Default file path set to ', handles.path]);
 
-% Flags used by LoadDailyQA.  Set to 1 to enable auto-alignment of the gold 
+% Flag used by LoadDailyQA.  Set to 1 to enable auto-alignment of the gold 
 % standard reference profile.
 handles.shiftGold = str2double(handles.config.AUTO_SHIFT_GOLD);
 Event(['Auto shift gold standard flag set to ', ...
@@ -252,10 +274,17 @@ handles.hideFluence = ...
 Event(['Hide fluence delivery plan flag set to ', ...
     handles.config.HIDE_FLUENCE_PLANS]);
 
-% Flag to recalculate reference dose using gpusadose.  Should be set to 1
-% if the beam model differs significantly from the actual TPS, as dose
-% difference/gamma comparison will now compare two dose distributions
-% computed using the same model
+% Flag specifying the calculation method. Can be set to 'GPUSADOSE', 
+% 'SADOSE' or 'MATLAB'. If GPUSADOSE, the beam model files and executables 
+% (either local or remote) must be present. See code below for more 
+% information.
+handles.calcMethod = handles.config.CALC_METHOD;
+Event(['Calculation method set to ', handles.calcMethod]);
+
+% Flag to recalculate reference dose.  Should be set to 1 if the beam model 
+% differs significantly from the actual TPS, as dose difference/gamma 
+% comparison will now compare two dose distributions computed using the 
+% same model
 handles.calcRefDose = str2double(handles.config.CALCULATE_REFERENCE_DOSE);
 Event(['Recalculate reference dose flag set to ', ...
     handles.config.CALCULATE_REFERENCE_DOSE]);
@@ -345,15 +374,19 @@ end
 set(handles.mvctcalc_box, 'Enable', 'on');
 set(handles.mvctcalc_box, 'Value', handles.mvctcalc);
 
-% If dose calculation was enabled
-if isfield(handles.config, 'CALC_DOSE') && ...
-        str2double(handles.config.CALC_DOSE) == 1
+% If GPUSADOSE or SADOSE dose calculation was specified
+if strcmpi(handles.calcMethod, 'GPUSADOSE') || ...
+        strcmpi(handles.calcMethod, 'SADOSE')
     
-    % Check for presence of dose calculator
+    % Check for presence of dose calculation engine
     handles.calcDose = CalcDose();
 
     % Set sadose flag
-    handles.sadose = str2double(handles.config.CALC_SADOSE);
+    if strcmpi(handles.config.CALC_METHOD, 'SADOSE')
+        handles.sadose = 1;
+    else
+        handles.sadose = 0;
+    end
 
     % If calc dose was successful and sadose flag is set
     if handles.calcDose == 1 && handles.sadose == 1
@@ -362,7 +395,7 @@ if isfield(handles.config, 'CALC_DOSE') && ...
         Event('CPU Dose calculation available');
         
         % Update calculation status
-        set(handles.calcstatus, 'String', 'Dose Engine: Connected'); 
+        set(handles.calcstatus, 'String', 'Dose Engine: CPU Connected'); 
 
     % If calc dose was successful and sadose flag is not set
     elseif handles.calcDose == 1 && handles.sadose == 0
@@ -371,7 +404,7 @@ if isfield(handles.config, 'CALC_DOSE') && ...
         Event('GPU Dose calculation available');
         
         % Update calculation status
-        set(handles.calc_status, 'String', 'Dose Engine: Connected');
+        set(handles.calc_status, 'String', 'Dose Engine: GPU Connected');
 
     % Otherwise, calc dose was not successful
     else
@@ -381,6 +414,74 @@ if isfield(handles.config, 'CALC_DOSE') && ...
         
         % Update calculation status
         set(handles.calc_status, 'String', 'Dose Engine: Disconnected');
+    end
+    
+    % Verify beam model files
+    if handles.calcDose == 1
+
+        % Declare path to beam model folder (if not specified in config 
+        % file, use default path of ./GPU)
+        if isfield(handles.config, 'MODEL_PATH')
+            handles.modeldir = handles.config.MODEL_PATH;
+        else
+            handles.modeldir = './GPU';
+        end
+
+        % Check for beam model files
+        if exist(fullfile(handles.modeldir, 'dcom.header'), 'file') == 2 && ...
+                exist(fullfile(handles.modeldir, 'fat.img'), 'file') == 2 && ...
+                exist(fullfile(handles.modeldir, 'kernel.img'), 'file') == 2 && ...
+                exist(fullfile(handles.modeldir, 'lft.img'), 'file') == 2 && ...
+                exist(fullfile(handles.modeldir, 'penumbra.img'), 'file') == 2
+
+            % Log name
+            Event('Beam model files verified, dose calculation enabled');
+        else
+
+            % Disable dose calculation
+            handles.calcDose = 0;
+
+            % Update calculation status
+            set(handles.calc_status, 'String', 'Dose Engine: No beam model');
+
+            % Otherwise throw a warning
+            Event(sprintf(['Dose calculation disabled, beam model not found. ', ...
+                ' Verify that %s exists and contains the necessary model files'], ...
+                handles.modeldir), 'WARN');
+        end
+    end
+  
+% Otherwise, if MATLAB dose calculation is specified
+elseif strcmpi(handles.calcMethod, 'MATLAB')
+    
+    % Verify configuration options are present
+    if isfield(handles.config, 'MATLAB_DOSE_RATE') && ...
+            isfield(handles.config, 'MATLAB_DOSE_RATE') && ...
+            isfield(handles.config, 'MATLAB_OUTSIDE_BODY') && ...
+            isfield(handles.config, 'MATLAB_DENSITY_THRESH') && ...
+            isfield(handles.config, 'MATLAB_DOWNSAMPLE')
+        
+        % Disable dose calculation
+        handles.calcDose = 1;
+
+        % Update calculation status
+        set(handles.calc_status, 'String', ...
+            'Dose Engine: MATLAB');
+        
+        % Log success
+        Event('MATLAB options confirmed, dose calculation enabled');
+    else
+        % Disable dose calculation
+        handles.calcDose = 0;
+
+        % Update calculation status
+        set(handles.calc_status, 'String', ...
+            'Dose Engine: Missing config options');
+
+        % Throw a warning
+        Event(['MATLAB dose calculation was specified, but one or ', ...
+            'more config options are missing. See documentation for more ', ...
+            'information.'], 'WARN');
     end
     
 % Otherwise dose calculation was disabled from config.txt
@@ -396,55 +497,16 @@ else
     handles.calcDose = 0;
 end
 
-%% Verify beam model
-% If dose calculation is enabled
-if handles.calcDose == 1
-
-    % Declare path to beam model folder (if not specified in config file, use
-    % default path of ./GPU)
-    if isfield(handles.config, 'MODEL_PATH')
-        handles.modeldir = handles.config.MODEL_PATH;
-    else
-        handles.modeldir = './GPU';
-    end
-
-    % Check for beam model files
-    if exist(fullfile(handles.modeldir, 'dcom.header'), 'file') == 2 && ...
-            exist(fullfile(handles.modeldir, 'fat.img'), 'file') == 2 && ...
-            exist(fullfile(handles.modeldir, 'kernel.img'), 'file') == 2 && ...
-            exist(fullfile(handles.modeldir, 'lft.img'), 'file') == 2 && ...
-            exist(fullfile(handles.modeldir, 'penumbra.img'), 'file') == 2
-
-        % Log name
-        Event('Beam model files verified, dose calculation enabled');
-    else
-
-        % Disable dose calculation
-        handles.calcDose = 0;
-        
-        % Update calculation status
-        set(handles.calc_status, 'String', 'Dose Engine: No beam model');
-
-        % Otherwise throw a warning
-        Event(sprintf(['Dose calculation disabled, beam model not found. ', ...
-            ' Verify that %s exists and contains the necessary model files'], ...
-            handles.modeldir), 'WARN');
-    end
-end
-
 % If dose calculation didn't pass all checks
 if handles.calcDose == 0
     
-    % Disabled dose calculation UI controls
+    % Disable dose calculation UI controls
     set(handles.mvctcalc_box, 'Enable', 'off'); 
 end
 
-%% Initialize data handles
-% dailyqa stores all dailyqa data as a structure. See LoadDailyQA
+% Initialize data handles
 Event('Initializing daily qa variables');
 handles.dailyqa = [];
-
-% Initialize all patient data variables
 handles = clear_button_Callback(handles.clear_button, '', handles);
 
 %% Complete initialization
@@ -551,6 +613,7 @@ if ~isequal(name, 0)
     
     % If LoadDailyQA was successful
     if isfield(handles.dailyqa, 'channelCal')
+        
         % Enable raw data
         set(handles.rawdata_button, 'Enable', 'on');
 
@@ -700,9 +763,19 @@ if ~isequal(name, 0)
         % Update progress bar
         waitbar(0.65, progress, 'Updating statistics...');
         
-        % Update dose plot with planned dose
+        % Create dose plot with planned dose
         set(handles.dose_display, 'Value', 2);
-        handles = UpdateDoseDisplay(handles);
+        handles.tcsplot = ImageViewer('axis', handles.dose_axes, ...
+            'tcsview', handles.tcsview, 'background', handles.referenceImage, ...
+            'overlay', handles.referenceDose, 'alpha', ...
+            sscanf(get(handles.alpha, 'String'), '%f%%')/100, ...
+            'structures', handles.referenceImage.structures, ...
+            'structuresonoff', get(handles.dvh_table, 'Data'), ...
+            'slider', handles.dose_slider, 'cbar', 'on', 'pixelval', 'off');
+        
+        % Enable transparency and TCS inputs
+        set(handles.alpha, 'visible', 'on');
+        set(handles.tcs_button, 'visible', 'on');
 
         % Update DVH plot
         [handles.referenceDose.dvh] = ...
@@ -799,8 +872,7 @@ function dose_display_CreateFcn(hObject, ~, ~)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
-% Hint: popupmenu controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
+% Popupmenu controls usually have a white background on Windows.
 if ispc && isequal(get(hObject,'BackgroundColor'), ...
         get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
@@ -812,15 +884,8 @@ function dose_slider_Callback(hObject, ~, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Round the current value to an integer value
-set(hObject, 'Value', round(get(hObject, 'Value')));
-
-% Log event
-Event(sprintf('Dose viewer slice set to %i', get(hObject,'Value')));
-
-% Update viewer with current slice and transparency value
-UpdateViewer(get(hObject,'Value'), ...
-    sscanf(get(handles.alpha, 'String'), '%f%%')/100);
+% Update coronal plot
+handles.tcsplot.Update('slice', round(get(hObject, 'Value')));
 
 % Update handles structure
 guidata(hObject, handles);
@@ -831,7 +896,7 @@ function dose_slider_CreateFcn(hObject, ~, ~)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
-% Hint: slider controls usually have a light gray background.
+% Slider controls usually have a light gray background.
 if isequal(get(hObject,'BackgroundColor'), ...
         get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor',[.9 .9 .9]);
@@ -862,7 +927,7 @@ Event(sprintf('Dose transparency set to %0.0f%%', value));
 set(hObject, 'String', sprintf('%0.0f%%', value));
 
 % Update viewer with current slice and transparency value
-UpdateViewer(get(handles.dose_slider,'Value'), value/100);
+handles.tcsplot.Update('alpha', value/100);
 
 % Clear temporary variable
 clear value;
@@ -876,7 +941,7 @@ function alpha_CreateFcn(hObject, ~, ~)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
-% Hint: edit controls usually have a white background on Windows.
+% Edit controls usually have a white background on Windows.
 if ispc && isequal(get(hObject, 'BackgroundColor'), ...
         get(0, 'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor', 'white');
@@ -908,7 +973,7 @@ switch handles.tcsview
 end
 
 % Re-initialize image viewer with new T/C/S value
-handles = UpdateDoseDisplay(handles);
+handles.tcsplot.Initialize('tcsview', handles.tcsview);
 
 % Update handles structure
 guidata(hObject, handles);
@@ -955,8 +1020,8 @@ elseif eventdata.Indices(2) == 2
     if get(handles.dose_display, 'Value') > 1 && ...
             strcmp(get(handles.dose_slider, 'visible'), 'on')
 
-        UpdateViewer(get(handles.dose_slider,'Value'), ...
-            sscanf(get(handles.alpha, 'String'), '%f%%')/100, stats);
+        % Update display
+        handles.tcsplot.Update('structuresonoff', stats);
     end
 
     % Update DVH plot if it is displayed
@@ -1313,11 +1378,16 @@ set(handles.calcdose_button, 'Enable', 'off');
 set(handles.calcgamma_button, 'Enable', 'off'); 
 
 % Hide plots
+if isfield(handles, 'tcsplot')
+    delete(handles.tcsplot);
+else
+    set(allchild(handles.dose_axes), 'visible', 'off'); 
+    set(handles.dose_axes, 'visible', 'off');
+    set(handles.dose_slider, 'visible', 'off');
+    colorbar(handles.dose_axes,'off');
+end
 set(handles.dose_display, 'Value', 1);
 set(handles.results_display, 'Value', 1);
-set(allchild(handles.dose_axes), 'visible', 'off'); 
-set(handles.dose_axes, 'visible', 'off');
-colorbar(handles.dose_axes,'off');
 set(allchild(handles.dvh_axes), 'visible', 'off'); 
 set(handles.dvh_axes, 'visible', 'off');
 set(allchild(handles.results_axes), 'visible', 'off'); 
@@ -1332,8 +1402,7 @@ set(allchild(handles.sino3_axes), 'visible', 'off');
 set(handles.sino3_axes, 'visible', 'off');
 colorbar(handles.sino3_axes,'off');
 
-% Hide dose slider/TCS/alpha
-set(handles.dose_slider, 'visible', 'off');
+% Hide dose TCS/alpha
 set(handles.tcs_button, 'visible', 'off');
 set(handles.alpha, 'visible', 'off');
 
@@ -1450,7 +1519,7 @@ progress = waitbar(0.7, 'Calculating reference dose...');
 if handles.mvctcalc == 1
 
     % Update progress bar
-    waitbar(0.6, progress, 'Finding MVCT scans...');
+    waitbar(0.71, progress, 'Finding MVCT scans...');
     
     % Find all MVCT scans
     handles.mvcts = FindMVCTScans(handles.path, handles.name);
@@ -1546,6 +1615,45 @@ if handles.mvctcalc == 1
     clear foundmvcts i j s ok;
 end
 
+% If using MATLAB dose calculator
+if strcmpi(handles.calcMethod, 'MATLAB')
+
+    % Start calculation pool, if configured
+    try
+        if isfield(handles.config, 'MATLAB_POOL') && ...
+                isempty(gcp('nocreate'))
+
+            % Update progress bar
+            waitbar(0.75, progress, 'Starting calculation pool...');
+
+            % Log event
+            Event(sprintf('Starting calculation pool with %i workers', ...
+                str2double(handles.config.MATLAB_POOL)));
+
+            % Start calculation pool
+            handles.pool = parpool(str2double(handles.config.MATLAB_POOL));
+        else
+
+            % Store current value
+            handles.pool = gcp;
+        end
+
+    % If the parallel processing toolbox is not present, the above code
+    % will fail
+    catch
+        handles.pool = [];
+    end
+
+    % Load planned dose to use as a mask for calculation
+    Event('Loading planned dose to establish calculation grid size');
+    mask = LoadPlanDose(handles.path, handles.name, handles.planUID);
+
+    % Apply dose threshold to planned dose to set mask
+    Event('Applying dose threshold to planned dose');
+    mask.data = mask.data > (max(max(max(mask.data))) * ...
+        (str2double(handles.config.MATLAB_DOSE_THRESH) - 0.05));
+end
+
 % Execute CalcDose on reference plan 
 if handles.calcRefDose == 1
 
@@ -1555,11 +1663,31 @@ if handles.calcRefDose == 1
     % Update progress bar
     waitbar(0.76, progress, 'Calculating reference dose...');
 
-    % Calculate reference dose using image, plan, 
-    % directory, & sadose flag
-    handles.referenceDose = CalcDose(...
-        handles.referenceImage, handles.planData, ...
-        handles.modeldir, handles.sadose);
+    % If using MATLAB dose calculator
+    if strcmpi(handles.calcMethod, 'MATLAB')
+
+        % Calculate reference dose using image, plan, parallel pool, config
+        % options, and dose mask (based on the threshold)
+        handles.referenceDose = CheckTomoDose(handles.referenceImage, ...
+            handles.planData, handles.pool, 'downsample', ...
+            str2double(handles.config.MATLAB_DOWNSAMPLE), ...
+            'reference_doserate', ...
+            str2double(handles.config.MATLAB_DOSE_RATE), ...
+            'num_of_subprojections', 1, 'outside_body', ...
+            str2double(handles.config.MATLAB_OUTSIDE_BODY), ...
+            'density_threshold', ...
+            str2double(handles.config.MATLAB_DENSITY_THRESH), 'mask', ...
+            mask.data);
+        
+    % Otherwise, use standalone calculator
+    else
+    
+        % Calculate reference dose using image, plan, 
+        % directory, & sadose flag
+        handles.referenceDose = CalcDose(...
+            handles.referenceImage, handles.planData, ...
+            handles.modeldir, handles.sadose);
+    end
 end
 
 % Adjust delivery plan sinogram by measured differences
@@ -1581,25 +1709,40 @@ if handles.mvctcalc == 1 && isfield(handles, 'mergedImage') && ...
     % Execute CalcDose
     Event('Calculating DQA dose on merged MVCT');
 
-    % Update progress bar
-    waitbar(0.78, progress, 'Calculating DQA dose...');
-        
-    % Calculate DQA dose using image, plan, directory, & 
-    % sadose flag
-    handles.dqaDose = CalcDose(handles.mergedImage, ...
-        handles.dqaPlanData, handles.modeldir, handles.sadose);
+    % Set calculation/plot background image
+    bkgd = handles.mergedImage;
 else
 
     % Execute CalcDose
     Event('Calculating DQA dose on plan CT');
     
-    % Update progress bar
-    waitbar(0.78, progress, 'Calculating DQA dose...');
+    % Set calculation/plot background image
+    bkgd = handles.referenceImage;
+end
+
+% Update progress bar
+waitbar(0.78, progress, 'Calculating DQA dose...');
+
+% If using MATLAB dose calculator
+if strcmpi(handles.calcMethod, 'MATLAB')
+
+    % Calculate reference dose using image, plan, parallel pool, config
+    % options, and dose mask (based on the threshold)
+    handles.dqaDose = CheckTomoDose(bkgd, handles.dqaPlanData, handles.pool, ...
+        'downsample', str2double(handles.config.MATLAB_DOWNSAMPLE), ...
+        'reference_doserate', str2double(handles.config.MATLAB_DOSE_RATE), ...
+        'num_of_subprojections', 1, ...
+        'outside_body', str2double(handles.config.MATLAB_OUTSIDE_BODY), ...
+        'density_threshold', str2double(handles.config.MATLAB_DENSITY_THRESH), ...
+        'mask', mask.data);
+
+% Otherwise, use standalone calculator
+else
 
     % Calculate DQA dose using image, plan, directory, & 
     % sadose flag
-    handles.dqaDose = CalcDose(handles.referenceImage, ...
-        handles.dqaPlanData, handles.modeldir, handles.sadose);
+    handles.dqaDose = CalcDose(bkgd, handles.dqaPlanData, handles.modeldir, ...
+        handles.sadose);
 end
 
 % Update progress bar
@@ -1609,9 +1752,12 @@ waitbar(0.8, progress, 'Updating statistics...');
 handles.doseDiff = CalcDoseDifference(...
     handles.referenceDose, handles.dqaDose);
 
-% Update dose plot with dose difference
-set(handles.dose_display, 'Value', 5);
-handles = UpdateDoseDisplay(handles);
+% Crop differences where second calc is zero
+handles.doseDiff(handles.dqaDose.data == 0) = 0;
+
+% Update dose plot with DQA dose
+set(handles.dose_display, 'Value', 3);
+handles.tcsplot.Initialize('background', bkgd, 'overlay', handles.dqaDose);
 
 % Update DVH plot
 [handles.referenceDose.dvh, handles.dqaDose.dvh] = ...
@@ -1627,6 +1773,9 @@ set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
 % Enable UI controls
 set(handles.export_button, 'Enable', 'on');
 set(handles.calcgamma_button, 'Enable', 'on');
+
+% Clear temporary files
+clear mask bkgd;
 
 % Close progress bar
 close(progress);
@@ -1664,6 +1813,14 @@ handles.gamma = handles.gamma .* ...
 
 % Update progress bar
 waitbar(0.98, progress, 'Updating statistics...');
+
+% Update TCS display
+set(handles.dose_display, 'Value', 6);
+handles.tcsplot.Initialize('overlay', struct(...
+    'width', handles.referenceDose.width, ...
+    'dimensions', handles.referenceDose.dimensions, ...
+    'start', handles.referenceDose.start, ...
+    'data', handles.gamma));
 
 % Update results statistics
 set(handles.stats_table, 'Data', UpdateResultsStatistics(handles));

@@ -21,9 +21,6 @@ function varargout = UpdateDoseDisplay(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Run in try-catch to log error via Event.m
-try
-
 % Specify plot options and order
 plotoptions = {
     ''
@@ -51,32 +48,26 @@ elseif nargin == 1
 
     % Log start
     Event('Updating plot display');
-    tic;
+    t = tic;
     
 % Otherwise, throw an error
 else 
     Event('Incorrect number of inputs to UpdateDoseDisplay', 'ERROR');
 end
 
-% Clear and set reference to axis
-cla(handles.dose_axes, 'reset');
-axes(handles.dose_axes);
-Event('Current plot set to handles.dose_axes');
-
-% Turn off the display while building
-set(allchild(handles.dose_axes), 'visible', 'off'); 
-set(handles.dose_axes, 'visible', 'off');
-
-% Hide dose slider/TCS/alpha
-set(handles.dose_slider, 'visible', 'off');
-set(handles.tcs_button, 'visible', 'off');
-set(handles.alpha, 'visible', 'off');
+% Hide all axes and transparency
+if isfield(handles, 'tcsplot')
+    handles.tcsplot.Hide();
+    set(handles.alpha, 'visible', 'off');
+    set(handles.tcs_button, 'visible', 'off');
+end
 
 % Execute code block based on display GUI item value
 switch get(handles.dose_display, 'Value')
     
     % Planned dose display
     case 2
+        
         % Log plot selection
         Event('Planned dose plot selected');
         
@@ -86,28 +77,12 @@ switch get(handles.dose_display, 'Value')
                 && isfield(handles, 'referenceDose') && ...
                 isfield(handles.referenceDose, 'data')
                 
-            % Enable Image Viewer UI components
-            set(allchild(handles.dose_axes), 'visible', 'on'); 
-            set(handles.dose_axes, 'visible', 'on');
-            set(handles.dose_slider, 'visible', 'on');
-            set(handles.tcs_button, 'visible', 'on'); 
+            % Re-initialize plot with new overlay data
+            handles.tcsplot.Initialize('overlay', handles.referenceDose);
+            
+            % Enable transparency and TCS inputs
             set(handles.alpha, 'visible', 'on');
-            
-            % Set references to currently displayed data
-            image1.data = handles.referenceImage.data;
-            image1.width = handles.referenceImage.width;
-            image1.start = handles.referenceImage.start;
-            image1.structures = handles.referenceImage.structures;
-            image1.stats = get(handles.dvh_table, 'Data');
-            image2.data = handles.referenceDose.data;
-            image2.width = handles.referenceDose.width;
-            image2.start = handles.referenceDose.start;
-            image2.registration = [];
-            
-            % Initialize image viewer
-            InitializeViewer(handles.dose_axes, handles.tcsview, ...
-                sscanf(get(handles.alpha, 'String'), '%f%%')/100, ...
-                image1, image2, handles.dose_slider);
+            set(handles.tcs_button, 'visible', 'on');
         else
             % Log why plot was not displayed
             Event('Planned dose not displayed as no data exists');
@@ -115,50 +90,22 @@ switch get(handles.dose_display, 'Value')
         
     % DQA dose display
     case 3
+        
         % Log plot selection
         Event('DQA dose plot selected');
         
-        % Check if the planned dose and image are loaded
+        % Check if the DQA dose and image are loaded
         if isfield(handles, 'referenceImage') && ...
                 isfield(handles.referenceImage, 'data') ...
                 && isfield(handles, 'dqaDose') && ...
                 isfield(handles.dqaDose, 'data')
-                
-            % Enable Image Viewer UI components
-            set(allchild(handles.dose_axes), 'visible', 'on'); 
-            set(handles.dose_axes, 'visible', 'on');
-            set(handles.dose_slider, 'visible', 'on');
-            set(handles.tcs_button, 'visible', 'on'); 
+            
+            % Re-initialize plot with new overlay data
+            handles.tcsplot.Initialize('overlay', handles.dqaDose);
+            
+            % Enable transparency and TCS inputs
             set(handles.alpha, 'visible', 'on');
-            
-            % If a merged MVCT was generated
-            if handles.mvctcalc == 1 && isfield(handles, 'mergedImage') && ...
-                    isfield(handles.mergedImage, 'data')
-                
-                % Use merged MVCT
-                image1.data = handles.mergedImage.data;
-                image1.width = handles.mergedImage.width;
-                image1.start = handles.mergedImage.start;
-            else
-                
-                % Use plan CT
-                image1.data = handles.referenceImage.data;
-                image1.width = handles.referenceImage.width;
-                image1.start = handles.referenceImage.start;
-            end
-            
-            % Set references to currently displayed data
-            image1.structures = handles.referenceImage.structures;
-            image1.stats = get(handles.dvh_table, 'Data');
-            image2.data = handles.dqaDose.data;
-            image2.width = handles.dqaDose.width;
-            image2.start = handles.dqaDose.start;
-            image2.registration = [];
-            
-            % Initialize image viewer
-            InitializeViewer(handles.dose_axes, handles.tcsview, ...
-                sscanf(get(handles.alpha, 'String'), '%f%%')/100, ...
-                image1, image2, handles.dose_slider);
+            set(handles.tcs_button, 'visible', 'on');
         else
             % Log why plot was not displayed
             Event('DQA dose not displayed as no data exists');
@@ -166,6 +113,7 @@ switch get(handles.dose_display, 'Value')
         
     % Dose difference % display
     case 4
+        
         % Log plot selection
         Event('Relative dose difference plot selected');
         
@@ -174,43 +122,18 @@ switch get(handles.dose_display, 'Value')
                 isfield(handles.referenceImage, 'data') ...
                 && isfield(handles, 'doseDiff') && ...
                 ~isempty(handles.doseDiff)
-                
-            % Enable Image Viewer UI components
-            set(allchild(handles.dose_axes), 'visible', 'on'); 
-            set(handles.dose_axes, 'visible', 'on');
-            set(handles.dose_slider, 'visible', 'on');
-            set(handles.tcs_button, 'visible', 'on'); 
+
+            % Re-initialize plot with new overlay data
+            handles.tcsplot.Initialize('overlay', struct(...
+                'width', handles.referenceDose.width, ...
+                'dimensions', handles.referenceDose.dimensions, ...
+                'start', handles.referenceDose.start, ...
+                'data', handles.doseDiff / ...
+                    max(max(max(handles.referenceDose.data))) * 100));
+            
+            % Enable transparency and TCS inputs
             set(handles.alpha, 'visible', 'on');
-            
-            % If a merged MVCT was generated
-            if handles.mvctcalc == 1 && isfield(handles, 'mergedImage') && ...
-                    isfield(handles.mergedImage, 'data')
-                
-                % Use merged MVCT
-                image1.data = handles.mergedImage.data;
-                image1.width = handles.mergedImage.width;
-                image1.start = handles.mergedImage.start;
-            else
-                
-                % Use plan CT
-                image1.data = handles.referenceImage.data;
-                image1.width = handles.referenceImage.width;
-                image1.start = handles.referenceImage.start;
-            end
-            
-            % Set references to currently displayed data
-            image1.structures = handles.referenceImage.structures;
-            image1.stats = get(handles.dvh_table, 'Data');
-            image2.data = handles.doseDiff ./ image1.data .* ...
-                (image1.data > 1) * 100;
-            image2.width = handles.referenceImage.width;
-            image2.start = handles.referenceImage.start;
-            image2.registration = [];
-            
-            % Initialize image viewer
-            InitializeViewer(handles.dose_axes, handles.tcsview, ...
-                sscanf(get(handles.alpha, 'String'), '%f%%')/100, ...
-                image1, image2, handles.dose_slider);
+            set(handles.tcs_button, 'visible', 'on');
         else
             % Log why plot was not displayed
             Event('Dose difference not displayed as no data exists');
@@ -218,6 +141,7 @@ switch get(handles.dose_display, 'Value')
         
     % Dose difference abs display
     case 5
+        
         % Log plot selection
         Event('Absolute dose difference plot selected');
         
@@ -226,42 +150,17 @@ switch get(handles.dose_display, 'Value')
                 isfield(handles.referenceImage, 'data') ...
                 && isfield(handles, 'doseDiff') && ...
                 ~isempty(handles.doseDiff)
-                
-            % Enable Image Viewer UI components
-            set(allchild(handles.dose_axes), 'visible', 'on'); 
-            set(handles.dose_axes, 'visible', 'on');
-            set(handles.dose_slider, 'visible', 'on');
-            set(handles.tcs_button, 'visible', 'on'); 
+
+            % Re-initialize plot with new overlay data
+            handles.tcsplot.Initialize('overlay', struct(...
+                'width', handles.referenceDose.width, ...
+                'dimensions', handles.referenceDose.dimensions, ...
+                'start', handles.referenceDose.start, ...
+                'data', handles.doseDiff));
+            
+            % Enable transparency and TCS inputs
             set(handles.alpha, 'visible', 'on');
-            
-            % If a merged MVCT was generated
-            if handles.mvctcalc == 1 && isfield(handles, 'mergedImage') && ...
-                    isfield(handles.mergedImage, 'data')
-                
-                % Use merged MVCT
-                image1.data = handles.mergedImage.data;
-                image1.width = handles.mergedImage.width;
-                image1.start = handles.mergedImage.start;
-            else
-                
-                % Use plan CT
-                image1.data = handles.referenceImage.data;
-                image1.width = handles.referenceImage.width;
-                image1.start = handles.referenceImage.start;
-            end
-            
-            % Set references to currently displayed data
-            image1.structures = handles.referenceImage.structures;
-            image1.stats = get(handles.dvh_table, 'Data');
-            image2.data = handles.doseDiff;
-            image2.width = handles.referenceImage.width;
-            image2.start = handles.referenceImage.start;
-            image2.registration = [];
-            
-            % Initialize image viewer
-            InitializeViewer(handles.dose_axes, handles.tcsview, ...
-                sscanf(get(handles.alpha, 'String'), '%f%%')/100, ...
-                image1, image2, handles.dose_slider);
+            set(handles.tcs_button, 'visible', 'on');
         else
             % Log why plot was not displayed
             Event('Dose difference not displayed as no data exists');
@@ -269,6 +168,7 @@ switch get(handles.dose_display, 'Value')
     
     % Gamma display
     case 6
+        
         % Log plot selection
         Event('Gamma index plot selected');
         
@@ -277,58 +177,28 @@ switch get(handles.dose_display, 'Value')
                 isfield(handles.referenceImage, 'data') ...
                 && isfield(handles, 'gamma') && ...
                 ~isempty(handles.gamma)
-                
-            % Enable Image Viewer UI components
-            set(allchild(handles.dose_axes), 'visible', 'on'); 
-            set(handles.dose_axes, 'visible', 'on');
-            set(handles.dose_slider, 'visible', 'on');
-            set(handles.tcs_button, 'visible', 'on'); 
+            
+            % Update plot
+            handles.tcsplot.Initialize('overlay', struct(...
+                'width', handles.referenceDose.width, ...
+                'dimensions', handles.referenceDose.dimensions, ...
+                'start', handles.referenceDose.start, ...
+                'data', handles.gamma));
+            
+            % Enable transparency and TCS inputs
             set(handles.alpha, 'visible', 'on');
-            
-            % If a merged MVCT was generated
-            if handles.mvctcalc == 1 && isfield(handles, 'mergedImage') && ...
-                    isfield(handles.mergedImage, 'data')
-                
-                % Use merged MVCT
-                image1.data = handles.mergedImage.data;
-                image1.width = handles.mergedImage.width;
-                image1.start = handles.mergedImage.start;
-            else
-                
-                % Use plan CT
-                image1.data = handles.referenceImage.data;
-                image1.width = handles.referenceImage.width;
-                image1.start = handles.referenceImage.start;
-            end
-            
-            % Set references to currently displayed data
-            image1.structures = handles.referenceImage.structures;
-            image1.stats = get(handles.dvh_table, 'Data');
-            image2.data = handles.gamma;
-            image2.width = handles.referenceImage.width;
-            image2.start = handles.referenceImage.start;
-            image2.registration = [];
-            
-            % Initialize image viewer
-            InitializeViewer(handles.dose_axes, handles.tcsview, ...
-                sscanf(get(handles.alpha, 'String'), '%f%%')/100, ...
-                image1, image2, handles.dose_slider);
+            set(handles.tcs_button, 'visible', 'on');
         else
             % Log why plot was not displayed
             Event('Gamma index not displayed as no data exists');
         end
 end
 
-% Clear temporary variables
-clear image image2;
-
 % Log completion
-Event(sprintf('Plot updated successfully in %0.3f seconds', toc));
+Event(sprintf('Plot updated successfully in %0.3f seconds', toc(t)));
+
+% Clear temporary variables
+clear t;
 
 % Return the modified handles
 varargout{1} = handles; 
-
-% Catch errors, log, and rethrow
-catch err
-    Event(getReport(err, 'extended', 'hyperlinks', 'off'), 'ERROR');
-end

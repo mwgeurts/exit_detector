@@ -10,3 +10,9 @@
 [submodule "structure_atlas"]
 	path = structure_atlas
 	url = https://github.com/mwgeurts/structure_atlas
+[submodule "thomas_tomocalc"]
+	path = thomas_tomocalc
+	url = https://github.com/mwgeurts/thomas_tomocalc
+[submodule "tcs_plots"]
+	path = tcs_plots
+	url = https://github.com/mwgeurts/tcs_plots
