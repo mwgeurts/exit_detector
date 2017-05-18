@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="419218785" file="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector/TomoTherapy Exit Detector Analysis.prj" location="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector" name="TomoTherapy Exit Detector Analysis" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="1454186963" file="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector/TomoTherapy Exit Detector Analysis.prj" location="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector" name="TomoTherapy Exit Detector Analysis" target="target.mlapps" target-name="Package App">
     <param.appname>TomoTherapy Exit Detector Analysis</param.appname>
     <param.authnamewatermark>Mark Geurts</param.authnamewatermark>
     <param.email>mark.w.geurts@gmail.com</param.email>
@@ -15,7 +15,7 @@ The user interface provides graphic and quantitative analysis of the comparison 
 
 TomoTherapy is a registered trademark of Accuray Incorporated.</param.description>
     <param.screenshot />
-    <param.version>1.3.1</param.version>
+    <param.version>1.4.0</param.version>
     <param.products.name>
       <item>Image Processing Toolbox</item>
       <item>MATLAB</item>
@@ -52,7 +52,6 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
       <file>${PROJECT_ROOT}/Event.m</file>
       <file>${PROJECT_ROOT}/ExitDetector.fig</file>
       <file>${PROJECT_ROOT}/InitializeStatistics.m</file>
-      <file>${PROJECT_ROOT}/InitializeViewer.m</file>
       <file>${PROJECT_ROOT}/LoadVersionInfo.m</file>
       <file>${PROJECT_ROOT}/MatchDeliveryPlan.m</file>
       <file>${PROJECT_ROOT}/PrintReport.fig</file>
@@ -63,10 +62,18 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
       <file>${PROJECT_ROOT}/UpdateResultsDisplay.m</file>
       <file>${PROJECT_ROOT}/UpdateResultsStatistics.m</file>
       <file>${PROJECT_ROOT}/UpdateSinogramDisplay.m</file>
-      <file>${PROJECT_ROOT}/UpdateViewer.m</file>
       <file>${PROJECT_ROOT}/dicom_tools/WriteDICOMDose.m</file>
       <file>${PROJECT_ROOT}/gamma/CalcGamma.m</file>
       <file>${PROJECT_ROOT}/structure_atlas/LoadAtlas.m</file>
+      <file>${PROJECT_ROOT}/tcs_plots/@ImageViewer/ImageViewer.m</file>
+      <file>${PROJECT_ROOT}/tcs_plots/@ImageViewer/Initialize.m</file>
+      <file>${PROJECT_ROOT}/tcs_plots/@ImageViewer/Update.m</file>
+      <file>${PROJECT_ROOT}/thomas_tomocalc/CheckTomoDose.m</file>
+      <file>${PROJECT_ROOT}/thomas_tomocalc/private/dose_from_projection.m</file>
+      <file>${PROJECT_ROOT}/thomas_tomocalc/private/radpath.m</file>
+      <file>${PROJECT_ROOT}/thomas_tomocalc/private/readTomodata.m</file>
+      <file>${PROJECT_ROOT}/thomas_tomocalc/private/segmentprojection.m</file>
+      <file>${PROJECT_ROOT}/thomas_tomocalc/private/split_projection.m</file>
       <file>${PROJECT_ROOT}/tomo_extract/CalcDose.m</file>
       <file>${PROJECT_ROOT}/tomo_extract/FindIVDT.m</file>
       <file>${PROJECT_ROOT}/tomo_extract/FindMVCTScans.m</file>
@@ -78,15 +85,6 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
       <file>${PROJECT_ROOT}/tomo_extract/LoadStaticCouchQA.m</file>
       <file>${PROJECT_ROOT}/tomo_extract/LoadStructures.m</file>
       <file>${PROJECT_ROOT}/tomo_extract/MergeImages.m</file>
-      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/scp.m</file>
-      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/scp_get.m</file>
-      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/scp_put.m</file>
-      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/ssh2.m</file>
-      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/ssh2_command.m</file>
-      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/ssh2_config.m</file>
-      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/ssh2_main.m</file>
-      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/ssh2_setup.m</file>
-      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/ssh2_simple_command.m</file>
     </fileset.depfun>
     <fileset.resources>
       <file>${PROJECT_ROOT}/GPU</file>
@@ -100,6 +98,9 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
       <file>${PROJECT_ROOT}/UWCrest_4c.png</file>
       <file>${PROJECT_ROOT}/config.txt</file>
       <file>${PROJECT_ROOT}/structure_atlas/atlas.xml</file>
+      <file>${PROJECT_ROOT}/thomas_tomocalc/private/LA4data10.txt</file>
+      <file>${PROJECT_ROOT}/thomas_tomocalc/private/LA4data25.txt</file>
+      <file>${PROJECT_ROOT}/thomas_tomocalc/private/LA4data50.txt</file>
       <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/ganymed-ssh2-build250.zip</file>
     </fileset.resources>
     <fileset.package />
