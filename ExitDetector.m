@@ -216,138 +216,8 @@ options = UpdateResultsDisplay();
 set(handles.results_display, 'String', options);
 clear options;
 
-% Disable archive_browse (Daily QA must be loaded first)
-set(handles.archive_file, 'Enable', 'off');
-set(handles.archive_browse, 'Enable', 'off');
-
-% Disable raw data button (Daily QA or patient data must be loaded first)
-set(handles.rawdata_button, 'Enable', 'off');
-
-% Disable print and export buttons (Patient data must be loaded first)
-set(handles.print_button, 'Enable', 'off');
-set(handles.export_button, 'Enable', 'off');
-
-% Set auto-select checkbox default
-set(handles.autoselect_box, 'Enable', 'on');
-set(handles.autoselect_box, 'Value', ...
-    str2double(handles.config.AUTO_SELECT_PLAN));
-Event(['Default delivery plan auto-selection set to ', ...
-    handles.config.AUTO_SELECT_PLAN]);
-
-% Set auto-align checkbox default
-set(handles.autoshift_box, 'Enable', 'on');
-set(handles.autoshift_box, 'Value', ...
-    str2double(handles.config.AUTO_ALIGN_PROJECTIONS));
-Event(['Default delivery plan auto-alignment set to ', ...
-    handles.config.AUTO_ALIGN_PROJECTIONS]);
-
-% Set dynamic jaw compensation checkbox default
-set(handles.dynamicjaw_box, 'Enable', 'on');
-set(handles.dynamicjaw_box, 'Value', ...
-    str2double(handles.config.DYNAMIC_JAW_COMPENSATION));
-Event(['Default dynamic jaw compensation set to ', ...
-    handles.config.DYNAMIC_JAW_COMPENSATION]);
-
-%% Initialize global variables
-% Default folder path when selecting input files
-if strcmpi(handles.config.DEFAULT_PATH, 'userpath')
-    handles.path = userpath;
-else
-    handles.path = handles.config.DEFAULT_PATH;
-end
-Event(['Default file path set to ', handles.path]);
-
-% Flag used by LoadDailyQA.  Set to 1 to enable auto-alignment of the gold 
-% standard reference profile.
-handles.shiftGold = str2double(handles.config.AUTO_SHIFT_GOLD);
-Event(['Auto shift gold standard flag set to ', ...
-    handles.config.AUTO_SHIFT_GOLD]);
-
-% Flags used by MatchDeliveryPlan.  Set to 1 to hide machine specific and 
-% fluence delivery plans from delivery plan selection
-handles.hideMachSpecific = ...
-    str2double(handles.config.HIDE_MACHINE_SPECIFIC_PLANS);
-Event(['Hide machine specific delivery plan flag set to ', ...
-    handles.config.HIDE_MACHINE_SPECIFIC_PLANS]);
-handles.hideFluence = ...
-    str2double(handles.config.HIDE_FLUENCE_PLANS);
-Event(['Hide fluence delivery plan flag set to ', ...
-    handles.config.HIDE_FLUENCE_PLANS]);
-
-% Flag specifying the calculation method. Can be set to 'GPUSADOSE', 
-% 'SADOSE' or 'MATLAB'. If GPUSADOSE, the beam model files and executables 
-% (either local or remote) must be present. See code below for more 
-% information.
-handles.calcMethod = handles.config.CALC_METHOD;
-Event(['Calculation method set to ', handles.calcMethod]);
-
-% Flag to recalculate reference dose.  Should be set to 1 if the beam model 
-% differs significantly from the actual TPS, as dose difference/gamma 
-% comparison will now compare two dose distributions computed using the 
-% same model
-handles.calcRefDose = str2double(handles.config.CALCULATE_REFERENCE_DOSE);
-Event(['Recalculate reference dose flag set to ', ...
-    handles.config.CALCULATE_REFERENCE_DOSE]);
-
-% The daily QA is 9000 projections long.  If the sinogram data is
-% different, the data will be manipulated below to fit
-handles.dailyqaProjections = ...
-    str2double(handles.config.DAILY_QA_PROJECTIONS);
-Event(['Daily QA expected projections set to ', ...
-    handles.config.DAILY_QA_PROJECTIONS]);
-
-% Set the number of detector channels included in the DICOM file. For gen4 
-% (TomoDetectors), this should be 643
-handles.detectorRows = str2double(handles.config.DETECTOR_ROWS);
-Event(['Number of expected exit detector channels set to ', ...
-    handles.config.DETECTOR_ROWS]);
-
-% Set the number of detector channels included in the DICOM file. For gen4 
-% (TomoDetectors), this should be 531 (detectorChanSelection is set to 
-% KEEP_OPEN_FIELD_CHANNELS for the Daily QA XML)
-handles.openRows = str2double(handles.config.KEEP_OPEN_FIELD_CHANNELS);
-Event(['Number of KEEP_OPEN_FIELD_CHANNELS set to ', ...
-    handles.config.KEEP_OPEN_FIELD_CHANNELS]);
-
-% Set the number of active MVCT data channels. Typically the last three 
-% channels are monitor chamber data
-handles.mvctRows = str2double(handles.config.ACTIVE_MVCT_ROWS);
-Event(['Number of active MVCT channels set to ', ...
-    handles.config.ACTIVE_MVCT_ROWS]);
-
-% Set Gamma criteria
-handles.percent = str2double(handles.config.GAMMA_PERCENT); % percent
-handles.dta = str2double(handles.config.GAMMA_DTA_MM); % mm
-handles.local = str2double(handles.config.GAMMA_LOCAL); % boolean
-if handles.local == 0
-    Event(sprintf('Gamma criteria set to %0.1f%%/%0.1f mm global', ...
-        handles.percent, handles.dta));
-else
-    Event(sprintf('Gamma criteria set to %0.1f%%/%0.1f mm local', ...
-        handles.percent, handles.dta));
-end
-
-% Scalar representing the threshold (dose relative to the maximum dose)
-% below which the Gamma index will not be reported. 
-handles.doseThreshold = str2double(handles.config.GAMMA_THRESHOLD);
-Event(sprintf('Dose threshold set to %0.1f%% of maximum dose', ...
-    handles.doseThreshold * 100));
-
-% This should be set to the channel in the exit detector data that 
-% corresponds to the first channel in the channel calibration array. For  
-% gen4 (TomoDetectors), this should be 27, as detectorChanSelection is set
-% to KEEP_OPEN_FIELD_CHANNELS for the Daily QA XML)
-handles.leftTrim = str2double(handles.config.DETECTOR_LEFT_TRIM);
-Event(['Left trim channel set to ', handles.config.DETECTOR_LEFT_TRIM]);
-
-% Set the initial image view orientation to Transverse (T)
-handles.tcsview = handles.config.DEFAULT_IMAGE_VIEW;
-Event(['Default dose view set to ', handles.config.DEFAULT_IMAGE_VIEW]);
-
-% Set the default transparency
-set(handles.alpha, 'String', handles.config.DEFAULT_TRANSPARENCY);
-Event(['Default dose view transparency set to ', ...
-    handles.config.DEFAULT_TRANSPARENCY]);
+% Execute ParseConfigOptions to load the global variables
+handles = ParseConfigOptions(handles, handles.config);
 
 %% Configure Dose Calculation
 % Check for MVCT calculation flag
@@ -409,7 +279,7 @@ if strcmpi(handles.calcMethod, 'GPUSADOSE') || ...
         % Schedule timer to periodically check on calculation status
         start(timer('TimerFcn', {@CheckConnection, hObject, handles}, ...
             'BusyMode', 'drop', 'ExecutionMode', 'fixedSpacing', ...
-            'TasksToExecute', Inf, 'Period', 10, 'StartDelay', 10));
+            'TasksToExecute', Inf, 'Period', 30, 'StartDelay', 1));
     else
 
         % Disable dose calculation
@@ -1288,102 +1158,8 @@ function varargout = clear_button_Callback(hObject, ~, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Log action
-if isfield(handles, 'planUID')
-    Event('Clearing patient plan variables from memory');
-else
-    Event('Initializing patient plan variables');
-end
-
-% planUID stores the UID of the analyzed patient plan as a string
-handles.planUID = [];
-
-% planData stores the delivery plan info as a structure. See LoadPlan
-handles.planData = [];
-
-% referenceImage stores the planning CT and structure set as a structure.
-% See LoadImage and LoadStructures
-handles.referenceImage = [];
-
-% mergedImage stores the merged MVCT/kVCT for MVCT based calculation
-% See MergeImages
-handles.mergedImage = [];
-
-% referenceDose stores the optimized plan dose as a structure. See
-% LoadDose and UpdateDVH
-handles.referenceDose = [];
-
-% dqaDose stores the recomputed dose (using the measured sinogram) as a
-% structure. See CalcDose and UpdateDVH
-handles.dqaDose = [];
-
-% doseDiff stores the absolute difference between the dqaDose and
-% referenceDose as an array.  See CalcDoseDifference
-handles.doseDiff = [];
-
-% gamma stores the gamma comparison between the planned and recomputed 
-% dose as an array. See CalcGamma
-handles.gamma = [];
-
-% rawData is a 643 x n array of compressed exit detector data.  See
-% LoadStaticCouchQA
-handles.rawData = [];
-
-% exitData is a 64 x n array of measured de-convolved exit detector
-% response for the patient plan. See CalcSinogramDiff
-handles.exitData = [];
-
-% diff is a 64 x n array of differences between the planned and measured
-% sinogram data. See CalcSinogramDiff
-handles.diff = [];
-
-% errors is a vector of sinogram errors for all active leaves, used to
-% compute statistics. See CalcSinogramDiff
-handles.errors = [];
-
-% Clear patient file string
-set(handles.archive_file, 'String', '');
-
-% Disable print and export buttons while patient data is unloaded
-set(handles.print_button, 'Enable', 'off');
-set(handles.export_button, 'Enable', 'off');
-
-% Disabled dose calculation buttons
-set(handles.calcdose_button, 'Enable', 'off'); 
-set(handles.calcgamma_button, 'Enable', 'off'); 
-
-% Hide plots
-if isfield(handles, 'tcsplot')
-    delete(handles.tcsplot);
-else
-    set(allchild(handles.dose_axes), 'visible', 'off'); 
-    set(handles.dose_axes, 'visible', 'off');
-    set(handles.dose_slider, 'visible', 'off');
-    colorbar(handles.dose_axes,'off');
-end
-set(handles.dose_display, 'Value', 1);
-set(handles.results_display, 'Value', 1);
-set(allchild(handles.dvh_axes), 'visible', 'off'); 
-set(handles.dvh_axes, 'visible', 'off');
-set(allchild(handles.results_axes), 'visible', 'off'); 
-set(handles.results_axes, 'visible', 'off');
-set(allchild(handles.sino1_axes), 'visible', 'off'); 
-set(handles.sino1_axes, 'visible', 'off');
-colorbar(handles.sino1_axes,'off');
-set(allchild(handles.sino2_axes), 'visible', 'off'); 
-set(handles.sino2_axes, 'visible', 'off');
-colorbar(handles.sino2_axes,'off');
-set(allchild(handles.sino3_axes), 'visible', 'off'); 
-set(handles.sino3_axes, 'visible', 'off');
-colorbar(handles.sino3_axes,'off');
-
-% Hide dose TCS/alpha
-set(handles.tcs_button, 'visible', 'off');
-set(handles.alpha, 'visible', 'off');
-
-% Clear tables
-set(handles.dvh_table, 'Data', cell(16,5));
-set(handles.stats_table, 'Data', UpdateResultsStatistics(handles));
+% Execute clear all data to clear all variables
+handles = ClearAllData(handles);
 
 % If called through the UI, and not another function
 if nargout == 0
@@ -1837,8 +1613,8 @@ if handles.calcDose == 1
     % Update calculation status
     set(handles.calc_status, 'String', 'Dose Engine: GPU Connected');
     
-    % If data is present for calculation
-    if ~isempty(handles.diff)
+    % If derata is present for calculation
+    if isfield(handles, 'diff') && ~isempty(handles.diff)
         
         % Enable UI controls
         set(handles.calcdose_button, 'Enable', 'on');
