@@ -30,7 +30,7 @@ function varargout = ExitDetector(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Last Modified by GUIDE v2.5 16-Sep-2016 10:50:24
+% Last Modified by GUIDE v2.5 19-May-2017 11:27:18
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -66,7 +66,7 @@ warning('off','all');
 handles.output = hObject;
 
 % Set version handle
-handles.version = '1.4.0';
+handles.version = '1.4.1';
 
 % Determine path of current application
 [path, ~, ~] = fileparts(mfilename('fullpath'));
@@ -378,9 +378,6 @@ set(handles.mvctcalc_box, 'Value', handles.mvctcalc);
 if strcmpi(handles.calcMethod, 'GPUSADOSE') || ...
         strcmpi(handles.calcMethod, 'SADOSE')
     
-    % Check for presence of dose calculation engine
-    handles.calcDose = CalcDose();
-
     % Set sadose flag
     if strcmpi(handles.config.CALC_METHOD, 'SADOSE')
         handles.sadose = 1;
@@ -388,69 +385,48 @@ if strcmpi(handles.calcMethod, 'GPUSADOSE') || ...
         handles.sadose = 0;
     end
 
-    % If calc dose was successful and sadose flag is set
-    if handles.calcDose == 1 && handles.sadose == 1
+    % Declare path to beam model folder (if not specified in config 
+    % file, use default path of ./GPU)
+    if isfield(handles.config, 'MODEL_PATH')
+        handles.modeldir = handles.config.MODEL_PATH;
+    else
+        handles.modeldir = './GPU';
+    end
 
-        % Log dose calculation status
-        Event('CPU Dose calculation available');
+    % Check for beam model files
+    if exist(fullfile(handles.modeldir, 'dcom.header'), 'file') == 2 && ...
+            exist(fullfile(handles.modeldir, 'fat.img'), 'file') == 2 && ...
+            exist(fullfile(handles.modeldir, 'kernel.img'), 'file') == 2 && ...
+            exist(fullfile(handles.modeldir, 'lft.img'), 'file') == 2 && ...
+            exist(fullfile(handles.modeldir, 'penumbra.img'), 'file') == 2
+
+        % Log name
+        Event('Beam model files verified, dose calculation enabled');
         
-        % Update calculation status
-        set(handles.calcstatus, 'String', 'Dose Engine: CPU Connected'); 
+        % Log action
+        Event('Scheduling timer to periodically test server connection');
 
-    % If calc dose was successful and sadose flag is not set
-    elseif handles.calcDose == 1 && handles.sadose == 0
-
-        % Log dose calculation status
-        Event('GPU Dose calculation available');
-        
-        % Update calculation status
-        set(handles.calc_status, 'String', 'Dose Engine: GPU Connected');
-
-    % Otherwise, calc dose was not successful
+        % Schedule timer to periodically check on calculation status
+        start(timer('TimerFcn', {@CheckConnection, hObject, handles}, ...
+            'BusyMode', 'drop', 'ExecutionMode', 'fixedSpacing', ...
+            'TasksToExecute', Inf, 'Period', 10, 'StartDelay', 10));
     else
 
-        % Log dose calculation status
-        Event('Dose calculation server not available', 'WARN');
-        
+        % Disable dose calculation
+        handles.calcDose = 0;
+
         % Update calculation status
-        set(handles.calc_status, 'String', 'Dose Engine: Disconnected');
+        set(handles.calc_status, 'String', 'Dose Engine: No beam model');
+
+        % Otherwise throw a warning
+        Event(sprintf(['Dose calculation disabled, beam model not found. ', ...
+            ' Verify that %s exists and contains the necessary model files'], ...
+            handles.modeldir), 'WARN');
+        
+        % Disable dose calculation UI controls
+        set(handles.mvctcalc_box, 'Enable', 'off'); 
     end
     
-    % Verify beam model files
-    if handles.calcDose == 1
-
-        % Declare path to beam model folder (if not specified in config 
-        % file, use default path of ./GPU)
-        if isfield(handles.config, 'MODEL_PATH')
-            handles.modeldir = handles.config.MODEL_PATH;
-        else
-            handles.modeldir = './GPU';
-        end
-
-        % Check for beam model files
-        if exist(fullfile(handles.modeldir, 'dcom.header'), 'file') == 2 && ...
-                exist(fullfile(handles.modeldir, 'fat.img'), 'file') == 2 && ...
-                exist(fullfile(handles.modeldir, 'kernel.img'), 'file') == 2 && ...
-                exist(fullfile(handles.modeldir, 'lft.img'), 'file') == 2 && ...
-                exist(fullfile(handles.modeldir, 'penumbra.img'), 'file') == 2
-
-            % Log name
-            Event('Beam model files verified, dose calculation enabled');
-        else
-
-            % Disable dose calculation
-            handles.calcDose = 0;
-
-            % Update calculation status
-            set(handles.calc_status, 'String', 'Dose Engine: No beam model');
-
-            % Otherwise throw a warning
-            Event(sprintf(['Dose calculation disabled, beam model not found. ', ...
-                ' Verify that %s exists and contains the necessary model files'], ...
-                handles.modeldir), 'WARN');
-        end
-    end
-  
 % Otherwise, if MATLAB dose calculation is specified
 elseif strcmpi(handles.calcMethod, 'MATLAB')
     
@@ -482,6 +458,9 @@ elseif strcmpi(handles.calcMethod, 'MATLAB')
         Event(['MATLAB dose calculation was specified, but one or ', ...
             'more config options are missing. See documentation for more ', ...
             'information.'], 'WARN');
+        
+        % Disable dose calculation UI controls
+        set(handles.mvctcalc_box, 'Enable', 'off'); 
     end
     
 % Otherwise dose calculation was disabled from config.txt
@@ -495,10 +474,6 @@ else
         
     % Set flag to false
     handles.calcDose = 0;
-end
-
-% If dose calculation didn't pass all checks
-if handles.calcDose == 0
     
     % Disable dose calculation UI controls
     set(handles.mvctcalc_box, 'Enable', 'off'); 
@@ -1841,3 +1816,72 @@ else
     % Update handles structure
     guidata(hObject, handles);
 end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function handles = CheckConnection(~, ~, hObject, handles)
+% CheckConnection is called by a timer to periodically check on the status
+% of a remote connection and update the UI if the status changes
+
+% Log action
+Event('Checking on status of standalone calculation');
+
+% Execute calcdose
+handles.calcDose = CalcDose();
+
+% If calc dose was successful
+if handles.calcDose == 1 
+
+    % Log dose calculation status
+    Event('GPU Dose calculation available');
+
+    % Update calculation status
+    set(handles.calc_status, 'String', 'Dose Engine: GPU Connected');
+    
+    % If data is present for calculation
+    if ~isempty(handles.diff)
+        
+        % Enable UI controls
+        set(handles.calcdose_button, 'Enable', 'on');
+    end
+
+% Otherwise, calc dose was not successful
+else
+
+    % Log dose calculation status
+    Event('Dose calculation server not available', 'WARN');
+
+    % Update calculation status
+    set(handles.calc_status, 'String', 'Dose Engine: Disconnected');
+    
+    % Enable UI controls
+    set(handles.calcdose_button, 'Enable', 'off');
+end
+
+% Update handles structure
+guidata(hObject, handles);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function ExitDetector_CloseRequestFcn(hObject, ~, ~)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Log event
+Event('Closing the Exit Detector application');
+
+% Retrieve list of current timers
+timers = timerfind;
+
+% If any are active
+if ~isempty(timers)
+    
+    % Stop and delete any timers
+    stop(timers);
+    delete(timers);
+end
+
+% Clear temporary variables
+clear timers;
+
+% Hint: delete(hObject) closes the figure
+delete(hObject);
