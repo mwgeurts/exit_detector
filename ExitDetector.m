@@ -98,114 +98,18 @@ string = sprintf('%s\n', separator, string{:}, separator);
 % Log information
 Event(string, 'INIT');
 
-%% Add submodules
-% Add archive extraction tools submodule to search path
-addpath('./tomo_extract');
+% Log action
+Event('Loading submodules');
 
-% Check if MATLAB can find CalcDose
-if exist('CalcDose', 'file') ~= 2
-    
-    % If not, throw an error
-    Event(['The Archive Extraction Tools submodule does not exist in the ', ...
-        'search path. Use git clone --recursive or git submodule init ', ...
-        'followed by git submodule update to fetch all submodules'], ...
-        'ERROR');
-end
+% Execute AddSubModulePaths to load all submodules
+AddSubModulePaths();
 
-% Add DICOM tools submodule to search path
-addpath('./dicom_tools');
+% Log action
+Event('Loading configuration options');
 
-% Check if MATLAB can find LoadDICOMImages
-if exist('WriteDICOMDose', 'file') ~= 2
-    
-    % If not, throw an error
-    Event(['The DICOM Tools submodule does not exist in the ', ...
-        'search path. Use git clone --recursive or git submodule init ', ...
-        'followed by git submodule update to fetch all submodules'], ...
-        'ERROR');
-end
+% Execute ParseConfigOptions to load the global variables
+handles = ParseConfigOptions(handles, 'config.txt');
 
-% Add structure atlas submodule to search path
-addpath('./structure_atlas');
-
-% Check if MATLAB can find LoadDICOMImages
-if exist('LoadAtlas', 'file') ~= 2
-    
-    % If not, throw an error
-    Event(['The Structure Atlas submodule does not exist in the ', ...
-        'search path. Use git clone --recursive or git submodule init ', ...
-        'followed by git submodule update to fetch all submodules'], ...
-        'ERROR');
-end
-
-% Add gamma submodule to search path
-addpath('./gamma');
-
-% Check if MATLAB can find CalcGamma
-if exist('CalcGamma', 'file') ~= 2
-    
-    % If not, throw an error
-    Event(['The CalcGamma submodule does not exist in the search path. Use ', ...
-        'git clone --recursive or git submodule init followed by git ', ...
-        'submodule update to fetch all submodules'], 'ERROR');
-end
-
-% Add thomas_tomocalc submodule to search path
-addpath('./thomas_tomocalc');
-
-% Check if MATLAB can find CheckTomoDose
-if exist('CheckTomoDose', 'file') ~= 2
-    
-    % If not, throw an error
-    Event(['The thomas_tomocalc submodule does not exist in the search ', ...
-        'path. Use git clone --recursive or git submodule init followed ', ...
-        'by git submodule update to fetch all submodules'], 'ERROR');
-end
-
-% Add ImageViewer submodule to search path
-addpath('./tcs_plots');
-
-% Check if MATLAB can find @ImageViewer
-if exist('ImageViewer', 'class') ~= 8
-    
-    % If not, throw an error
-    Event(['The tcs_plots submodule does not exist in the ', ...
-        'search path. Use git clone --recursive or git submodule init ', ...
-        'followed by git submodule update to fetch all submodules'], ...
-        'ERROR');
-end
-
-%% Load configuration settings
-% Open file handle to config.txt file
-fid = fopen('config.txt', 'r');
-
-% Verify that file handle is valid
-if fid < 3
-    
-    % If not, throw an error
-    Event(['The config.txt file could not be opened. Verify that this ', ...
-        'file exists in the working directory. See documentation for ', ...
-        'more information.'], 'ERROR');
-end
-
-% Scan config file contents
-c = textscan(fid, '%s', 'Delimiter', '=');
-
-% Close file handle
-fclose(fid);
-
-% Loop through textscan array, separating key/value pairs into array
-for i = 1:2:length(c{1})
-    handles.config.(strtrim(c{1}{i})) = strtrim(c{1}{i+1});
-end
-
-% Clear temporary variables
-clear c i fid;
-
-% Log completion
-Event('Loaded config.txt parameters');
-
-%% Initialize UI
 % Set version UI text
 set(handles.version_text, 'String', sprintf('Version %s', handles.version));
 
@@ -216,145 +120,14 @@ options = UpdateResultsDisplay();
 set(handles.results_display, 'String', options);
 clear options;
 
-% Execute ParseConfigOptions to load the global variables
-handles = ParseConfigOptions(handles, handles.config);
-
-%% Configure Dose Calculation
-% Check for MVCT calculation flag
-if isfield(handles.config, 'ALLOW_MVCT_CALC') && ...
-        str2double(handles.config.ALLOW_MVCT_CALC) == 1
-    
-    % Log status
-    Event('MVCT dose calculation enabled');
-    
-    % Enable MVCT dose calculation
-    handles.mvctcalc = 1;
-
-% If dose calc flag does not exist or is disabled
-else
-    
-    % Log status
-    Event('MVCT dose calculation disabled');
-    
-    % Disable MVCT dose calculation
-    handles.mvctcalc = 0;
-end
-
-% Update MVCT dose calulation UI box
-set(handles.mvctcalc_box, 'Enable', 'on');
-set(handles.mvctcalc_box, 'Value', handles.mvctcalc);
-
-% If GPUSADOSE or SADOSE dose calculation was specified
-if strcmpi(handles.calcMethod, 'GPUSADOSE') || ...
-        strcmpi(handles.calcMethod, 'SADOSE')
-    
-    % Set sadose flag
-    if strcmpi(handles.config.CALC_METHOD, 'SADOSE')
-        handles.sadose = 1;
-    else
-        handles.sadose = 0;
-    end
-
-    % Declare path to beam model folder (if not specified in config 
-    % file, use default path of ./GPU)
-    if isfield(handles.config, 'MODEL_PATH')
-        handles.modeldir = handles.config.MODEL_PATH;
-    else
-        handles.modeldir = './GPU';
-    end
-
-    % Check for beam model files
-    if exist(fullfile(handles.modeldir, 'dcom.header'), 'file') == 2 && ...
-            exist(fullfile(handles.modeldir, 'fat.img'), 'file') == 2 && ...
-            exist(fullfile(handles.modeldir, 'kernel.img'), 'file') == 2 && ...
-            exist(fullfile(handles.modeldir, 'lft.img'), 'file') == 2 && ...
-            exist(fullfile(handles.modeldir, 'penumbra.img'), 'file') == 2
-
-        % Log name
-        Event('Beam model files verified, dose calculation enabled');
-        
-        % Log action
-        Event('Scheduling timer to periodically test server connection');
-
-        % Schedule timer to periodically check on calculation status
-        start(timer('TimerFcn', {@CheckConnection, hObject, handles}, ...
-            'BusyMode', 'drop', 'ExecutionMode', 'fixedSpacing', ...
-            'TasksToExecute', Inf, 'Period', 30, 'StartDelay', 1));
-    else
-
-        % Disable dose calculation
-        handles.calcDose = 0;
-
-        % Update calculation status
-        set(handles.calc_status, 'String', 'Dose Engine: No beam model');
-
-        % Otherwise throw a warning
-        Event(sprintf(['Dose calculation disabled, beam model not found. ', ...
-            ' Verify that %s exists and contains the necessary model files'], ...
-            handles.modeldir), 'WARN');
-        
-        % Disable dose calculation UI controls
-        set(handles.mvctcalc_box, 'Enable', 'off'); 
-    end
-    
-% Otherwise, if MATLAB dose calculation is specified
-elseif strcmpi(handles.calcMethod, 'MATLAB')
-    
-    % Verify configuration options are present
-    if isfield(handles.config, 'MATLAB_DOSE_RATE') && ...
-            isfield(handles.config, 'MATLAB_DOSE_RATE') && ...
-            isfield(handles.config, 'MATLAB_OUTSIDE_BODY') && ...
-            isfield(handles.config, 'MATLAB_DENSITY_THRESH') && ...
-            isfield(handles.config, 'MATLAB_DOWNSAMPLE')
-        
-        % Disable dose calculation
-        handles.calcDose = 1;
-
-        % Update calculation status
-        set(handles.calc_status, 'String', ...
-            'Dose Engine: MATLAB');
-        
-        % Log success
-        Event('MATLAB options confirmed, dose calculation enabled');
-    else
-        % Disable dose calculation
-        handles.calcDose = 0;
-
-        % Update calculation status
-        set(handles.calc_status, 'String', ...
-            'Dose Engine: Missing config options');
-
-        % Throw a warning
-        Event(['MATLAB dose calculation was specified, but one or ', ...
-            'more config options are missing. See documentation for more ', ...
-            'information.'], 'WARN');
-        
-        % Disable dose calculation UI controls
-        set(handles.mvctcalc_box, 'Enable', 'off'); 
-    end
-    
-% Otherwise dose calculation was disabled from config.txt
-else
-    
-    % Log dose calculation status
-    Event('Dose calculation disabled');
-    
-    % Update calculation status
-    set(handles.calc_status, 'String', 'Dose Engine: Disabled');
-        
-    % Set flag to false
-    handles.calcDose = 0;
-    
-    % Disable dose calculation UI controls
-    set(handles.mvctcalc_box, 'Enable', 'off'); 
-end
+% Configure Dose Calculation
+handles = SetDoseCalculation(handles);
 
 % Initialize data handles
 Event('Initializing daily qa variables');
 handles.dailyqa = [];
-handles = clear_button_Callback(handles.clear_button, '', handles);
+handles = ClearAllData(handles);
 
-%% Complete initialization
 % If an atlas file is specified in the config file
 if isfield(handles.config, 'ATLAS_FILE')
     
@@ -396,8 +169,7 @@ function daily_file_CreateFcn(hObject, ~, ~)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
+% Edit controls usually have a white background on Windows.
 if ispc && isequal(get(hObject,'BackgroundColor'), ...
         get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
@@ -412,72 +184,8 @@ function daily_browse_Callback(hObject, ~, handles) %#ok<*DEFNU>
 % Log event
 Event('Daily QA browse button selected');
 
-% Warn the user that existing data will be deleted
-if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
-    
-    % Ask user if they want to calculate dose
-    choice = questdlg(['Existing Static Couch QA data exists and will ', ...
-        'be deleted. Continue?'], 'Calculate Gamma', 'Yes', 'No', 'Yes');
-
-    % If the user chose yes
-    if strcmp(choice, 'Yes')
-        
-        % If patient data exists, clear it
-        handles = clear_button_Callback(handles.clear_button, '', handles);
-
-        % Request the user to select the Daily QA DICOM or XML
-        Event('UI window opened to select file');
-        [name, path] = uigetfile({'*_patient.xml', ...
-            'Patient Archive (*.xml)'; '*.dcm', 'Transit Dose File (*.dcm)'}, ...
-            'Select the Daily QA File', handles.path);
-    else
-        Event('User chose not to select new Daily QA data');
-        name = 0;
-    end
-else
-    % Request the user to select the Daily QA DICOM or XML
-    Event('UI window opened to select file');
-    [name, path] = uigetfile({'*_patient.xml', 'Patient Archive (*.xml)'; ...
-        '*.dcm', 'Transit Dose File (*.dcm)'}, ...
-        'Select the Daily QA File', handles.path);
-end
-
-% If the user selected a file
-if ~isequal(name, 0)
-    
-    % Update default path
-    handles.path = path;
-    Event(['Default file path updated to ', path]);
-    
-    % Update daily_file text box
-    set(handles.daily_file, 'String', fullfile(path, name));
-        
-    % Extract file contents
-    handles.dailyqa = LoadDailyQA(path, name, handles.dailyqaProjections, ...
-        handles.openRows, handles.mvctRows, handles.shiftGold);  
-    
-    % If LoadDailyQA was successful
-    if isfield(handles.dailyqa, 'channelCal')
-        
-        % Enable raw data
-        set(handles.rawdata_button, 'Enable', 'on');
-
-        % Enable archive_browse
-        set(handles.archive_file, 'Enable', 'on');
-        set(handles.archive_browse, 'Enable', 'on');
-
-        % Update results display
-        set(handles.results_display, 'Value', 2);
-        UpdateResultsDisplay(handles.results_axes, 2, handles);
-    end
-    
-% Otherwise the user did not select a file
-else
-    Event('No Daily QA file was selected');
-end
-
-% Clear temporary variables
-clear name path;
+% Execute LoadDailyArchive
+handles = LoadDailyArchive(handles);
 
 % Update handles structure
 guidata(hObject, handles);
@@ -494,7 +202,7 @@ function archive_file_CreateFcn(hObject, ~, ~)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
-% Hint: edit controls usually have a white background on Windows.
+% Edit controls usually have a white background on Windows.
 %       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), ...
         get(0,'defaultUicontrolBackgroundColor'))
@@ -510,191 +218,8 @@ function archive_browse_Callback(hObject, ~, handles)
 % Log event
 Event('Patient archive browse button selected');
 
-% Request the user to select the Patient Archive
-Event('UI window opened to select file');
-[name, path] = uigetfile({'*_patient.xml', 'Patient Archive (*.xml)'}, ...
-    'Select the Patient Archive', handles.path);
-
-% If the user selected a file
-if ~isequal(name, 0)
-    
-    % Update default path and name
-    handles.path = path;
-    handles.name = name;
-    Event(['Default file path updated to ', path]);
-
-    % If patient data exists, clear it before continuing
-    handles = clear_button_Callback(handles.clear_button, '', handles);
-    
-    % Update archive_file text box
-    set(handles.archive_file, 'String', fullfile(path, name));
-    
-    % Initialize progress bar
-    progress = waitbar(0.1, 'Loading static couch QA data...');
-    
-    % Search archive for static couch QA procedures
-    [handles.machine, handles.planUID, handles.rawData] = ...
-        LoadStaticCouchQA(path, name, handles.leftTrim, ...
-        handles.dailyqa.channelCal, handles.detectorRows);
-    
-    % If LoadStaticCouchQA was successful
-    if ~strcmp(handles.planUID, '')
-        
-        % UNIT testing, see planUID to UNKNOWN
-        % Event('PlanUID set to UNKNOWN', 'UNIT');
-        % handles.planUID = 'UNKNOWN';
-        
-        % If the planUID is not known
-        if strcmp(handles.planUID, 'UNKNOWN')
-            
-            % Update progress bar
-            waitbar(0.15, progress, 'Matching to delivery plan...');
-            
-            % Run MatchDeliveryPlan to find the matching delivery plan
-            [handles.planUID, ~, handles.maxcorr] = ...
-                MatchDeliveryPlan(path, name, handles.hideFluence, ...
-                handles.hideMachSpecific, ...
-                get(handles.autoselect_box, 'Value'), ...
-                get(handles.autoshift_box, 'Value'), ...
-                handles.dailyqa.background, handles.dailyqa.leafMap, ...
-                handles.rawData);
-        end
-        
-        % Update progress bar
-        waitbar(0.2, progress, 'Loading delivery plan data...');
-            
-        % Load delivery plan
-        handles.planData = LoadPlan(path, name, handles.planUID);
-        
-        % Update progress bar
-        waitbar(0.3, progress, 'Loading reference CT...');
-        
-        % Load reference image
-        handles.referenceImage = LoadImage(path, name, handles.planUID);
-
-        % Update progress bar
-        waitbar(0.4, progress, 'Loading reference dose...');
-        
-        % Load reference dose
-        handles.referenceDose = LoadPlanDose(path, name, handles.planUID);
-        
-        % Update progress bar
-        waitbar(0.5, progress, 'Loading structure set...');
-        
-        % Load structures
-        handles.referenceImage.structures = LoadStructures(...
-            path, name, handles.referenceImage, handles.atlas);
-
-        % Initialize statistics table
-        set(handles.dvh_table, 'Data', InitializeStatistics(...
-            handles.referenceImage, handles.atlas));
-        
-        % Update progress bar
-        waitbar(0.6, progress, 'Calculating delivery error...');
-        
-        % Calculate sinogram difference
-        [handles.exitData, handles.diff, handles.errors] = ...
-            CalcSinogramDiff(handles.dailyqa.background, ...
-            handles.dailyqa.leafSpread, handles.dailyqa.leafMap, ...
-            handles.rawData, handles.planData.agnostic, ...
-            get(handles.autoshift_box, 'Value'), ...
-            get(handles.dynamicjaw_box, 'Value'), handles.planData);
-        
-        % Update sinogram plots
-        UpdateSinogramDisplay(handles.sino1_axes, ...
-            handles.planData.agnostic, handles.sino2_axes, ...
-            handles.exitData, handles.sino3_axes, handles.diff);
-        
-        % Update progress bar
-        waitbar(0.65, progress, 'Updating statistics...');
-        
-        % Create dose plot with planned dose
-        set(handles.dose_display, 'Value', 2);
-        handles.tcsplot = ImageViewer('axis', handles.dose_axes, ...
-            'tcsview', handles.tcsview, 'background', handles.referenceImage, ...
-            'overlay', handles.referenceDose, 'alpha', ...
-            sscanf(get(handles.alpha, 'String'), '%f%%')/100, ...
-            'structures', handles.referenceImage.structures, ...
-            'structuresonoff', get(handles.dvh_table, 'Data'), ...
-            'slider', handles.dose_slider, 'cbar', 'on', 'pixelval', 'off');
-        
-        % Enable transparency and TCS inputs
-        set(handles.alpha, 'visible', 'on');
-        set(handles.tcs_button, 'visible', 'on');
-
-        % Update DVH plot
-        [handles.referenceDose.dvh] = ...
-            UpdateDVH(handles.dvh_axes, get(handles.dvh_table, 'Data'), ...
-            handles.referenceImage, handles.referenceDose);
-
-        % Update Dx/Vx statistics
-        set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
-            get(handles.dvh_table, 'Data'), [], ...
-            handles.referenceDose.dvh, []));
-        
-        % Update results display
-        set(handles.results_display, 'Value', 9);
-        UpdateResultsDisplay(handles.results_axes, 9, handles);
-        
-        % Update results statistics
-        set(handles.stats_table, 'Data', UpdateResultsStatistics(handles));
-        
-        % Close progress bar
-        close(progress);
-        
-        %% Calculate dose
-        if handles.calcDose == 1
-            
-            % Enable UI controls
-            set(handles.calcdose_button, 'Enable', 'on');
-            
-            % Ask user if they want to calculate dose
-            choice = questdlg('Continue to Calculate DQA Dose?', ...
-                'Calculate Dose', 'Yes', 'No', 'Yes');
-
-            % If the user chose yes
-            if strcmp(choice, 'Yes')
-
-                % Calculate dose
-                handles.path = path;
-                handles.name = name;
-                handles = calcdose_button_Callback([], [], handles);
-                
-                % Ask user if they want to calculate dose
-                choice = questdlg('Continue to Calculate Gamma?', ...
-                    'Calculate Gamma', 'Yes', 'No', 'Yes');
-
-                % If the user chose yes
-                if strcmp(choice, 'Yes')
-
-                    % Calculate dose
-                    handles = calcgamma_button_Callback([], [], handles);
-                else
-                    
-                    % Log choice
-                    Event('User chose not to compute gamma');
-                end
-            else
-                
-                % Log choice
-                Event('User chose not to compute dose');
-            end
-
-            % Clear temporary variables
-            clear choice;
-        end
-    end
-
-    % Enable print button
-    set(handles.print_button, 'Enable', 'on');
-    
-% Otherwise the user did not select a file
-else
-    Event('No patient archive was selected');
-end
-
-% Clear temporary variables
-clear name path;
+% ExecuteLoadPatientArchive
+handles = LoadPatientArchive(handles);
 
 % Update handles structure
 guidata(hObject, handles);
@@ -968,7 +493,7 @@ if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
     if strcmp(choice, 'Yes')
         
         % If patient data exists, clear it
-        handles = clear_button_Callback(handles.clear_button, '', handles);
+        handles = ClearAllData(handles);
         
         % Log value change
         if get(hObject,'Value') == 1
@@ -1016,7 +541,7 @@ if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
     if strcmp(choice, 'Yes')
         
         % If patient data exists, clear it
-        handles = clear_button_Callback(handles.clear_button, '', handles);
+        handles = ClearAllData(handles);
         
         % Log value change
         if get(hObject,'Value') == 1
@@ -1064,7 +589,7 @@ if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
     if strcmp(choice, 'Yes')
         
         % If patient data exists, clear it
-        handles = clear_button_Callback(handles.clear_button, '', handles);
+        handles = ClearAllData(handles);
         
         % Log value change
         if get(hObject,'Value') == 1
@@ -1113,7 +638,7 @@ function results_display_CreateFcn(hObject, ~, ~)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
-% Hint: popupmenu controls usually have a white background on Windows.
+% Popupmenu controls usually have a white background on Windows.
 if ispc && isequal(get(hObject, 'BackgroundColor'), ...
         get(0, 'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor', 'white');
@@ -1153,7 +678,7 @@ end
 clear name path;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function varargout = clear_button_Callback(hObject, ~, handles)
+function clear_button_Callback(hObject, ~, handles)
 % hObject    handle to clear_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -1161,17 +686,8 @@ function varargout = clear_button_Callback(hObject, ~, handles)
 % Execute clear all data to clear all variables
 handles = ClearAllData(handles);
 
-% If called through the UI, and not another function
-if nargout == 0
-    
-    % Update handles structure
-    guidata(hObject, handles);
-    
-else
-    
-    % Otherwise return the modified handles
-    varargout{1} = handles;
-end
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function figure1_SizeChangedFcn(hObject, ~, handles)
@@ -1204,7 +720,6 @@ set(handles.stats_table, 'ColumnWidth', ...
 % Clear temporary variables
 clear pos;
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function mvctcalc_box_Callback(hObject, ~, handles)
 % hObject    handle to mvctcalc_box (see GCBO)
@@ -1222,7 +737,7 @@ if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
     if strcmp(choice, 'Yes')
         
         % If patient data exists, clear it
-        handles = clear_button_Callback(handles.clear_button, '', handles);
+        handles = ClearAllData(handles);
         
         % Log value change
         if get(hObject,'Value') == 1
@@ -1258,380 +773,25 @@ end
 guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function varargout = calcdose_button_Callback(hObject, ~, handles)
+function calcdose_button_Callback(hObject, ~, handles)
 % hObject    handle to calcdose_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Initialize progress bar
-progress = waitbar(0.7, 'Calculating reference dose...');
+% Execute CalculateExitDose
+handles = CalculateExitDose(handles);
 
-% If the user enabled MVCT based dose calculation
-if handles.mvctcalc == 1
-
-    % Update progress bar
-    waitbar(0.71, progress, 'Finding MVCT scans...');
-    
-    % Find all MVCT scans
-    handles.mvcts = FindMVCTScans(handles.path, handles.name);
-
-    % Initialize flag
-    foundmvcts = 0;
-
-    % Loop through the plans
-    for i = 1:length(handles.mvcts)
-
-        % If the MVCT list matches the current plan
-        if strcmp(handles.mvcts{i}.planUID, handles.planUID) && ...
-                ~isempty(handles.mvcts{i}.scanUIDs)
-
-            % Update flag
-            foundmvcts = 1;
-
-            % Initialize selection list
-            handles.mvctlist = cell(1, ...
-                length(handles.mvcts{i}.scanUIDs));
-
-            % Loop through the scans
-            for j = 1:length(handles.mvcts{i}.scanUIDs)
-
-                % Add list selection option
-                handles.mvctlist{j} = ...
-                    sprintf('MVCT %s-%s: %0.1f cm to %0.1f cm', ...
-                    handles.mvcts{i}.date{j}, ...
-                    handles.mvcts{i}.time{j}, ...
-                    handles.mvcts{i}.scanLengths(j,1), ...
-                    handles.mvcts{i}.scanLengths(j,2));
-            end
-
-            % Break the loop
-            break;
-        end
-    end
-
-    % If no MVCT scans were found
-    if foundmvcts == 0
-
-        % Log event
-        Event(['No MVCT scans were found, continuing ', ...
-            'calculation with planning CT'], 'WARN');
-
-    % Otherwise, scans were found
-    else
-
-        % Prompt user to select which image to calculate QA
-        [s, ok] = listdlg('PromptString', ['Select which ', ...
-            'image to calculate the QA dose on:'], ...
-            'SelectionMode', 'single', 'ListString', ...
-            horzcat('Planning Image', handles.mvctlist), ...
-            'ListSize', [270 200]);
-
-        % If the user selected an MVCT
-        if ok == 1 && s > 1
-
-            % Log event
-            Event(['User chose to calculate on scan UID ', ...
-                handles.mvcts{i}.scanUIDs{s-1}]);
-            
-            % Update progress bar
-            waitbar(0.72, progress, 'Loading MVCT...');
-
-            % Load MVCT (keeping structures)
-            handles.dailyImage = LoadDailyImage(handles.path, ...
-                'ARCHIVE', handles.name, handles.mvcts{i}.scanUIDs{s-1});
-
-            % Update progress bar
-            waitbar(0.74, progress, 'Merging MVCT...');
-            
-            % Adjust IEC-Y registration for difference between image center
-            handles.dailyImage.registration(5) = ...
-                (handles.dailyImage.start(3) + handles.dailyImage.width(3) ...
-                * (size(handles.dailyImage.data, 3) - 1) / 2) - ...
-                handles.dailyImage.registration(5) - ...
-                (handles.referenceImage.start(3) + ...
-                handles.referenceImage.width(3) * ...
-                (size(handles.referenceImage.data, 3) - 1) / 2);
-            
-            % Merge MVCT with kVCT
-            handles.mergedImage = MergeImages(handles.referenceImage, ...
-                handles.dailyImage, handles.dailyImage.registration);
-            
-        % Log choice
-        else
-            Event('User chose to continue with plan CT');
-        end
-    end
-
-    % Clear temporary variables
-    clear foundmvcts i j s ok;
-end
-
-% If using MATLAB dose calculator
-if strcmpi(handles.calcMethod, 'MATLAB')
-
-    % Start calculation pool, if configured
-    try
-        if isfield(handles.config, 'MATLAB_POOL') && ...
-                isempty(gcp('nocreate'))
-
-            % Update progress bar
-            waitbar(0.75, progress, 'Starting calculation pool...');
-
-            % Log event
-            Event(sprintf('Starting calculation pool with %i workers', ...
-                str2double(handles.config.MATLAB_POOL)));
-
-            % Start calculation pool
-            handles.pool = parpool(str2double(handles.config.MATLAB_POOL));
-        else
-
-            % Store current value
-            handles.pool = gcp;
-        end
-
-    % If the parallel processing toolbox is not present, the above code
-    % will fail
-    catch
-        handles.pool = [];
-    end
-
-    % Load planned dose to use as a mask for calculation
-    Event('Loading planned dose to establish calculation grid size');
-    mask = LoadPlanDose(handles.path, handles.name, handles.planUID);
-
-    % Apply dose threshold to planned dose to set mask
-    Event('Applying dose threshold to planned dose');
-    mask.data = mask.data > (max(max(max(mask.data))) * ...
-        (str2double(handles.config.MATLAB_DOSE_THRESH) - 0.05));
-end
-
-% Execute CalcDose on reference plan 
-if handles.calcRefDose == 1
-
-    % Log action
-    Event('Calculating reference dose on plan CT');
-    
-    % Update progress bar
-    waitbar(0.76, progress, 'Calculating reference dose...');
-
-    % If using MATLAB dose calculator
-    if strcmpi(handles.calcMethod, 'MATLAB')
-
-        % Calculate reference dose using image, plan, parallel pool, config
-        % options, and dose mask (based on the threshold)
-        handles.referenceDose = CheckTomoDose(handles.referenceImage, ...
-            handles.planData, handles.pool, 'downsample', ...
-            str2double(handles.config.MATLAB_DOWNSAMPLE), ...
-            'reference_doserate', ...
-            str2double(handles.config.MATLAB_DOSE_RATE), ...
-            'num_of_subprojections', 1, 'outside_body', ...
-            str2double(handles.config.MATLAB_OUTSIDE_BODY), ...
-            'density_threshold', ...
-            str2double(handles.config.MATLAB_DENSITY_THRESH), 'mask', ...
-            mask.data);
-        
-    % Otherwise, use standalone calculator
-    else
-    
-        % Calculate reference dose using image, plan, 
-        % directory, & sadose flag
-        handles.referenceDose = CalcDose(...
-            handles.referenceImage, handles.planData, ...
-            handles.modeldir, handles.sadose);
-    end
-end
-
-% Adjust delivery plan sinogram by measured differences
-Event('Modifying delivery plan using difference array');
-handles.dqaPlanData = handles.planData;
-handles.dqaPlanData.sinogram = ...
-    handles.planData.sinogram + handles.diff;
-
-% Trim any sinogram projection values outside of [0 1]
-handles.dqaPlanData.sinogram = ...
-    max(0, handles.dqaPlanData.sinogram);
-handles.dqaPlanData.sinogram = ...
-    min(1, handles.dqaPlanData.sinogram);
-
-% If a merged MVCT was generated
-if handles.mvctcalc == 1 && isfield(handles, 'mergedImage') && ...
-        isfield(handles.mergedImage, 'data')
-    
-    % Execute CalcDose
-    Event('Calculating DQA dose on merged MVCT');
-
-    % Set calculation/plot background image
-    bkgd = handles.mergedImage;
-else
-
-    % Execute CalcDose
-    Event('Calculating DQA dose on plan CT');
-    
-    % Set calculation/plot background image
-    bkgd = handles.referenceImage;
-end
-
-% Update progress bar
-waitbar(0.78, progress, 'Calculating DQA dose...');
-
-% If using MATLAB dose calculator
-if strcmpi(handles.calcMethod, 'MATLAB')
-
-    % Calculate reference dose using image, plan, parallel pool, config
-    % options, and dose mask (based on the threshold)
-    handles.dqaDose = CheckTomoDose(bkgd, handles.dqaPlanData, handles.pool, ...
-        'downsample', str2double(handles.config.MATLAB_DOWNSAMPLE), ...
-        'reference_doserate', str2double(handles.config.MATLAB_DOSE_RATE), ...
-        'num_of_subprojections', 1, ...
-        'outside_body', str2double(handles.config.MATLAB_OUTSIDE_BODY), ...
-        'density_threshold', str2double(handles.config.MATLAB_DENSITY_THRESH), ...
-        'mask', mask.data);
-
-% Otherwise, use standalone calculator
-else
-
-    % Calculate DQA dose using image, plan, directory, & 
-    % sadose flag
-    handles.dqaDose = CalcDose(bkgd, handles.dqaPlanData, handles.modeldir, ...
-        handles.sadose);
-end
-
-% Update progress bar
-waitbar(0.8, progress, 'Updating statistics...');
-
-% Calculate dose difference
-handles.doseDiff = CalcDoseDifference(...
-    handles.referenceDose, handles.dqaDose);
-
-% Crop differences where second calc is zero
-handles.doseDiff(handles.dqaDose.data == 0) = 0;
-
-% Update dose plot with DQA dose
-set(handles.dose_display, 'Value', 3);
-handles.tcsplot.Initialize('background', bkgd, 'overlay', handles.dqaDose);
-
-% Update DVH plot
-[handles.referenceDose.dvh, handles.dqaDose.dvh] = ...
-    UpdateDVH(handles.dvh_axes, get(handles.dvh_table, 'Data'), ...
-    handles.referenceImage, handles.referenceDose, ...
-    handles.referenceImage, handles.dqaDose);
-
-% Update Dx/Vx statistics
-set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
-    get(handles.dvh_table, 'Data'), [], ...
-    handles.referenceDose.dvh, handles.dqaDose.dvh));
-
-% Enable UI controls
-set(handles.export_button, 'Enable', 'on');
-set(handles.calcgamma_button, 'Enable', 'on');
-
-% Clear temporary files
-clear mask bkgd;
-
-% Close progress bar
-close(progress);
-
-% If a return argument is set
-if nargout == 1
-    
-    % Return handles structure
-    varargout{1} = handles;
-else
-    
-    % Update handles structure
-    guidata(hObject, handles);
-end
+% Update handles structure
+guidata(hObject, handles);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function varargout = calcgamma_button_Callback(hObject, ~, handles)
+function calcgamma_button_Callback(hObject, ~, handles)
 % hObject    handle to calcgamma_button (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Update progress bar
-progress = waitbar(0.9, 'Calculating Gamma...');
-
-% Execute CalcGamma using restricted 3D search
-handles.gamma = CalcGamma(handles.referenceDose, ...
-    handles.dqaDose, handles.percent, handles.dta, ...
-    'local', handles.local, 'refval', max(max(max(...
-    handles.referenceDose.data))), 'restrict', 1);
-
-% Eliminate gamma values below dose treshold
-handles.gamma = handles.gamma .* ...
-    (handles.referenceDose.data > handles.doseThreshold * ...
-    max(max(max(handles.referenceDose.data))));
-
-% Update progress bar
-waitbar(0.98, progress, 'Updating statistics...');
-
-% Update TCS display
-set(handles.dose_display, 'Value', 6);
-handles.tcsplot.Initialize('overlay', struct(...
-    'width', handles.referenceDose.width, ...
-    'dimensions', handles.referenceDose.dimensions, ...
-    'start', handles.referenceDose.start, ...
-    'data', handles.gamma));
-
-% Update results statistics
-set(handles.stats_table, 'Data', UpdateResultsStatistics(handles));
-
-% Update progress bar
-waitbar(1.0, progress, 'Done!');
-
-% Close progress bar
-close(progress);
-
-% If a return argument is set
-if nargout == 1
-    
-    % Return handles structure
-    varargout{1} = handles;
-else
-    
-    % Update handles structure
-    guidata(hObject, handles);
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function handles = CheckConnection(~, ~, hObject, handles)
-% CheckConnection is called by a timer to periodically check on the status
-% of a remote connection and update the UI if the status changes
-
-% Log action
-Event('Checking on status of standalone calculation');
-
-% Execute calcdose
-handles.calcDose = CalcDose();
-
-% If calc dose was successful
-if handles.calcDose == 1 
-
-    % Log dose calculation status
-    Event('GPU Dose calculation available');
-
-    % Update calculation status
-    set(handles.calc_status, 'String', 'Dose Engine: GPU Connected');
-    
-    % If derata is present for calculation
-    if isfield(handles, 'diff') && ~isempty(handles.diff)
-        
-        % Enable UI controls
-        set(handles.calcdose_button, 'Enable', 'on');
-    end
-
-% Otherwise, calc dose was not successful
-else
-
-    % Log dose calculation status
-    Event('Dose calculation server not available', 'WARN');
-
-    % Update calculation status
-    set(handles.calc_status, 'String', 'Dose Engine: Disconnected');
-    
-    % Enable UI controls
-    set(handles.calcdose_button, 'Enable', 'off');
-end
+% Execute CalculateExitGamma
+handles = CalculateExitGamma(handles);
 
 % Update handles structure
 guidata(hObject, handles);
@@ -1659,5 +819,5 @@ end
 % Clear temporary variables
 clear timers;
 
-% Hint: delete(hObject) closes the figure
+% Delete(hObject) closes the figure
 delete(hObject);

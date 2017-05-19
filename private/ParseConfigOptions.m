@@ -1,7 +1,7 @@
-function handles = ParseConfigOptions(handles, config)
+function handles = ParseConfigOptions(handles, filename)
 % ParseConfigOptions is executed by ExitDetector to open the config file
 % and update the application settings. The GUI handles structure and
-% configuration structure is passed to this function, and and updated
+% configuration filename is passed to this function, and and updated
 % handles structure containing the loaded configuration options is
 % returned.
 % 
@@ -20,6 +20,39 @@ function handles = ParseConfigOptions(handles, config)
 % 
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
+
+% Log event and start timer
+t = tic;
+Event(['Opening file handle to ', filename]);
+
+% Open file handle to config.txt file
+fid = fopen(filename, 'r');
+
+% Verify that file handle is valid
+if fid < 3
+    
+    % If not, throw an error
+    Event(['The ', filename, ' file could not be opened. Verify that this ', ...
+        'file exists in the working directory. See documentation for ', ...
+        'more information.'], 'ERROR');
+end
+
+% Scan config file contents
+c = textscan(fid, '%s', 'Delimiter', '=');
+
+% Close file handle
+fclose(fid);
+
+% Loop through textscan array, separating key/value pairs into array
+for i = 1:2:length(c{1})
+    config.(strtrim(c{1}{i})) = strtrim(c{1}{i+1});
+end
+
+% Clear temporary variables
+clear c i fid;
+
+% Log completion
+Event(['Read ', filename, ' to end of file']);
 
 % Default folder path when selecting input files
 if strcmpi(config.DEFAULT_PATH, 'userpath')
@@ -121,5 +154,30 @@ set(handles.alpha, 'String', config.DEFAULT_TRANSPARENCY);
 Event(['Default dose view transparency set to ', ...
     config.DEFAULT_TRANSPARENCY]);
 
+% Check for MVCT calculation flag
+if isfield(config, 'ALLOW_MVCT_CALC') && ...
+        str2double(config.ALLOW_MVCT_CALC) == 1
+    
+    % Log status
+    Event('MVCT dose calculation enabled');
+    
+    % Enable MVCT dose calculation
+    handles.mvctcalc = 1;
 
+% If dose calc flag does not exist or is disabled
+else
+    
+    % Log status
+    Event('MVCT dose calculation disabled');
+    
+    % Disable MVCT dose calculation
+    handles.mvctcalc = 0;
+end
+
+% Store all config options to handles.config
+handles.config = config;
+
+% Log event and completion
+Event(sprintf('Configuration options loaded successfully in %0.3f seconds', ...
+    toc(t)));
 

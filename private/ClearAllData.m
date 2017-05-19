@@ -1,7 +1,8 @@
 function handles = ClearAllData(handles)
 % ClearAllData is called by ExitDetector during application initialization
 % and if the user presses "Clear All" to reset the UI and initialize all
-% runtime data storage variables.
+% runtime data storage variables. Note that all checkboxes will get updated
+% to their configuration default settings.
 %
 % Author: Mark Geurts, mark.w.geurts@gmail.com
 % Copyright (C) 2017 University of Wisconsin Board of Regents
@@ -99,6 +100,10 @@ set(handles.dynamicjaw_box, 'Value', ...
     str2double(handles.config.DYNAMIC_JAW_COMPENSATION));
 Event(['Default dynamic jaw compensation set to ', ...
     handles.config.DYNAMIC_JAW_COMPENSATION]);
+
+% Set MVCT calculation checkbox default
+set(handles.mvctcalc_box, 'Enable', 'on');
+set(handles.mvctcalc_box, 'Value', handles.mvctcalc);
 
 % Clear patient file string
 set(handles.archive_file, 'String', '');
