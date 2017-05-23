@@ -50,12 +50,9 @@ if ~isequal(name, 0)
     % If LoadStaticCouchQA was successful
     if ~strcmp(handles.planUID, '')
         
-        % UNIT testing, see planUID to UNKNOWN
-        % Event('PlanUID set to UNKNOWN', 'UNIT');
-        % handles.planUID = 'UNKNOWN';
-        
         % If the planUID is not known
-        if strcmp(handles.planUID, 'UNKNOWN')
+        if strcmp(handles.planUID, 'UNKNOWN') || (isfield(handles.config, ...
+                'UNIT_MATCH') && str2double(handles.config.UNIT_MATCH) == 1)
             
             % Update progress bar
             waitbar(0.15, progress, 'Matching to delivery plan...');
