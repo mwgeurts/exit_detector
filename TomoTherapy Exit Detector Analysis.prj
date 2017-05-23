@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="1454186963" file="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector/TomoTherapy Exit Detector Analysis.prj" location="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector" name="TomoTherapy Exit Detector Analysis" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="1628087411" file="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector/TomoTherapy Exit Detector Analysis.prj" location="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector" name="TomoTherapy Exit Detector Analysis" target="target.mlapps" target-name="Package App">
     <param.appname>TomoTherapy Exit Detector Analysis</param.appname>
     <param.authnamewatermark>Mark Geurts</param.authnamewatermark>
     <param.email>mark.w.geurts@gmail.com</param.email>
@@ -15,7 +15,7 @@ The user interface provides graphic and quantitative analysis of the comparison 
 
 TomoTherapy is a registered trademark of Accuray Incorporated.</param.description>
     <param.screenshot />
-    <param.version>1.4.0</param.version>
+    <param.version>1.4.1</param.version>
     <param.products.name>
       <item>Image Processing Toolbox</item>
       <item>MATLAB</item>
@@ -46,25 +46,38 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
     </fileset.main>
     <fileset.depfun>
       <file>${MATLAB_ROOT}/toolbox/local/userpath.m</file>
-      <file>${PROJECT_ROOT}/CalcDoseDifference.m</file>
-      <file>${PROJECT_ROOT}/CalcFieldWidth.m</file>
-      <file>${PROJECT_ROOT}/CalcSinogramDiff.m</file>
       <file>${PROJECT_ROOT}/Event.m</file>
       <file>${PROJECT_ROOT}/ExitDetector.fig</file>
-      <file>${PROJECT_ROOT}/InitializeStatistics.m</file>
-      <file>${PROJECT_ROOT}/LoadVersionInfo.m</file>
-      <file>${PROJECT_ROOT}/MatchDeliveryPlan.m</file>
       <file>${PROJECT_ROOT}/PrintReport.fig</file>
       <file>${PROJECT_ROOT}/PrintReport.m</file>
-      <file>${PROJECT_ROOT}/UpdateDVH.m</file>
-      <file>${PROJECT_ROOT}/UpdateDoseDisplay.m</file>
-      <file>${PROJECT_ROOT}/UpdateDoseStatistics.m</file>
-      <file>${PROJECT_ROOT}/UpdateResultsDisplay.m</file>
-      <file>${PROJECT_ROOT}/UpdateResultsStatistics.m</file>
-      <file>${PROJECT_ROOT}/UpdateSinogramDisplay.m</file>
       <file>${PROJECT_ROOT}/dicom_tools/WriteDICOMDose.m</file>
       <file>${PROJECT_ROOT}/gamma/CalcGamma.m</file>
+      <file>${PROJECT_ROOT}/private/AddSubModulePaths.m</file>
+      <file>${PROJECT_ROOT}/private/CalcDoseDifference.m</file>
+      <file>${PROJECT_ROOT}/private/CalcExitDose.m</file>
+      <file>${PROJECT_ROOT}/private/CalcExitGamma.m</file>
+      <file>${PROJECT_ROOT}/private/CalcFieldWidth.m</file>
+      <file>${PROJECT_ROOT}/private/CalcSinogramDiff.m</file>
+      <file>${PROJECT_ROOT}/private/CheckConnection.m</file>
+      <file>${PROJECT_ROOT}/private/ClearAllData.m</file>
+      <file>${PROJECT_ROOT}/private/ExportResults.m</file>
+      <file>${PROJECT_ROOT}/private/LoadDailyArchive.m</file>
+      <file>${PROJECT_ROOT}/private/LoadPatientArchive.m</file>
+      <file>${PROJECT_ROOT}/private/LoadVersionInfo.m</file>
+      <file>${PROJECT_ROOT}/private/MatchDeliveryPlan.m</file>
+      <file>${PROJECT_ROOT}/private/ParseConfigOptions.m</file>
+      <file>${PROJECT_ROOT}/private/SetDoseCalculation.m</file>
+      <file>${PROJECT_ROOT}/private/UpdateDoseDisplay.m</file>
+      <file>${PROJECT_ROOT}/private/UpdateResults.m</file>
+      <file>${PROJECT_ROOT}/private/UpdateSinogram.m</file>
+      <file>${PROJECT_ROOT}/private/UpdateStatistics.m</file>
       <file>${PROJECT_ROOT}/structure_atlas/LoadAtlas.m</file>
+      <file>${PROJECT_ROOT}/tcs_plots/@DVHViewer/Calculate.m</file>
+      <file>${PROJECT_ROOT}/tcs_plots/@DVHViewer/DVHViewer.m</file>
+      <file>${PROJECT_ROOT}/tcs_plots/@DVHViewer/InitializeData.m</file>
+      <file>${PROJECT_ROOT}/tcs_plots/@DVHViewer/UpdatePlot.m</file>
+      <file>${PROJECT_ROOT}/tcs_plots/@DVHViewer/UpdateTable.m</file>
+      <file>${PROJECT_ROOT}/tcs_plots/@DVHViewer/WriteFile.m</file>
       <file>${PROJECT_ROOT}/tcs_plots/@ImageViewer/ImageViewer.m</file>
       <file>${PROJECT_ROOT}/tcs_plots/@ImageViewer/Initialize.m</file>
       <file>${PROJECT_ROOT}/tcs_plots/@ImageViewer/Update.m</file>
@@ -85,6 +98,15 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
       <file>${PROJECT_ROOT}/tomo_extract/LoadStaticCouchQA.m</file>
       <file>${PROJECT_ROOT}/tomo_extract/LoadStructures.m</file>
       <file>${PROJECT_ROOT}/tomo_extract/MergeImages.m</file>
+      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/scp.m</file>
+      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/scp_get.m</file>
+      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/scp_put.m</file>
+      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/ssh2.m</file>
+      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/ssh2_command.m</file>
+      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/ssh2_config.m</file>
+      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/ssh2_main.m</file>
+      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/ssh2_setup.m</file>
+      <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/ssh2_simple_command.m</file>
     </fileset.depfun>
     <fileset.resources>
       <file>${PROJECT_ROOT}/GPU</file>
@@ -121,7 +143,7 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
       <vista>false</vista>
       <linux>false</linux>
       <solaris>false</solaris>
-      <osver>10.12.4</osver>
+      <osver>10.12.5</osver>
       <os32>false</os32>
       <os64>true</os64>
       <arch>maci64</arch>
