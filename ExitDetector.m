@@ -113,11 +113,15 @@ handles = ParseConfigOptions(handles, 'config.txt');
 % Set version UI text
 set(handles.version_text, 'String', sprintf('Version %s', handles.version));
 
-% Set plot options
+% Set TCS plot options
 options = UpdateDoseDisplay();
 set(handles.dose_display, 'String', options);
+
+% Set results plot options
 options = UpdateResults();
 set(handles.results_display, 'String', options);
+
+% Clear temporary variables
 clear options;
 
 % Configure Dose Calculation
