@@ -1,4 +1,4 @@
-function handles = CheckConnection(~, ~, hObject, handles)
+function handles = CheckConnection(~, ~, hObject)
 % CheckConnection is called by a timer to periodically check on the status
 % of a remote connection and update the UI if the status changes.
 %
@@ -17,6 +17,9 @@ function handles = CheckConnection(~, ~, hObject, handles)
 % 
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
+
+% Retrieve guidata
+handles = guidata(hObject);
 
 % Log action
 Event('Checking on status of standalone calculation');
@@ -53,5 +56,5 @@ else
     set(handles.calcdose_button, 'Enable', 'off');
 end
 
-% Update handles structure
+% Update guidata
 guidata(hObject, handles);

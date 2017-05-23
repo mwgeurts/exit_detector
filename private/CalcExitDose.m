@@ -1,4 +1,4 @@
-function handles = CalculateExitDose(handles)
+function handles = CalcExitDose(handles)
 % CalculateExitDose is called by ExitDetector to calculate the reference
 % and DQA dose from an exit detector measured sinogram.
 %
@@ -200,7 +200,7 @@ end
 Event('Modifying delivery plan using difference array');
 handles.dqaPlanData = handles.planData;
 handles.dqaPlanData.sinogram = ...
-    handles.planData.sinogram + handles.diff;
+    handles.planData.sinogram .* (handles.diff + 1);
 
 % Trim any sinogram projection values outside of [0 1]
 handles.dqaPlanData.sinogram = ...
@@ -265,16 +265,9 @@ handles.doseDiff(handles.dqaDose.data == 0) = 0;
 set(handles.dose_display, 'Value', 3);
 handles.tcsplot.Initialize('background', bkgd, 'overlay', handles.dqaDose);
 
-% Update DVH plot
-[handles.referenceDose.dvh, handles.dqaDose.dvh] = ...
-    UpdateDVH(handles.dvh_axes, get(handles.dvh_table, 'Data'), ...
-    handles.referenceImage, handles.referenceDose, ...
-    handles.referenceImage, handles.dqaDose);
-
-% Update Dx/Vx statistics
-set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
-    get(handles.dvh_table, 'Data'), [], ...
-    handles.referenceDose.dvh, handles.dqaDose.dvh));
+% Recalculate DVHs and update DVH plot, Dx/Vx table
+handles.dvh.Calculate('doseA', handles.referenceDose, 'doseB', ...
+    handles.dqaDose, 'legend', {'Reference', 'DQA'});
 
 % Enable UI controls
 set(handles.export_button, 'Enable', 'on');

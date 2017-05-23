@@ -1,4 +1,4 @@
-function handles = SetDoseCalculation(handles)
+function handles = SetDoseCalculation(hObject, handles)
 % SetDoseCalculation is called by ExitDetector during initialization
 % to set the dose calculation settings and (for remote calculation) start a
 % timer that continuously checks the status of the SSH2 connection.
@@ -52,7 +52,7 @@ if strcmpi(handles.calcMethod, 'GPUSADOSE') || ...
         Event('Scheduling timer to periodically test server connection');
 
         % Schedule timer to periodically check on calculation status
-        start(timer('TimerFcn', {@CheckConnection, hObject, handles}, ...
+        start(timer('TimerFcn', {@CheckConnection, hObject}, ...
             'BusyMode', 'drop', 'ExecutionMode', 'fixedSpacing', ...
             'TasksToExecute', Inf, 'Period', 60, 'StartDelay', 1));
     else

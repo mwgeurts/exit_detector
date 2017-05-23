@@ -1,4 +1,4 @@
-function handles = CalculateExitGamma(handles)
+function handles = CalcExitGamma(handles)
 % CalculateExitGamma is called by ExitDetector to calculate the reference
 % and DQA Gamma Index.
 %
@@ -43,8 +43,11 @@ handles.tcsplot.Initialize('overlay', struct(...
     'start', handles.referenceDose.start, ...
     'data', handles.gamma));
 
+% Update table with Gamma pass rates
+handles.dvh.UpdateTable('gamma', handles.gamma);
+
 % Update results statistics
-set(handles.stats_table, 'Data', UpdateResultsStatistics(handles));
+set(handles.stats_table, 'Data', UpdateStatistics(handles));
 
 % Update progress bar
 waitbar(1.0, progress, 'Done!');

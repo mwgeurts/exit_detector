@@ -115,11 +115,11 @@ set(handles.text9, 'String', data.planData.planLabel);
 set(handles.text24, 'String', data.machine);
 
 % Plot sinograms
-UpdateSinogramDisplay(handles.axes1, data.planData.sinogram, handles.axes2, ...
+UpdateSinogram(handles.axes1, data.planData.sinogram, handles.axes2, ...
     data.exitData, handles.axes3, data.diff);
 
 % Add statistics table
-table = UpdateResultsStatistics(data);
+table = UpdateStatistics(data);
 set(handles.text19, 'String', sprintf('%s\n\n', table{:,1}));
 set(handles.text20, 'String', sprintf('%s\n\n', table{:,2}));
 clear table;
@@ -138,26 +138,29 @@ title('Planned Dose (Gy)');
 if isfield(data, 'dqaDose') && isfield(data.dqaDose, 'data')
     
     % Plot both DVHs
-    UpdateDVH(handles.axes5, get(data.dvh_table, 'Data'), ...
-        data.referenceImage, data.referenceDose, data.referenceImage, ...
-        data.dqaDose);
+    handles.dvh = DVHViewer('axis', handles.axes5, 'data', ...
+        get(data.dvh_table, 'Data'), 'doseA', data.referenceDose, 'doseB', ...
+        data.dqaDose, 'structures', data.referenceImage.structures);
+    handles.dvh.UpdatePlot();
 else
     % Plot reference DVH
-    UpdateDVH(handles.axes5, get(data.dvh_table, 'Data'), ...
-        data.referenceImage, data.referenceDose);
+    handles.dvh = DVHViewer('axis', handles.axes5, 'data', ...
+        get(data.dvh_table, 'Data'), 'doseA', data.referenceDose, ...
+        'structures', data.referenceImage.structures);
+    handles.dvh.UpdatePlot();
 end
 title('Dose Volume Histogram');
     
 % Plot LOT histogram
-UpdateResultsDisplay(handles.axes6, 6, data);
+UpdateResults(handles.axes6, 6, data);
 title('LOT Histogram');
 
 % Plot LOT error histogram
-UpdateResultsDisplay(handles.axes7, 9, data);
+UpdateResults(handles.axes7, 9, data);
 title('LOT Error Histogram');
 
 % Plot gamma error histogram
-UpdateResultsDisplay(handles.axes8, 11, data);
+UpdateResults(handles.axes8, 11, data);
 title('Gamma Histogram');
 
 % Update handles structure

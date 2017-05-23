@@ -73,13 +73,6 @@ handles.diff = [];
 % compute statistics. See CalcSinogramDiff
 handles.errors = [];
 
-% Disable archive_browse (Daily QA must be loaded first)
-set(handles.archive_file, 'Enable', 'off');
-set(handles.archive_browse, 'Enable', 'off');
-
-% Disable raw data button (Daily QA or patient data must be loaded first)
-set(handles.rawdata_button, 'Enable', 'off');
-
 % Set auto-select checkbox default
 set(handles.autoselect_box, 'Enable', 'on');
 set(handles.autoselect_box, 'Value', ...
@@ -125,12 +118,18 @@ else
     set(handles.dose_slider, 'visible', 'off');
     colorbar(handles.dose_axes,'off');
 end
+if isfield(handles, 'dvh')
+    delete(handles.dvh);
+else
+    set(handles.dvh_table, 'Data', cell(16,6));
+    set(allchild(handles.dvh_axes), 'visible', 'off'); 
+    set(handles.dvh_axes, 'visible', 'off');
+end
 set(handles.dose_display, 'Value', 1);
 set(handles.results_display, 'Value', 1);
-set(allchild(handles.dvh_axes), 'visible', 'off'); 
-set(handles.dvh_axes, 'visible', 'off');
 set(allchild(handles.results_axes), 'visible', 'off'); 
 set(handles.results_axes, 'visible', 'off');
+set(handles.exportplot_button, 'enable', 'off');
 set(allchild(handles.sino1_axes), 'visible', 'off'); 
 set(handles.sino1_axes, 'visible', 'off');
 colorbar(handles.sino1_axes,'off');
@@ -146,5 +145,4 @@ set(handles.tcs_button, 'visible', 'off');
 set(handles.alpha, 'visible', 'off');
 
 % Clear tables
-set(handles.dvh_table, 'Data', cell(16,5));
-set(handles.stats_table, 'Data', UpdateResultsStatistics(handles));
+set(handles.stats_table, 'Data', UpdateStatistics(handles));

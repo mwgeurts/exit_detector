@@ -1,5 +1,5 @@
-function varargout = UpdateResultsDisplay(varargin)
-% UpdateResultsDisplay is called by ExitDetector.m and PrintReport.m when 
+function varargout = UpdateResults(varargin)
+% UpdateResults is called by ExitDetector.m and PrintReport.m when 
 % initializing or updating the results plot.  When called with no input 
 % arguments, this function returns a string cell array of available plots 
 % that the user can choose from.  When called with a plot handle and GUI 
@@ -9,9 +9,10 @@ function varargout = UpdateResultsDisplay(varargin)
 % The following variables are required for proper execution: 
 %   varargin{1} (optional): plot handle to update
 %   varargin{2} (optional): type of plot to display (see below for options)
-%   handles (optional): structure containing the data variables used 
+%   varargin{3} (optional): structure containing the data variables used 
 %       for statistics computation. This will typically be the guidata (or 
 %       data structure, in the case of PrintReport).
+%   varargin{4} (optional): file handle to also write data to
 %
 % The following variables are returned upon succesful completion:
 %   vararout{1}: if nargin == 0, cell array of plot options available.
@@ -60,7 +61,7 @@ if nargin == 0
     return;
     
 % Otherwise, if 1, set the input variable and update the plot
-elseif nargin == 3
+elseif nargin >= 3
 
     % Set input variables
     handles = varargin{3};
@@ -83,11 +84,15 @@ Event('Current plot set to results display');
 set(allchild(varargin{1}), 'visible', 'off'); 
 set(varargin{1}, 'visible', 'off');
 
+% Disable export button
+set(handles.exportplot_button, 'enable', 'off');
+
 % Execute code block based on display GUI item value
 switch varargin{2}
     
     % Leaf Offsets (aka Even/Odd leaves plot) plot
     case 2
+        
         % Log plot selection
         Event('Leaf offsets plot selected');
         
@@ -95,8 +100,8 @@ switch varargin{2}
         if isfield(handles, 'dailyqa') && ...
                 isfield(handles.dailyqa, 'evenLeaves') && ...
                 isfield(handles.dailyqa, 'oddLeaves') && ...
-                size(handles.dailyqa.evenLeaves, 1) > 0 && ...
-                size(handles.dailyqa.oddLeaves, 1) > 0
+                ~isempty(handles.dailyqa.evenLeaves) && ...
+                ~isempty(handles.dailyqa.oddLeaves)
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
@@ -114,6 +119,26 @@ switch varargin{2}
             legend({'Even Leaves', 'Odd Leaves'})
             grid on
             zoom on
+            
+            % Enable export button
+            set(handles.exportplot_button, 'enable', 'on');
+            
+            % If file handle is provided, write data
+            if nargin == 4
+                
+                % Plot header
+                fprintf(varargin{4}, '# %s\n', plotoptions{varargin{2}});
+                
+                % Print column headers
+                fprintf(varargin{4}, '%s,%s,%s\n', ...
+                    'Channel', 'Even Leaves', 'Odd Leaves');
+                
+                % Print data
+                fprintf(varargin{4}, '%i,%f,%f\n', vertcat(...
+                    1:length(handles.dailyqa.evenLeaves), ...
+                    handles.dailyqa.evenLeaves', ...
+                    handles.dailyqa.oddLeaves'));
+            end
         else
             % Log why plot was not displayed
             Event('Leaf offsets not displayed as no data exists');
@@ -121,13 +146,14 @@ switch varargin{2}
         
     % MLC leaf to MVCT channel map plot
     case 3
+        
         % Log plot selection
         Event('MLC leaf to MVCT channel map plot selected');
         
         % If the leafMap array is not empty
         if isfield(handles, 'dailyqa') && ...
                 isfield(handles.dailyqa, 'leafMap')&& ...
-                size(handles.dailyqa.leafMap, 1) > 0
+                ~isempty(handles.dailyqa.leafMap)
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
@@ -143,6 +169,24 @@ switch varargin{2}
             ylabel('Channel')
             grid on
             zoom on
+            
+            % Enable export button
+            set(handles.exportplot_button, 'enable', 'on');
+            
+            % If file handle is provided, write data
+            if nargin == 4
+                
+                % Plot header
+                fprintf(varargin{4}, '# %s\n', plotoptions{varargin{2}});
+                
+                % Print column headers
+                fprintf(varargin{4}, '%s,%s\n', 'Channel', 'MLC Leaf');
+                
+                % Print data
+                fprintf(varargin{4}, '%i,%i\n', vertcat(...
+                    1:length(handles.dailyqa.leafMap), ...
+                    handles.dailyqa.leafMap'));
+            end
         else
             % Log why plot was not displayed
             Event(['MLC leaf to MVCT channel map not displayed ', ...
@@ -151,13 +195,14 @@ switch varargin{2}
         
     % MVCT calibtation (open field response versus expected) plot
     case 4
+        
         % Log plot selection
         Event('MVCT sensitivity calibration plot selected');
         
         % If the channelCal vector is not empty
         if isfield(handles, 'dailyqa') && ...
-                isfield(handles.dailyqa, 'channelCal')&& ...
-                size(handles.dailyqa.channelCal, 1) > 0
+                isfield(handles.dailyqa, 'channelCal') && ...
+                ~isempty(handles.dailyqa.channelCal)
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
@@ -173,6 +218,25 @@ switch varargin{2}
             ylabel('Normalized Signal')
             grid on
             zoom on
+            
+            % Enable export button
+            set(handles.exportplot_button, 'enable', 'on');
+            
+            % If file handle is provided, write data
+            if nargin == 4
+                
+                % Plot header
+                fprintf(varargin{4}, '# %s\n', plotoptions{varargin{2}});
+                
+                % Print column headers
+                fprintf(varargin{4}, '%s,%s\n', 'Channel', ...
+                    'Normalized Signal');
+                
+                % Print data
+                fprintf(varargin{4}, '%i,%i\n', vertcat(...
+                    1:length(handles.dailyqa.channelCal), ...
+                    handles.dailyqa.channelCal));
+            end
         else
             % Log why plot was not displayed
             Event(['MVCT sensitivity calibration not displayed ', ...
@@ -181,13 +245,14 @@ switch varargin{2}
         
     % Normalized leaf spread function plot
     case 5
+        
         % Log plot selection
         Event('Normalized leaf spread function plot selected');
         
         % If the leafSpread vector is not empty
         if isfield(handles, 'dailyqa') && ...
                 isfield(handles.dailyqa, 'leafSpread')&& ...
-                size(handles.dailyqa.leafSpread,1) > 0
+                ~isempty(handles.dailyqa.leafSpread)
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
@@ -209,6 +274,26 @@ switch varargin{2}
             legend({'Central Leaves', 'Edge Leaves'})
             grid on
             zoom on
+            
+            % Enable export button
+            set(handles.exportplot_button, 'enable', 'on');
+            
+            % If file handle is provided, write data
+            if nargin == 4
+                
+                % Plot header
+                fprintf(varargin{4}, '# %s\n', plotoptions{varargin{2}});
+                
+                % Print column headers
+                fprintf(varargin{4}, '%s,%s,%s\n', 'MLC Leaf', ...
+                    'Central Leaves', 'Edge Leaves');
+                
+                % Print data
+                fprintf(varargin{4}, '%i,%f,%f\n', vertcat(...
+                    0:size(handles.dailyqa.leafSpread, 2)-1, ...
+                    handles.dailyqa.leafSpread(1,:), ...
+                    handles.dailyqa.leafSpread(2,:)));
+            end
         else
             % Log why plot was not displayed
             Event(['Normalized leaf spread function not displayed ', ...
@@ -217,26 +302,22 @@ switch varargin{2}
         
     % Planned sinogram leaf open time histogram
     case 6
+        
         % Log plot selection
         Event('Planned sinogram leaf open time plot selected');
         
         % If the sinogram array is not empty
         if isfield(handles, 'planData') && ...
                 isfield(handles.planData, 'sinogram') && ...
-                size(handles.planData.sinogram,1) > 0
+                ~isempty(handles.planData.sinogram)
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
-
-            % Create vector from sinogram
-            open_times = reshape(handles.planData.sinogram, 1, [])';
-            
-            % Remove zero values
-            open_times = open_times(open_times > 0) * 100;
             
             % Plot open time histogram with 100 bins
-            hist(open_times, 0:1:100)
+            histogram(handles.planData.sinogram(...
+                handles.planData.sinogram > 0) * 100, 0:1:100)
             
             % Set plot options
             colormap(handles.results_axes, 'default')
@@ -244,6 +325,25 @@ switch varargin{2}
             xlim([0 100]);
             grid on
             zoom on
+            
+            % Enable export button
+            set(handles.exportplot_button, 'enable', 'on');
+            
+            % If file handle is provided, write data
+            if nargin == 4
+                
+                % Plot header
+                fprintf(varargin{4}, '# %s\n', plotoptions{varargin{2}});
+                
+                % Print column headers
+                fprintf(varargin{4}, '%s,%s\n', 'Open Time', 'Count');
+                
+                % Print data
+                fprintf(varargin{4}, '%0.4f,%i\n', vertcat(...
+                    0.0005:0.001:0.9995, ...
+                    histcounts(handles.planData.sinogram(...
+                    handles.planData.sinogram > 0), 0:0.001:1)));
+            end
         else
             % Log why plot was not displayed
             Event(['Planned sinogram leaf open time not displayed ', ...
@@ -252,13 +352,14 @@ switch varargin{2}
     
     % Jaw profiles
     case 7
+        
         % Log plot selection
         Event('Planned dynamic jaw profile plot selected');
         
         % If the sinogram array is not empty
         if isfield(handles, 'planData') && ...
                 isfield(handles.planData, 'events') && ...
-                size(handles.planData.events,1) > 0
+                ~isempty(handles.planData.events)
             
             % Compute jaw widths
             widths = CalcFieldWidth(handles.planData);
@@ -292,19 +393,38 @@ switch varargin{2}
             grid on
             zoom on
             
+            % Enable export button
+            set(handles.exportplot_button, 'enable', 'on');
+            
+            % If file handle is provided, write data
+            if nargin == 4
+                
+                % Plot header
+                fprintf(varargin{4}, '# %s\n', plotoptions{varargin{2}});
+                
+                % Print column headers
+                fprintf(varargin{4}, '%s,%s,%s\n', 'Projection', ...
+                    'Front Position (cm)', 'Back Position (cm)');
+                
+                % Print data
+                fprintf(varargin{4}, '%i,%f,%f\n', vertcat(...
+                    1:size(jaws,2), jaws(1, :), jaws(2, :)));
+            end
+            
             % Clear temporary variables
             clear i jaws widths;
         end
         
     % Field width profile
     case 8
+        
         % Log plot selection
         Event('Planned dynamic jaw profile plot selected');
         
         % If the sinogram array is not empty
         if isfield(handles, 'planData') && ...
                 isfield(handles.planData, 'events') && ...
-                size(handles.planData.events,1) > 0
+                ~isempty(handles.planData.events)
             
             % Compute jaw widths
             widths = CalcFieldWidth(handles.planData);
@@ -334,24 +454,43 @@ switch varargin{2}
             grid on
             zoom on
             
+            % Enable export button
+            set(handles.exportplot_button, 'enable', 'on');
+            
+            % If file handle is provided, write data
+            if nargin == 4
+                
+                % Plot header
+                fprintf(varargin{4}, '# %s\n', plotoptions{varargin{2}});
+                
+                % Print column headers
+                fprintf(varargin{4}, '%s,%s\n', 'Projection', ...
+                    'Field Width (cm)');
+                
+                % Print data
+                fprintf(varargin{4}, '%i,%f\n', vertcat(...
+                    1:length(plotwidths), plotwidths));
+            end
+            
             % Clear temporary variables
             clear i plotwidths widths;
         end
         
     % Planned vs. Measured sinogram error histogram
     case 9
+        
         % Log plot selection
         Event('Sinogram error histogram plot selected');
         
         % If the errors vector is not empty
-        if isfield(handles, 'errors') && size(handles.errors,1) > 0
+        if isfield(handles, 'errors') && ~isempty(handles.errors)
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
 
             % Plot error histogram with 0.2% width bins
-            hist(handles.errors*100, -100:0.2:100)
+            histogram(handles.errors * 100, -100:0.2:100)
             
             % Set plot options
             colormap(handles.results_axes, 'default')
@@ -359,6 +498,27 @@ switch varargin{2}
             xlim([-10 10]);
             grid on
             zoom on
+            
+            % Enable export button
+            set(handles.exportplot_button, 'enable', 'on');
+            
+            % Enable export button
+            set(handles.exportplot_button, 'enable', 'on');
+            
+            % If file handle is provided, write data
+            if nargin == 4
+                
+                % Plot header
+                fprintf(varargin{4}, '# %s\n', plotoptions{varargin{2}});
+                
+                % Print column headers
+                fprintf(varargin{4}, '%s,%s\n', 'LOT Error', 'Count');
+                
+                % Print data
+                fprintf(varargin{4}, '%0.3f,%i\n', vertcat(...
+                    -0.999:0.002:0.999, histcounts(handles.errors, ...
+                    -1:0.002:1)));
+            end
         else
             % Log why plot was not displayed
             Event(['Sinogram error histogram not displayed ', ...
@@ -367,22 +527,23 @@ switch varargin{2}
         
     % Sinogram error versus planned LOT scatter plot
     case 10
+        
         % Log plot selection
         Event('Sinogram error versus planned LOT plot selected');
         
         % If the difference plot is not empty
         if isfield(handles, 'diff') && ...
                 isfield(handles.planData, 'sinogram') && ...
-                size(handles.diff,1) > 0 && ...
-                size(handles.planData.sinogram,1) > 0
+                ~isempty(handles.diff) && ...
+                ~isempty(handles.planData.sinogram)
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
 
             % Plot scatter of difference vs. LOT
-            scatter(reshape(handles.planData.sinogram, 1, []) * 100, ...
-                reshape(handles.diff, 1, []) * 100)
+            scatter(handles.planData.sinogram(handles.planData.sinogram>0)...
+                * 100, handles.diff(handles.planData.sinogram>0) * 100)
             
             % Set plot options
             colormap(handles.results_axes, 'default')
@@ -391,6 +552,25 @@ switch varargin{2}
             ylabel('LOT Error (%)')
             grid on
             zoom on
+            
+            % Enable export button
+            set(handles.exportplot_button, 'enable', 'on');
+            
+            % If file handle is provided, write data
+            if nargin == 4
+                
+                % Plot header
+                fprintf(varargin{4}, '# %s\n', plotoptions{varargin{2}});
+                
+                % Print column headers
+                fprintf(varargin{4}, '%s,%s\n', 'Leaf Open Time', ...
+                    'LOT Error');
+                
+                % Print data
+                fprintf(varargin{4}, '%0.3f,%0.3f\n', vertcat(...
+                    handles.planData.sinogram(handles.planData.sinogram>0)', ...
+                    handles.diff(handles.planData.sinogram>0)'));
+            end
         else
             % Log why plot was not displayed
             Event(['Sinogram error versus planned LOT not displayed ', ...
@@ -399,33 +579,45 @@ switch varargin{2}
         
     % 3D Gamma histogram
     case 11
+        
         % Log plot selection
         Event('Gamma histogram plot selected');
         
         % If the gamma 3D array is not empty
-        if isfield(handles, 'gamma') && size(handles.gamma,1) > 0
+        if isfield(handles, 'gamma') && ~isempty(handles.gamma)
             
             % Turn on plot handle
             set(allchild(handles.results_axes), 'visible', 'on'); 
             set(handles.results_axes,'visible', 'on');
-            
-            % Initialize the gammahist temporary variable to compute the 
-            % gamma pass rate, by reshaping gamma to a 1D vector
-            gammahist = reshape(handles.gamma,1,[]);
-
-            % Remove values less than or equal to zero (due to
-            % handles.dose_threshold; see CalcDose for more 
-            % information)
-            gammahist = gammahist(gammahist > 0); 
 
             % Plot gamma histogram
-            hist(gammahist, 100)
+            histogram(handles.gamma(handles.gamma > 0), 100)
             
             % Set plot options
             colormap(handles.results_axes, 'default')
             xlabel('Gamma Index')
             grid on
             zoom on
+            
+            % Enable export button
+            set(handles.exportplot_button, 'enable', 'on');
+            
+            % If file handle is provided, write data
+            if nargin == 4
+                
+                % Plot header
+                fprintf(varargin{4}, '# %s\n', plotoptions{varargin{2}});
+                
+                % Print column headers
+                fprintf(varargin{4}, '%s,%s\n', 'Gamma Index', 'Count');
+                
+                % Store histogram counts
+                [b, a] = histcounts(handles.gamma(handles.gamma > 0), 100);
+                
+                % Print data
+                fprintf(varargin{4}, '%0.3f,%i\n', vertcat(...
+                    (a(1:end-1) + a(2:end))/2, b));
+            end
         else
             % Log why plot was not displayed
             Event(['Gamma histogram not displayed ', ...

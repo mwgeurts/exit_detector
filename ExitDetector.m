@@ -30,7 +30,7 @@ function varargout = ExitDetector(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Last Modified by GUIDE v2.5 19-May-2017 11:27:18
+% Last Modified by GUIDE v2.5 23-May-2017 11:37:44
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -116,17 +116,12 @@ set(handles.version_text, 'String', sprintf('Version %s', handles.version));
 % Set plot options
 options = UpdateDoseDisplay();
 set(handles.dose_display, 'String', options);
-options = UpdateResultsDisplay();
+options = UpdateResults();
 set(handles.results_display, 'String', options);
 clear options;
 
 % Configure Dose Calculation
-handles = SetDoseCalculation(handles);
-
-% Initialize data handles
-Event('Initializing daily qa variables');
-handles.dailyqa = [];
-handles = ClearAllData(handles);
+handles = SetDoseCalculation(hObject, handles);
 
 % If an atlas file is specified in the config file
 if isfield(handles.config, 'ATLAS_FILE')
@@ -138,6 +133,18 @@ if isfield(handles.config, 'ATLAS_FILE')
 else
     handles.atlas = cell(0);
 end
+
+% Disable archive_browse
+set(handles.archive_file, 'Enable', 'off');
+set(handles.archive_browse, 'Enable', 'off');
+
+% Disable raw data button
+set(handles.rawdata_button, 'Enable', 'off');
+
+% Initialize data handles
+Event('Initializing daily qa variables');
+handles.dailyqa = [];
+handles = ClearAllData(handles);
 
 % Report initilization status
 Event(['Initialization completed successfully. Start by selecting a ', ...
@@ -203,7 +210,6 @@ function archive_file_CreateFcn(hObject, ~, ~)
 % handles    empty - handles not created until after all CreateFcns called
 
 % Edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), ...
         get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
@@ -242,7 +248,7 @@ function dose_display_CreateFcn(hObject, ~, ~)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
-% Popupmenu controls usually have a white background on Windows.
+% Popupmenu controls usually have a white background on Windows
 if ispc && isequal(get(hObject,'BackgroundColor'), ...
         get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
@@ -266,7 +272,7 @@ function dose_slider_CreateFcn(hObject, ~, ~)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
-% Slider controls usually have a light gray background.
+% Slider controls usually have a light gray background
 if isequal(get(hObject,'BackgroundColor'), ...
         get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor',[.9 .9 .9]);
@@ -362,26 +368,27 @@ function dvh_table_CellEditCallback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Get current data
-stats = get(hObject, 'Data');
+data = get(hObject, 'Data');
 
 % Verify edited Dx value is a number or empty
 if eventdata.Indices(2) == 3 && isnan(str2double(...
-        stats{eventdata.Indices(1), eventdata.Indices(2)})) && ...
-        ~isempty(stats{eventdata.Indices(1), eventdata.Indices(2)})
+        data{eventdata.Indices(1), eventdata.Indices(2)})) && ...
+        ~isempty(data{eventdata.Indices(1), eventdata.Indices(2)})
     
     % Warn user
-    Event(sprintf(['Dx value "%s" is not a number, reverting to previous ', ...
-        'value'], stats{eventdata.Indices(1), eventdata.Indices(2)}), 'WARN');
+    Event(sprintf('Dx value "%s" is not a number', ...
+        data{eventdata.Indices(1), eventdata.Indices(2)}), 'WARN');
     
     % Revert value to previous
-    stats{eventdata.Indices(1), eventdata.Indices(2)} = ...
+    data{eventdata.Indices(1), eventdata.Indices(2)} = ...
         eventdata.PreviousData;
+    set(hObject, 'Data', data);
     
-% Otherwise, if Dx was changed
-elseif eventdata.Indices(2) == 3
+% Otherwise, if Dx was changed and DVH data exists
+elseif eventdata.Indices(2) == 3 && isfield(handles, 'dvh')
     
     % Update edited Dx/Vx statistic
-    stats = UpdateDoseStatistics(stats, eventdata.Indices);
+    handles.dvh.UpdateTable('data', data, 'row', eventdata.Indices(1));
     
 % Otherwise, if display value was changed
 elseif eventdata.Indices(2) == 2
@@ -391,22 +398,15 @@ elseif eventdata.Indices(2) == 2
             strcmp(get(handles.dose_slider, 'visible'), 'on')
 
         % Update display
-        handles.tcsplot.Update('structuresonoff', stats);
+        handles.tcsplot.Update('structuresonoff', data);
     end
-
-    % Update DVH plot if it is displayed
-    if strcmp(get(handles.dvh_axes, 'visible'), 'on')
-        
-        % Update DVH plot
-        UpdateDVH(stats); 
-    end
+    
+    % Update edited Dx/Vx statistic
+    handles.dvh.UpdatePlot('data', data);
 end
 
-% Set new table data
-set(hObject, 'Data', stats);
-
 % Clear temporary variable
-clear stats;
+clear data;
 
 % Update handles structure
 guidata(hObject, handles);
@@ -627,7 +627,7 @@ function results_display_Callback(hObject, ~, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Update plot based on new value
-UpdateResultsDisplay(handles.results_axes, get(hObject, 'Value'), handles);
+UpdateResults(handles.results_axes, get(hObject, 'Value'), handles);
 
 % Update handles structure
 guidata(hObject, handles);
@@ -696,7 +696,7 @@ function figure1_SizeChangedFcn(hObject, ~, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Set units to pixels
-set(hObject,'Units','pixels') 
+set(hObject, 'Units', 'pixels') 
 
 % Get table width
 pos = get(handles.dvh_table, 'Position') .* ...
@@ -705,8 +705,8 @@ pos = get(handles.dvh_table, 'Position') .* ...
 
 % Update column widths to scale to new table size
 set(handles.dvh_table, 'ColumnWidth', ...
-    {floor(0.46*pos(3)) - 39 20 floor(0.18*pos(3)) ...
-    floor(0.18*pos(3)) floor(0.18*pos(3))});
+    {floor(0.4*pos(3)) - 39 20 floor(0.15*pos(3)) ...
+    floor(0.15*pos(3)) floor(0.15*pos(3)) floor(0.15*pos(3))});
 
 % Get table width
 pos = get(handles.stats_table, 'Position') .* ...
@@ -778,8 +778,8 @@ function calcdose_button_Callback(hObject, ~, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Execute CalculateExitDose
-handles = CalculateExitDose(handles);
+% Execute CalcExitDose
+handles = CalcExitDose(handles);
 
 % Update handles structure
 guidata(hObject, handles);
@@ -790,8 +790,8 @@ function calcgamma_button_Callback(hObject, ~, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Execute CalculateExitGamma
-handles = CalculateExitGamma(handles);
+% Execute CalcExitGamma
+handles = CalcExitGamma(handles);
 
 % Update handles structure
 guidata(hObject, handles);
@@ -821,3 +821,15 @@ clear timers;
 
 % Delete(hObject) closes the figure
 delete(hObject);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function exportplot_button_Callback(hObject, ~, handles)
+% hObject    handle to exportplot_button (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Execute ExportResults
+handles = ExportResults(handles);
+
+% Update handles structure
+guidata(hObject, handles);

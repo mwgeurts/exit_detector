@@ -1,5 +1,5 @@
-function UpdateSinogramDisplay(varargin)
-% UpdateSinogramDisplay is called by ExitDetector and PrintReport when
+function UpdateSinogram(varargin)
+% UpdateSinogram is called by ExitDetector and PrintReport when
 % plotting the sinogram axes.  Either 2, 4, or 6 input arguments are
 % required, as described below.  No variables are returned.
 %

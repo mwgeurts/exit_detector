@@ -94,10 +94,6 @@ if ~isequal(name, 0)
         % Load structures
         handles.referenceImage.structures = LoadStructures(...
             path, name, handles.referenceImage, handles.atlas);
-
-        % Initialize statistics table
-        set(handles.dvh_table, 'Data', InitializeStatistics(...
-            handles.referenceImage, handles.atlas));
         
         % Update progress bar
         waitbar(0.6, progress, 'Calculating delivery error...');
@@ -111,12 +107,18 @@ if ~isequal(name, 0)
             get(handles.dynamicjaw_box, 'Value'), handles.planData);
         
         % Update sinogram plots
-        UpdateSinogramDisplay(handles.sino1_axes, ...
+        UpdateSinogram(handles.sino1_axes, ...
             handles.planData.agnostic, handles.sino2_axes, ...
             handles.exitData, handles.sino3_axes, handles.diff);
         
         % Update progress bar
         waitbar(0.65, progress, 'Updating statistics...');
+        
+        % Update DVH plot
+        handles.dvh = DVHViewer('axis', handles.dvh_axes, ...
+            'structures', handles.referenceImage.structures, ...
+            'doseA', handles.referenceDose, 'table', handles.dvh_table, ...
+            'atlas', handles.atlas, 'columns', 6);
         
         % Create dose plot with planned dose
         set(handles.dose_display, 'Value', 2);
@@ -132,22 +134,12 @@ if ~isequal(name, 0)
         set(handles.alpha, 'visible', 'on');
         set(handles.tcs_button, 'visible', 'on');
 
-        % Update DVH plot
-        [handles.referenceDose.dvh] = ...
-            UpdateDVH(handles.dvh_axes, get(handles.dvh_table, 'Data'), ...
-            handles.referenceImage, handles.referenceDose);
-
-        % Update Dx/Vx statistics
-        set(handles.dvh_table, 'Data', UpdateDoseStatistics(...
-            get(handles.dvh_table, 'Data'), [], ...
-            handles.referenceDose.dvh, []));
-        
         % Update results display
         set(handles.results_display, 'Value', 9);
-        UpdateResultsDisplay(handles.results_axes, 9, handles);
+        UpdateResults(handles.results_axes, 9, handles);
         
         % Update results statistics
-        set(handles.stats_table, 'Data', UpdateResultsStatistics(handles));
+        set(handles.stats_table, 'Data', UpdateStatistics(handles));
         
         % Close progress bar
         close(progress);
@@ -168,7 +160,7 @@ if ~isequal(name, 0)
                 % Calculate dose
                 handles.path = path;
                 handles.name = name;
-                handles = CalculateExitDose(handles);
+                handles = CalcExitDose(handles);
                 
                 % Ask user if they want to calculate dose
                 choice = questdlg('Continue to Calculate Gamma?', ...
@@ -178,7 +170,7 @@ if ~isequal(name, 0)
                 if strcmp(choice, 'Yes')
 
                     % Calculate dose
-                    handles = CalculateExitGamma(handles);
+                    handles = CalcExitGamma(handles);
                 else
                     
                     % Log choice

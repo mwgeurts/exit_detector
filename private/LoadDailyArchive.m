@@ -20,11 +20,11 @@ function handles = LoadDailyArchive(handles)
 % with this program. If not, see http://www.gnu.org/licenses/.
 
 % Warn the user that existing data will be deleted
-if ~isfield(handles, 'planUID') || ~isempty(handles.planUID)
+if isfield(handles, 'planUID') && ~isempty(handles.planUID)
     
     % Ask user if they want to calculate dose
     choice = questdlg(['Existing Static Couch QA data exists and will ', ...
-        'be deleted. Continue?'], 'Calculate Gamma', 'Yes', 'No', 'Yes');
+        'be deleted. Continue?'], 'Clear Existing Data', 'Yes', 'No', 'Yes');
 
     % If the user chose yes
     if strcmp(choice, 'Yes')
@@ -75,7 +75,7 @@ if ~isequal(name, 0)
 
         % Update results display
         set(handles.results_display, 'Value', 2);
-        UpdateResultsDisplay(handles.results_axes, 2, handles);
+        UpdateResults(handles.results_axes, 2, handles);
     end
     
 % Otherwise the user did not select a file

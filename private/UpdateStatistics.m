@@ -1,5 +1,5 @@
-function table = UpdateResultsStatistics(handles)
-% UpdateResultsStatistics is called by ExitDetector.m or PrintReport.m 
+function table = UpdateStatistics(handles)
+% UpdateStatistics is called by ExitDetector.m or PrintReport.m 
 % after new daily QA or patient data is loaded.  See below for more 
 % information on the statistics computed.
 %
@@ -132,19 +132,28 @@ c = c + 1;
 table{c,1} = 'Gamma dose threshold';
 table{c,2} = sprintf('%0.1f%%', handles.doseThreshold * 100);
 
+% Gamma pass rate
+c = c + 1;
+table{c,1} = 'Gamma pass rate';
+if isfield(handles, 'gamma') && size(handles.gamma,1) > 0
+             
+    % Initialize the gammahist temporary variable to compute the 
+    % gamma pass rate, by reshaping gamma to a 1D vector
+    gammahist = handles.gamma(handles.gamma > 0);
+    
+    % Store pass rate
+    table{c,2} = sprintf('%0.2f%%', ...
+        length(gammahist(gammahist <= 1)) / length(gammahist) * 100);
+    
+    % Log result
+    Event(sprintf('Gamma pass rate = %e%%', ...
+        length(gammahist(gammahist <= 1)) / length(gammahist) * 100));
+end
+
 % Mean gamma index
 c = c + 1;
 table{c,1} = 'Mean Gamma index';
 if isfield(handles, 'gamma') && size(handles.gamma,1) > 0
-    
-    % Initialize the gammahist temporary variable to compute the 
-    % gamma pass rate, by reshaping gamma to a 1D vector
-    gammahist = reshape(handles.gamma,1,[]);
-
-    % Remove values less than or equal to zero (due to
-    % handles.dose_threshold; see CalcDose for more 
-    % information)
-    gammahist = gammahist(gammahist > 0); 
             
     % Store pass rate
     table{c,2} = sprintf('%0.2f', mean(gammahist));
@@ -163,24 +172,11 @@ if isfield(handles, 'gamma') && size(handles.gamma,1) > 0
     
     % Log result
     Event(sprintf('Median Gamma index = %e', median(gammahist)));
-end
-
-% Gamma pass rate
-c = c + 1;
-table{c,1} = 'Gamma pass rate';
-if isfield(handles, 'gamma') && size(handles.gamma,1) > 0
-          
-    % Store pass rate
-    table{c,2} = sprintf('%0.2f%%', ...
-        length(gammahist(gammahist <= 1)) / length(gammahist) * 100);
-    
-    % Log result
-    Event(sprintf('Gamma pass rate = %e%%', ...
-        length(gammahist(gammahist <= 1)) / length(gammahist) * 100));
     
     % Clear temporary variables
     clear gammahist;
 end
+
 
 % Log completion
 Event(sprintf(['Statistics table updated successfully in %0.3f', ...
