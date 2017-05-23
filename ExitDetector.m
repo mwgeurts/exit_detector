@@ -30,7 +30,7 @@ function varargout = ExitDetector(varargin)
 % You should have received a copy of the GNU General Public License along 
 % with this program. If not, see http://www.gnu.org/licenses/.
 
-% Last Modified by GUIDE v2.5 23-May-2017 11:37:44
+% Last Modified by GUIDE v2.5 23-May-2017 14:01:49
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -834,6 +834,105 @@ function exportplot_button_Callback(hObject, ~, handles)
 
 % Execute ExportResults
 handles = ExportResults(handles);
+
+% Update handles structure
+guidata(hObject, handles);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function stats_table_CellEditCallback(hObject, eventdata, handles)
+% hObject    handle to stats_table (see GCBO)
+% eventdata  structure with the following fields
+%	Indices: row and column indices of the cell(s) edited
+%	PreviousData: previous data for the cell(s) edited
+%	EditData: string(s) entered by the user
+%	NewData: EditData or its converted form set on the Data property. Empty 
+%       if Data was not changed
+%	Error: error string when failed to convert EditData to appropriate 
+%       value for Data
+% handles    structure with handles and user data (see GUIDATA)
+
+% Get table data
+data = get(hObject, 'Data');
+
+% If Gamma criteria were changed
+if eventdata.Indices(1) == 6
+    
+    % Retrieve Gamma criteria
+    c = strsplit(data{eventdata.Indices(1), eventdata.Indices(2)}, '/');
+
+    % If the user didn't include a /
+    if length(c) < 2
+
+        % Throw a warning
+        Event(['When entering Gamma criteria, you must provide the ', ...
+            'format ##%/## mm'], 'WARN');
+
+        % Reset the gamma
+        data{eventdata.Indices(1), eventdata.Indices(2)} = ...
+            eventdata.PreviousData;
+
+    % Otherwise two values were found
+    else
+
+        % Parse values
+        handles.percent = str2double(regexprep(c{1}, '[^\d\.]', ''));
+        handles.dta = str2double(regexprep(c{2}, '[^\d\.]', ''));
+        
+        % Update table with formatted values
+        data{eventdata.Indices(1), eventdata.Indices(2)} = ...
+            sprintf('%0.1f%%/%0.1f mm', handles.percent, handles.dta);
+
+        % Log change
+        Event(sprintf('Gamma criteria set to %0.1f%%/%0.1f mm', ...
+            handles.percent, handles.dta));
+    end
+
+    % Clear temporary variables
+    clear c;
+    
+% If Gamma threshold was changed
+elseif eventdata.Indices(1) == 7
+    
+    % If user passed a non-number
+    if isnan(str2double(regexprep(data{eventdata.Indices(1), ...
+        eventdata.Indices(2)}, '[^\d\.]', '')))
+    
+        % Throw a warning
+        Event('The dose threshold must be a number', 'WARN');
+
+        % Reset the gamma
+        data{eventdata.Indices(1), eventdata.Indices(2)} = ...
+            eventdata.PreviousData;
+    else
+    
+        % Parse value
+        handles.doseThreshold = str2double(regexprep(...
+            data{eventdata.Indices(1), eventdata.Indices(2)}, ...
+            '[^\d\.]', '')) / 100;
+
+        % Update table with formatted values
+        data{eventdata.Indices(1), eventdata.Indices(2)} = ...
+            sprintf('%0.1f%%', handles.doseThreshold * 100);
+
+        % Log change
+        Event(sprintf('Dose threshold set to %0.1f%% of maximum dose', ...
+            handles.doseThreshold * 100));
+    end
+    
+% Otherwise, do not allow edits
+else
+    
+    % Warn user
+    Event('This row is not editable, only the Gamma criteria', 'WARN');
+    
+    % Revert to previous value
+    data{eventdata.Indices(1), eventdata.Indices(2)} = ...
+        eventdata.PreviousData;
+    
+end
+
+% Update the data
+set(hObject, 'Data', data);
 
 % Update handles structure
 guidata(hObject, handles);
