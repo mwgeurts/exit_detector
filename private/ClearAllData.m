@@ -73,31 +73,6 @@ handles.diff = [];
 % compute statistics. See CalcSinogramDiff
 handles.errors = [];
 
-% Set auto-select checkbox default
-set(handles.autoselect_box, 'Enable', 'on');
-set(handles.autoselect_box, 'Value', ...
-    str2double(handles.config.AUTO_SELECT_PLAN));
-Event(['Default delivery plan auto-selection set to ', ...
-    handles.config.AUTO_SELECT_PLAN]);
-
-% Set auto-align checkbox default
-set(handles.autoshift_box, 'Enable', 'on');
-set(handles.autoshift_box, 'Value', ...
-    str2double(handles.config.AUTO_ALIGN_PROJECTIONS));
-Event(['Default delivery plan auto-alignment set to ', ...
-    handles.config.AUTO_ALIGN_PROJECTIONS]);
-
-% Set dynamic jaw compensation checkbox default
-set(handles.dynamicjaw_box, 'Enable', 'on');
-set(handles.dynamicjaw_box, 'Value', ...
-    str2double(handles.config.DYNAMIC_JAW_COMPENSATION));
-Event(['Default dynamic jaw compensation set to ', ...
-    handles.config.DYNAMIC_JAW_COMPENSATION]);
-
-% Set MVCT calculation checkbox default
-set(handles.mvctcalc_box, 'Enable', 'on');
-set(handles.mvctcalc_box, 'Value', handles.mvctcalc);
-
 % Clear patient file string
 set(handles.archive_file, 'String', '');
 
