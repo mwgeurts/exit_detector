@@ -100,24 +100,14 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
     % Clear temporary variables
     clear i; 
     
-    % Select which leaf spread function to use, based on leaf distribution
-    m = sum(sum(sinogram,2)/sum(sum(sinogram)) .* abs(-31.5:1:31.5)');
-    if m < 9
-        Event(sprintf('Mean leaf distance = %0.1f, using central LSF', m));
-        idx = 1;
-    else
-        Event(sprintf('Mean leaf distance = %0.1f, using edge LSF', m));
-        idx = 2;
-    end
-    
     % Compute the Forier Transform of the leaf spread function.  The
     % leaf spread function padded by zeros to be 64 elements long + the  
     % size of the leaf spread function (the exitData is padded to the 
     % same size).  The leafSpread function is also mirrored, as it is 
     % stored as only a right-sided function. 
     Event('Mirroring and computing Fourier Transform of LSF');
-    filter = fft([fliplr(leafSpread(idx, 2:size(leafSpread,2))) ...
-        leafSpread(idx, :)], 64 + size(leafSpread,2))';
+    filter = fft([fliplr(mean(leafSpread(:, 2:size(leafSpread,2)))) ...
+        mean(leafSpread,1)], 64 + size(leafSpread,2))';
     
     % Clear temporary variables
     clear idx m;
@@ -147,21 +137,48 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
     % Compute jaw widths
     widths = CalcFieldWidth(planData);
     
+    % Clip values less than 3% of the maximum leaf open time to zero.
+    % As the MLC is not capable of opening this short, values less than
+    % 1% are the result of noise and deconvolution error, so can be
+    % safely disregarded
+    Event('Clipping exit detector values less than 3%');
+    exitData(exitData < 0.03 * max(max(exitData))) = 0;
+    
     % Normalize the exit detector data such that the maximum value is
     % identical to the maximum planned sinogram value (typically 1).
     % This is necessary in lieu of determining an absolute calibration
     % factor for the MVCT exit detector. Note that regions where the jaws
     % are closing (during dynamic jaw plans) are excluded
     Event('Normalizing exit detector data');
-    exitData = exitData / max(max(exitData)) * max(max(sinogram));
     
-    % Clip values less than 3% of the maximum leaf open time to zero.
-    % As the MLC is not capable of opening this short, values less than
-    % 1% are the result of noise and deconvolution error, so can be
-    % safely disregarded
-    Event('Clipping exit detector values less than 3%');
-    exitData = exitData .* ceil(exitData - 0.03);
+    % Loop through each beam
+    for i = 1:length(planData.startTrim)
+            
+        % Compute starting and ending projections for this beam
+        start = sum(planData.trimmedLengths(1:i-1))+1;
+        stop = sum(planData.trimmedLengths(1:i));
 
+        % Compute end of leading jaw motion
+        [~, a] = max(widths(3, ...
+            planData.startTrim(i):planData.stopTrim(i)));
+
+        % Compute start of trailing jaw motion
+        [~, b] = max(flip(widths(3, ...
+            planData.startTrim(i):planData.stopTrim(i))));
+        
+        % Normalize projections
+        exitData(:,start:stop) = exitData(:,start:stop) / ...
+            (max(max(exitData(:,start+a-1:stop-b+1))) / ...
+            max(max(sinogram(:,start+a-1:stop-b+1))));
+    end
+    
+    % Clear temporary variables
+    clear start stop a b;
+    
+    % Restrict any exit detector values greater than 1 
+    % (FFT overcompoensation)
+    exitData(exitData > 1) = 1;
+    
     % If autoShift is enabled
     if autoShift == 1
         
@@ -278,10 +295,10 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
             % Store starting tau
             start = sum(planData.trimmedLengths(1:i-1));
             
-            % Compute mean non-zero difference for each field width
+            % Compute median non-zero difference for each field width
             diffs = zeros(1, idx);
             for j = 1:idx
-                diffs(j) = mean(nonzeros(diff(:, start+j)));
+                diffs(j) = median(nonzeros(diff(:, start+j)));
                 if isnan(diffs(j))
                     diffs(j) = 0;
                 end
@@ -290,7 +307,7 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
             % Model relationship between sinogram difference vs. field
             % width in dynamic jaw areas
             [p, S] = polyfit(widths(3, planData.startTrim(i):...
-                planData.startTrim(i)+idx-1), diffs, max(1, min(idx-2, 3)));
+                planData.startTrim(i)+idx-1), diffs, max(1, min(idx-2, 10)));
         
             % Log model results
             Event(sprintf('Beam %i leading jaw model norm resid = %0.4f', ...
@@ -299,8 +316,8 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
             % Adjust projections using model
             for j = 1:idx-1
                 diff(:, start+j) = diff(:, start+j) - repmat(polyval(p, ...
-                    widths(3, planData.startTrim(i)+j-1)), 64, 1) .* ...
-                    ceil(abs(diff(:,start+j)));
+                    widths(3, planData.startTrim(i)+j-1)) + ...
+                    diffs(end), 64, 1) .* ceil(abs(diff(:,start+j)));
             end
             
             % Compute start of trailing jaw motion
@@ -310,10 +327,10 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
             % Store ending tau
             stop = sum(planData.trimmedLengths(1:i));
             
-            % Compute mean non-zero difference for each field width
+            % Compute median non-zero difference for each field width
             diffs = zeros(1, idx);
             for j = 1:idx-1
-                diffs(j) = mean(nonzeros(diff(:,stop-j+1)));
+                diffs(j) = median(nonzeros(diff(:,stop-j+1)));
                 if isnan(diffs(j))
                     diffs(j) = 0;
                 end
@@ -322,7 +339,7 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
             % Model relationship between sinogram difference vs. field
             % width in dynamic jaw areas
             [p, S] = polyfit(widths(3, planData.stopTrim(i):-1:...
-                planData.stopTrim(i)-idx+1), diffs, max(1, min(idx-2, 3)));
+                planData.stopTrim(i)-idx+1), diffs, max(1, min(idx-2, 10)));
         
             % Log model results
             Event(sprintf('Beam %i trailing jaw model norm resid = %0.4f', ...
@@ -331,8 +348,8 @@ if size(sinogram,1) > 0 && size(leafSpread,1) > 0 && ...
             % Adjust projections using model
             for j = 1:idx-1
                 diff(:, stop-j+1) = diff(:, stop-j+1) - repmat(polyval(p, ...
-                    widths(3, planData.stopTrim(i)-j+1)), 64, 1) .* ...
-                    ceil(abs(diff(:,stop-j+1)));
+                    widths(3, planData.stopTrim(i)-j+1)) + ...
+                    diffs(end), 64, 1) .*  ceil(abs(diff(:,stop-j+1)));
             end
         end
 
