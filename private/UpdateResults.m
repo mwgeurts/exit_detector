@@ -260,18 +260,13 @@ switch varargin{2}
             
             % Plot leaf spread function
             semilogy(0:size(handles.dailyqa.leafSpread, 2)-1, ...
-                handles.dailyqa.leafSpread(1,:))
-            hold on;
-            semilogy(0:size(handles.dailyqa.leafSpread, 2)-1, ...
-                handles.dailyqa.leafSpread(2,:))
-            hold off;
+                mean(handles.dailyqa.leafSpread, 1));
             
             % Set plot options
             colormap(handles.results_axes, 'default')
             axis tight
             xlabel('MLC Leaf')
             ylabel('Normalized Signal')
-            legend({'Central Leaves', 'Edge Leaves'})
             grid on
             zoom on
             
