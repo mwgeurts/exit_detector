@@ -45,7 +45,8 @@ if ~isequal(name, 0)
     % Search archive for static couch QA procedures
     [handles.machine, handles.planUID, handles.rawData] = ...
         LoadStaticCouchQA(path, name, handles.leftTrim, ...
-        handles.dailyqa.channelCal, handles.detectorRows);
+        handles.dailyqa.channelCal, handles.detectorRows, ...
+        str2double(handles.config.FORCE_DICOM_BROWSE));
     
     % If LoadStaticCouchQA was successful
     if ~strcmp(handles.planUID, '')
