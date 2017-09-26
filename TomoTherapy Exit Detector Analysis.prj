@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.apptool" plugin-version="1.0">
-  <configuration build-checksum="2844697069" file="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector/TomoTherapy Exit Detector Analysis.prj" location="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector" name="TomoTherapy Exit Detector Analysis" target="target.mlapps" target-name="Package App">
+  <configuration build-checksum="3890536922" file="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector/TomoTherapy Exit Detector Analysis.prj" location="/Users/mwgeurts/Documents/TomoTherapy/Exit Dose Analysis Project/exit_detector" name="TomoTherapy Exit Detector Analysis" target="target.mlapps" target-name="Package App">
     <param.appname>TomoTherapy Exit Detector Analysis</param.appname>
     <param.authnamewatermark>Mark Geurts</param.authnamewatermark>
     <param.email>mark.w.geurts@gmail.com</param.email>
@@ -15,7 +15,7 @@ The user interface provides graphic and quantitative analysis of the comparison 
 
 TomoTherapy is a registered trademark of Accuray Incorporated.</param.description>
     <param.screenshot />
-    <param.version>1.4.2</param.version>
+    <param.version>1.4.3</param.version>
     <param.products.name>
       <item>Image Processing Toolbox</item>
       <item>MATLAB</item>
@@ -63,6 +63,7 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
       <file>${PROJECT_ROOT}/private/ExportResults.m</file>
       <file>${PROJECT_ROOT}/private/LoadDailyArchive.m</file>
       <file>${PROJECT_ROOT}/private/LoadPatientArchive.m</file>
+      <file>${PROJECT_ROOT}/private/LoadStaticCouchQA.m</file>
       <file>${PROJECT_ROOT}/private/LoadVersionInfo.m</file>
       <file>${PROJECT_ROOT}/private/MatchDeliveryPlan.m</file>
       <file>${PROJECT_ROOT}/private/ParseConfigOptions.m</file>
@@ -95,9 +96,9 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
       <file>${PROJECT_ROOT}/tomo_extract/LoadImage.m</file>
       <file>${PROJECT_ROOT}/tomo_extract/LoadPlan.m</file>
       <file>${PROJECT_ROOT}/tomo_extract/LoadPlanDose.m</file>
-      <file>${PROJECT_ROOT}/tomo_extract/LoadStaticCouchQA.m</file>
       <file>${PROJECT_ROOT}/tomo_extract/LoadStructures.m</file>
       <file>${PROJECT_ROOT}/tomo_extract/MergeImages.m</file>
+      <file>${PROJECT_ROOT}/tomo_extract/ParseDetData.m</file>
       <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/scp.m</file>
       <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/scp_get.m</file>
       <file>${PROJECT_ROOT}/tomo_extract/ssh2_v2_m1_r6/scp_put.m</file>
@@ -143,7 +144,7 @@ TomoTherapy is a registered trademark of Accuray Incorporated.</param.descriptio
       <vista>false</vista>
       <linux>false</linux>
       <solaris>false</solaris>
-      <osver>10.12.5</osver>
+      <osver>10.12.6</osver>
       <os32>false</os32>
       <os64>true</os64>
       <arch>maci64</arch>
