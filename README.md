@@ -1,4 +1,4 @@
-## TomoTherapy Exit Detector Analysis
+# TomoTherapy Exit Detector Analysis
 
 by Mark Geurts <mark.w.geurts@gmail.com>
 <br>Copyright &copy; 2017, University of Wisconsin Board of Regents
