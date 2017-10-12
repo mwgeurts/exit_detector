@@ -13,9 +13,11 @@ The user interface provides graphic and quantitative analysis of the comparison 
 
 TomoTherapy is a registered trademark of Accuray Incorporated. MATLAB is a registered trademark of MathWorks Inc.
 
-## Installation
+## Installation and Use
 
-To install the TomoTherapy Exit Detector Analysis Tool as a MATLAB App, download and execute the `TomoTherapy Exit Detector Analysis.mlappinstall` file from this directory. If downloading the repository via git, make sure to download all submodules by running  `git clone --recursive https://github.com/mwgeurts/exit_detector`. See the [wiki](../../wiki) for information in installation and use.
+To install the TomoTherapy Exit Detector Analysis Tool as a MATLAB App, download and execute the `TomoTherapy Exit Detector Analysis.mlappinstall` file from this directory. If downloading the repository via git, make sure to download all submodules by running  `git clone --recursive https://github.com/mwgeurts/exit_detector`. 
+
+See the [wiki](../../wiki) for information on configuration parameters and application use.
 
 ## License
 
